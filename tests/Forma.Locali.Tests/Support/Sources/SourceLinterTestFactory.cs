@@ -14,12 +14,10 @@ public static class SourceLinterTestFactory
         =>
         [
             new MalformedExpressionChecker(),
-            new HoleIdentifierChecker(),
             new ValueCountChecker(),
             new PluralArgumentChecker(),
             new SoleArgumentChecker(),
             new PluralOtherFieldChecker(),
-            new UnreadValueChecker(),
             new HoleShapeChecker(),
             new BareHoleKeyChecker(),
             new BareExpressionKeyChecker(),

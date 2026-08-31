@@ -38,13 +38,12 @@ public sealed class PluralArgumentChecker : ICallSiteRuleChecker
         }
     }
 
-    // Values paired by position or written into a hole are named after the key's holes.
+    // Values paired by position are named after the key's holes.
     private static IReadOnlyList<string>? Supplied(CallSiteContext context)
         => context.Site.Arguments switch
         {
             LocalizerArguments.None => [],
-            LocalizerArguments.Positional or LocalizerArguments.Interpolated => context.Holes,
-            LocalizerArguments.Named => context.Site.Names,
+            LocalizerArguments.Positional => context.Holes,
             _ => null,
         };
 }

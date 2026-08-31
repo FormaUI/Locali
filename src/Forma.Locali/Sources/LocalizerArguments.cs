@@ -11,10 +11,4 @@ public enum LocalizerArguments
 
     /// <summary>The values pair to the key's distinct holes by position.</summary>
     Positional,
-
-    /// <summary>Each value carries the name a hole reads it by.</summary>
-    Named,
-
-    /// <summary>The key is an interpolated string, whose holes supply their own values.</summary>
-    Interpolated,
 }

@@ -15,12 +15,6 @@ public sealed class HoleShapeChecker : ICallSiteRuleChecker
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        if (context.Site.Arguments is LocalizerArguments.Interpolated)
-        {
-            // An interpolated hole is written as code, and HoleNotIdentifier judges it as code.
-            return;
-        }
-
         foreach (var suspect in HoleShapes.Suspect(context.Site.Key))
         {
             context.Report(

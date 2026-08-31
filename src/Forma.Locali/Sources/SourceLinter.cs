@@ -60,6 +60,7 @@ public sealed class SourceLinter(
             .SelectMany(Check));
 
         diagnostics.AddRange(lookups.UnreadableKeys.Select(Unreadable));
+        diagnostics.AddRange(lookups.InterpolatedKeys.Select(Interpolated));
 
         return new SourceLintResult(diagnostics, lookups.Sites);
     }
@@ -74,6 +75,15 @@ public sealed class SourceLinter(
             LintCodes.KeyNotAnalysed,
             "The lookup's key is an expression rather than text, so no rule could check what it reads.");
 
+    private static LintDiagnostic Interpolated(FileLinePositionSpan location)
+        => new(
+            location.Path,
+            location.StartLinePosition.Line + 1,
+            location.StartLinePosition.Character + 1,
+            LintCodes.InterpolatedKey.DefaultSeverity,
+            LintCodes.InterpolatedKey,
+            "The lookup's key is an interpolated string, so the formatted text becomes the key and no translation matches it; write the key as a literal and pass the values positionally.");
+
     private LocalizerLookups Walk(Compilation compilation, IReadOnlyCollection<string> files, CancellationToken cancellationToken)
     {
         var finder = _semantic.CanRead(compilation) ? (ILocalizerCallSiteFinder)_semantic : _syntactic;
@@ -87,7 +97,8 @@ public sealed class SourceLinter(
 
         return new LocalizerLookups(
             [.. found.SelectMany(lookups => lookups.Sites).Where(site => Wanted(site.Location, files))],
-            [.. found.SelectMany(lookups => lookups.UnreadableKeys).Where(location => Wanted(location, files))]);
+            [.. found.SelectMany(lookups => lookups.UnreadableKeys).Where(location => Wanted(location, files))],
+            [.. found.SelectMany(lookups => lookups.InterpolatedKeys).Where(location => Wanted(location, files))]);
     }
 
     // A project compiles whole because binding needs it, so only the files the run named are reported on.

@@ -10,8 +10,9 @@ The runtime lives in the sibling Forma repository as `Forma.Framework.Localizati
 ## Lookups
 
 - A consumer injects `IStringLocale<T>` and reads strings as `L["The English sentence"]`; the key **is** the English source text, and an absent translation falls back to the key, silently.
-- Values reach a lookup three ways, all checked: an interpolated key (`L[$"…{stored}…"]`, always an error — LOC0200), positional values named after the key's distinct holes in order, and named values written as tuples or `LocalizedArgument`.
-- Consumers name holes in PascalCase and pass values positionally as a matter of style; the linter does not enforce either, and no rule should start to — a hole name is legal wherever the runtime reads it.
+- A lookup takes one form: a literal key with values paired to its distinct holes by position, in the order the holes first appear — `L["Stored {stored} of {total}.", written, allowed]`. A wrong count throws (LOC0202).
+- An interpolated key — `L[$"…{stored}…"]` — formats before the lookup, so the runtime receives the formatted text as the key and no translation matches it; LOC0213 reports every such call site as an error.
+- Consumers name holes in PascalCase as a matter of style; the linter does not enforce it, and no rule should start to — a hole name is legal wherever the runtime reads it.
 
 ## Files
 

@@ -31,6 +31,74 @@ public sealed class SourceLinterTests
     }
 
     [Fact]
+    public void Should_report_an_interpolated_key()
+    {
+        // Act
+        var diagnostics = Lint("""public void Show(int count) => _ = L[$"Stored {count}."];""", LintCodes.InterpolatedKey);
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+
+        Assert.Multiple(
+            () => Assert.Equal(LintCodes.InterpolatedKey, diagnostic.Code),
+            () => Assert.Equal(LintSeverity.Error, diagnostic.Severity));
+    }
+
+    [Fact]
+    public void Should_report_an_interpolated_key_through_resolve()
+    {
+        // Act
+        var diagnostics = Lint("""public void Show(int count) => _ = L.Resolve($"Stored {count}.");""", LintCodes.InterpolatedKey);
+
+        // Assert
+        Assert.Equal(LintCodes.InterpolatedKey, Assert.Single(diagnostics).Code);
+    }
+
+    [Fact]
+    public void Should_report_an_interpolated_key_without_a_model()
+    {
+        // Arrange — nothing binds here, so the syntactic path reads the key's own syntax.
+        var compilation = CompilationTestFactory.Unreferenced("""
+            namespace Scratch;
+
+            public sealed class Widget
+            {
+                private IStringLocale<Widget> L;
+
+                public object Show(int count) => L[$"Stored {count}."];
+            }
+            """);
+
+        // Act
+        var diagnostics = Reported(compilation, LintCodes.InterpolatedKey);
+
+        // Assert
+        Assert.Equal(LintCodes.InterpolatedKey, Assert.Single(diagnostics).Code);
+    }
+
+    [Fact]
+    public void Should_leave_an_interpolated_key_a_localizer_writes_alone()
+    {
+        // Arrange — a key composed inside an implementation belongs to the implementation, not to a translation.
+        var compilation = CompilationTestFactory.Unreferenced("""
+            namespace Scratch;
+
+            public sealed class Prefixing : IStringLocale
+            {
+                private IStringLocale inner;
+
+                public object Read(string name) => inner[$"Widget: {name}"];
+            }
+            """);
+
+        // Act
+        var diagnostics = Reported(compilation, LintCodes.InterpolatedKey);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_leave_a_key_written_as_a_literal_alone()
     {
         // Act
@@ -94,13 +162,9 @@ public sealed class SourceLinterTests
             public sealed class Forwarding(IStringLocale inner) : IStringLocale
             {
                 public LocalizedText this[string name] => inner[name];
-                public LocalizedText this[string name, params ReadOnlySpan<LocalizedArgument> arguments] => inner[name, arguments];
                 public LocalizedText this[string name, params ReadOnlySpan<object?> values] => inner[name, values];
-                public LocalizedText this[LocalizedFormatHandler handler] => inner[handler];
                 public LocalizedPattern Resolve(string name) => inner.Resolve(name);
-                public LocalizedPattern Resolve(string name, params LocalizedArgument[] arguments) => inner.Resolve(name, arguments);
                 public LocalizedPattern Resolve(string name, params object?[] values) => inner.Resolve(name, values);
-                public LocalizedPattern Resolve(LocalizedFormatHandler handler) => inner.Resolve(handler);
                 public IEnumerable<LocalizedText> GetAllStrings(bool includeParentCultures) => inner.GetAllStrings(includeParentCultures);
             }
             """);
@@ -159,11 +223,17 @@ public sealed class SourceLinterTests
     private static IReadOnlyList<LintDiagnostic> Lint(string body)
         => Reported(Compile(body));
 
+    private static IReadOnlyList<LintDiagnostic> Lint(string body, LintCode code)
+        => Reported(Compile(body), code);
+
     private static IReadOnlyList<LocalizerCallSite> Sites(string body)
         => Result(Compile(body)).CallSites;
 
     private static IReadOnlyList<LintDiagnostic> Reported(Compilation compilation)
-        => [.. Result(compilation).Diagnostics.Where(diagnostic => diagnostic.Code == LintCodes.KeyNotAnalysed)];
+        => Reported(compilation, LintCodes.KeyNotAnalysed);
+
+    private static IReadOnlyList<LintDiagnostic> Reported(Compilation compilation, LintCode code)
+        => [.. Result(compilation).Diagnostics.Where(diagnostic => diagnostic.Code == code)];
 
     private static SourceLintResult Result(Compilation compilation)
         => new SourceLinter(

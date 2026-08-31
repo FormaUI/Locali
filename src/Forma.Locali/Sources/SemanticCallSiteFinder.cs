@@ -40,6 +40,7 @@ public sealed class SemanticCallSiteFinder : ILocalizerCallSiteFinder
         var generic = compilation.GetTypeByMetadataName(LocalizerContract.GenericMetadataName);
         var sites = new List<LocalizerCallSite>();
         var unreadable = new List<FileLinePositionSpan>();
+        var interpolated = new List<FileLinePositionSpan>();
 
         foreach (var node in tree.GetRoot().DescendantNodes())
         {
@@ -66,14 +67,20 @@ public sealed class SemanticCallSiteFinder : ILocalizerCallSiteFinder
             {
                 sites.Add(site with { ResourceType = Resource(model, node, generic) });
             }
-            else if (!LocalizerContract.InsideLocalizer(node, model, contract)
-                && CallSiteReader.UnreadableKey(tree, arguments) is { } location)
+            else if (!LocalizerContract.InsideLocalizer(node, model, contract))
             {
-                unreadable.Add(location);
+                if (CallSiteReader.InterpolatedKey(tree, arguments) is { } key)
+                {
+                    interpolated.Add(key);
+                }
+                else if (CallSiteReader.UnreadableKey(tree, arguments) is { } location)
+                {
+                    unreadable.Add(location);
+                }
             }
         }
 
-        return new LocalizerLookups(sites, unreadable);
+        return new LocalizerLookups(sites, unreadable, interpolated);
     }
 
     // The indexer is declared on the unbound contract, so the type it translates is only on the receiver.

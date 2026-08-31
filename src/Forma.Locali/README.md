@@ -165,19 +165,20 @@ translation is legal. Reordering or dropping a name is legal.
 
 | Code | Severity | Reports | Runtime |
 |------|----------|---------|---------|
-| LOC0200 | Error | An interpolated hole is not a plain identifier | throws |
 | LOC0201 | Error | An expression reads a name nothing supplies | counts as 0, silently |
 | LOC0202 | Error | The value count does not match the key's distinct holes | throws |
 | LOC0203 | Error | An expression naming no argument is given no value | throws |
 | LOC0204 | Error | A key carries a malformed expression | renders as written, silently |
 | LOC0205 | Warning | A plural expression omits `other` | renders nothing, silently |
 | LOC0206 | Warning | A project's Razor markup went unchecked | — |
-| LOC0207 | Error | A named value the key never reads | the hole renders as written, silently |
 | LOC0208 | Error | A key writes text shaped like a hole the runtime cannot read | renders as written, silently |
 | LOC0209 | Warning | A key has no entry in a translation file its type owns | renders untranslated, silently |
 | LOC0210 | Warning | A lookup writes its key as an expression | unchecked, whatever it reads |
 | LOC0211 | Warning | A key carries holes but no words anywhere else | works, but names no translation |
 | LOC0212 | Warning | An expression key carries no words in any field | works, but names no translation |
+| LOC0213 | Error | A lookup writes its key as an interpolated string with holes | the formatted text becomes the key, silently |
+
+LOC0200 and LOC0207 are retired, and neither number is reused.
 
 LOC0209 catches the drift a new string opens. Adding `L["Details columns"]` to a component
 whose `he` and `es` files already exist leaves both files behind, and nothing else notices:
@@ -253,19 +254,23 @@ alone. A localization file cannot rescue such a key either: `null` marks a key w
 translation is deliberately the source text, and there is no source text here to mark, only a
 value with nowhere to put it.
 
-All three ways of filling holes are checked. An interpolated key and a positional call
-name their values after the key's holes; a named call writes the names out, and those are
-read from the source:
+Values pair to the key's distinct holes by position, in the order the holes first appear,
+and a plural expression's bracketed argument names a value the same way a brace hole does:
 
 ```csharp
-L[$"Stored {stored} of {total}."]                              // LOC0200
-L["Stored {stored} of {total}.", written, allowed]             // LOC0202
-L["Stored {stored} of {total}.", ("stored", a), ("total", b)]  // LOC0207
+L["Stored {stored} of {total}.", written, allowed]        // right: one value per distinct hole
+L["Stored {stored} of {total}.", written]                 // LOC0202: two holes, one value
+L["Stored {stored} of {total}.", written, allowed, size]  // LOC0202: two holes, three values
+L["Stored {total} of {total}.", total]                    // right: a repeated hole counts once
+L["Saved."]                                               // right: no holes, no values
+L[$"Stored {stored} of {total}."]                         // LOC0213: the key is interpolated
 ```
 
-A name is read from a tuple, from `new LocalizedArgument(…)`, and from
-`LocalizedArgument.Unnamed(…)`. One value whose name is not written out — a variable, or a
-collection passed whole — leaves the whole list unjudged, and the rules stay silent.
+LOC0213 catches the key that never reaches the runtime as written: an interpolated string
+formats before the lookup, so the runtime receives the formatted text as the key, which no
+translation is keyed by. An interpolated string with no holes folds to a constant on the
+semantic path and is checked like a literal, and a key composed inside a type that
+implements `IStringLocale` is left alone, as under LOC0210.
 
 ### Where a rule stays silent
 
@@ -278,7 +283,6 @@ Reporting these would flag code that is right:
   how the runtime pairs them. Counting it twice would report every correct call.
 - **A hole no value fills renders as written.** `Resolve` returns a pattern with its holes
   still open for the caller to fill, so an unfilled hole is the feature, not a mistake.
-  A name supplied for a hole that does not exist is the certain half, and LOC0207 has it.
 - **Text shaped like a hole, containing a space, is prose.** `{ color: red }`, `{ }` and
   `{colour, red}` render as written and were meant to. LOC0110 and LOC0208 take the other
   half, where the text could only have been a hole: `{0}`, `{a.b}`, and `{stored,x}`, whose
@@ -353,8 +357,7 @@ against a bound compilation rather than a stub.
 Run a new rule over the sibling Forma repository's `src/Forma.Blazor` and
 `src/Forma.Blazor.Showcase` before trusting it; both lint clean, so anything it
 reports there is a false positive. They do not cover every shape a call site can take —
-nothing there passes named `LocalizedArgument` values or a values collection whole — so
-those belong in unit tests.
+nothing there passes a values collection whole — so those belong in unit tests.
 
 ## Roslyn is loaded from the SDK
 

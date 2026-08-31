@@ -1,9 +1,5 @@
 namespace Forma.Locali.Sources;
 
-using System.Text;
-
-using Forma.Framework.Localization;
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -13,8 +9,6 @@ internal static class CallSiteReader
 {
     /// <summary>The name a lookup goes through when it is not an indexer.</summary>
     public const string ResolveMethod = "Resolve";
-
-    private const string UnnamedMethod = "Unnamed";
 
     /// <summary>The call site a lookup's arguments describe, or null when the key is not readable text.</summary>
     /// <param name="tree">The tree the arguments were parsed from.</param>
@@ -29,12 +23,26 @@ internal static class CallSiteReader
         {
             LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression)
                 => Literal(tree, literal, Supplies(symbol, model, list), list.Count - 1),
-            InterpolatedStringExpressionSyntax interpolated => Interpolated(tree, interpolated),
             { } expression when Constant(expression, model) is { } text
                 => Constant(tree, expression, text, Supplies(symbol, model, list), list.Count - 1),
             _ => null,
         };
     }
+
+    /// <summary>Where a lookup writes its key as an interpolated string with holes, or null when it does not.</summary>
+    /// <param name="tree">The tree the arguments were parsed from.</param>
+    /// <param name="arguments">The arguments the lookup was given.</param>
+    public static FileLinePositionSpan? InterpolatedKey(SyntaxTree tree, BaseArgumentListSyntax arguments)
+        => arguments.Arguments.FirstOrDefault()?.Expression is InterpolatedStringExpressionSyntax interpolated
+            && interpolated.Contents.OfType<InterpolationSyntax>().Any()
+            ? tree.GetMappedLineSpan(interpolated.Span)
+            : null;
+
+    /// <summary>Where a lookup writes the key that could not be read, or null when it writes no key at all.</summary>
+    /// <param name="tree">The tree the arguments were parsed from.</param>
+    /// <param name="arguments">The arguments the lookup was given.</param>
+    public static FileLinePositionSpan? UnreadableKey(SyntaxTree tree, BaseArgumentListSyntax arguments)
+        => arguments.Arguments.Count == 0 ? null : tree.GetMappedLineSpan(arguments.Arguments[0].Span);
 
     // The compiler folds a constant, so a key written as one is as readable as a literal spelled out.
     private static string? Constant(ExpressionSyntax expression, SemanticModel? model)
@@ -45,21 +53,14 @@ internal static class CallSiteReader
         SyntaxTree tree,
         ExpressionSyntax expression,
         string key,
-        (LocalizerArguments Kind, IReadOnlyList<string> Names) supplies,
+        LocalizerArguments supplies,
         int values)
         => new(
             key,
             tree.GetMappedLineSpan(expression.Span),
             0,
-            supplies.Kind,
-            values,
-            supplies.Names);
-
-    /// <summary>Where a lookup writes the key that could not be read, or null when it writes no key at all.</summary>
-    /// <param name="tree">The tree the arguments were parsed from.</param>
-    /// <param name="arguments">The arguments the lookup was given.</param>
-    public static FileLinePositionSpan? UnreadableKey(SyntaxTree tree, BaseArgumentListSyntax arguments)
-        => arguments.Arguments.Count == 0 ? null : tree.GetMappedLineSpan(arguments.Arguments[0].Span);
+            supplies,
+            values);
 
     // Passing the collection itself rather than its items leaves nothing to count.
     private static bool Collection(ITypeSymbol argument, ITypeSymbol parameter, ITypeSymbol element)
@@ -74,128 +75,27 @@ internal static class CallSiteReader
             _ => null,
         };
 
-    private static string Hole(StringBuilder key, InterpolationSyntax interpolation)
-    {
-        // The compiler passes the hole's text as written, which is the name a translation has to spell.
-        var name = interpolation.Expression.ToString();
-
-        key.Append('{').Append(name);
-
-        if (interpolation.AlignmentClause is { Value: { } alignment } && alignment.ToString() != "0")
-        {
-            key.Append(',').Append(alignment.ToString());
-        }
-
-        if (interpolation.FormatClause is { } format)
-        {
-            key.Append(':').Append(format.FormatStringToken.ValueText);
-        }
-
-        key.Append('}');
-
-        return name;
-    }
-
-    // The handler rebuilds the key from the parts, so reading it here has to reproduce that text.
-    private static LocalizerCallSite Interpolated(SyntaxTree tree, InterpolatedStringExpressionSyntax interpolated)
-    {
-        var key = new StringBuilder();
-        var holes = new List<string>();
-
-        foreach (var content in interpolated.Contents)
-        {
-            switch (content)
-            {
-                case InterpolatedStringTextSyntax text:
-                    Literal(key, text.TextToken.ValueText);
-
-                    break;
-
-                case InterpolationSyntax interpolation:
-                    holes.Add(Hole(key, interpolation));
-
-                    break;
-            }
-        }
-
-        return new LocalizerCallSite(
-            key.ToString(),
-            tree.GetMappedLineSpan(interpolated.Span),
-            0,
-            LocalizerArguments.Interpolated,
-            holes.Count,
-            holes);
-    }
-
-    // A brace in prose is doubled so it survives the walk that later reads the key's holes.
-    private static void Literal(StringBuilder key, string value)
-    {
-        foreach (var character in value)
-        {
-            if (character is '{' or '}')
-            {
-                key.Append(character);
-            }
-
-            key.Append(character);
-        }
-    }
-
     private static LocalizerCallSite Literal(
         SyntaxTree tree,
         LiteralExpressionSyntax literal,
-        (LocalizerArguments Kind, IReadOnlyList<string> Names) supplies,
+        LocalizerArguments supplies,
         int values)
         => new(
             literal.Token.ValueText,
             tree.GetMappedLineSpan(literal.Span),
             Offset(literal),
-            supplies.Kind,
-            values,
-            supplies.Names);
-
-    // A value names itself through a tuple, a construction, or the helper for the nameless one.
-    private static string? Named(ExpressionSyntax expression)
-        => expression switch
-        {
-            TupleExpressionSyntax { Arguments.Count: 2 } tuple => Text(tuple.Arguments[0].Expression),
-            ObjectCreationExpressionSyntax { ArgumentList.Arguments.Count: 2 } creation
-                => Text(creation.ArgumentList.Arguments[0].Expression),
-            InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax member }
-                when member.Name.Identifier.ValueText == UnnamedMethod => string.Empty,
-            _ => null,
-        };
-
-    // One value whose name cannot be read leaves the whole list unjudgeable.
-    private static (LocalizerArguments Kind, IReadOnlyList<string> Names) Names(SeparatedSyntaxList<ArgumentSyntax> list)
-    {
-        var names = new List<string>(list.Count - 1);
-
-        for (var index = 1; index < list.Count; index++)
-        {
-            if (Named(list[index].Expression) is not { } name)
-            {
-                return (LocalizerArguments.Unknown, []);
-            }
-
-            names.Add(name);
-        }
-
-        return (LocalizerArguments.Named, names);
-    }
+            supplies,
+            values);
 
     // The key's text starts after the opening quote, which a raw or verbatim literal makes more than one character.
     private static int Offset(LiteralExpressionSyntax literal)
         => literal.Token.Text.Length - literal.Token.Text.TrimStart('@', '$', '"').Length;
 
-    private static (LocalizerArguments Kind, IReadOnlyList<string> Names) Supplies(
-        ISymbol? symbol,
-        SemanticModel? model,
-        SeparatedSyntaxList<ArgumentSyntax> list)
+    private static LocalizerArguments Supplies(ISymbol? symbol, SemanticModel? model, SeparatedSyntaxList<ArgumentSyntax> list)
     {
         if (list.Count <= 1)
         {
-            return (LocalizerArguments.None, []);
+            return LocalizerArguments.None;
         }
 
         var parameters = symbol switch
@@ -207,26 +107,18 @@ internal static class CallSiteReader
 
         if (parameters.IsDefaultOrEmpty || Element(parameters[^1].Type) is not { } element)
         {
-            return (LocalizerArguments.Unknown, []);
+            return LocalizerArguments.Unknown;
         }
 
         if (list.Count == 2
             && model?.GetTypeInfo(list[1].Expression).Type is { } argument
             && Collection(argument, parameters[^1].Type, element))
         {
-            return (LocalizerArguments.Unknown, []);
+            return LocalizerArguments.Unknown;
         }
 
-        return element switch
-        {
-            { Name: nameof(LocalizedArgument) } => Names(list),
-            { SpecialType: SpecialType.System_Object } => (LocalizerArguments.Positional, []),
-            _ => (LocalizerArguments.Unknown, []),
-        };
+        return element.SpecialType is SpecialType.System_Object
+            ? LocalizerArguments.Positional
+            : LocalizerArguments.Unknown;
     }
-
-    private static string? Text(ExpressionSyntax expression)
-        => expression is LiteralExpressionSyntax literal && literal.IsKind(SyntaxKind.StringLiteralExpression)
-            ? literal.Token.ValueText
-            : null;
 }

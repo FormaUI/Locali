@@ -46,25 +46,14 @@ public sealed class CallSiteRuleTests
     }
 
     [Fact]
-    public void Should_report_an_interpolated_hole_that_is_not_a_plain_identifier()
-    {
-        // Act
-        var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() { var items = new[] { 1 }; return locale[$"Stored {items.Length}"]; }""");
-
-        // Assert
-        Assert.Equal([LintCodes.HoleNotIdentifier], diagnostics.Codes());
-    }
-
-    [Fact]
-    public void Should_accept_an_interpolated_hole_that_is_a_plain_identifier()
+    public void Should_report_an_interpolated_key_carrying_a_hole()
     {
         // Act
         var diagnostics = SourceLinterTestFactory.Lint(
             """public string Read() { var count = 1; return locale[$"Stored {count}"]; }""");
 
         // Assert
-        Assert.Empty(diagnostics);
+        Assert.Equal([LintCodes.InterpolatedKey], diagnostics.Codes());
     }
 
     [Fact]
@@ -123,29 +112,7 @@ public sealed class CallSiteRuleTests
     }
 
     [Fact]
-    public void Should_report_a_malformed_expression_in_an_interpolated_key()
-    {
-        // Act
-        var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() { var count = 1; return locale[$"{count} [$ [count] plural one: file; $]"]; }""");
-
-        // Assert
-        Assert.Equal([LintCodes.MalformedSourceExpression], diagnostics.Codes());
-    }
-
-    [Fact]
-    public void Should_read_an_interpolated_key_as_the_text_the_handler_rebuilds()
-    {
-        // Act
-        var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() { var count = 1; return locale[$"{count} [$ [count] plural; one: file; $]"]; }""");
-
-        // Assert
-        Assert.Equal([LintCodes.MissingPluralOther], diagnostics.Codes());
-    }
-
-    [Fact]
-    public void Should_treat_doubled_braces_in_an_interpolated_key_as_literal_text()
+    public void Should_leave_an_interpolated_key_with_no_holes_to_the_compiler_to_fold()
     {
         // Act
         var diagnostics = SourceLinterTestFactory.Lint("""public string Read() => locale[$"Use {{curly}} braces"];""");
@@ -165,14 +132,14 @@ public sealed class CallSiteRuleTests
     }
 
     [Fact]
-    public void Should_not_count_values_that_carry_their_own_names()
+    public void Should_count_a_tuple_value_as_one_value()
     {
         // Act
         var diagnostics = SourceLinterTestFactory.Lint(
             """public string Read() => locale["Stored {stored} of {total}.", ("stored", (object?)1)];""");
 
         // Assert
-        Assert.Empty(diagnostics);
+        Assert.Equal([LintCodes.ValueCountMismatch], diagnostics.Codes());
     }
 
     [Fact]
@@ -195,81 +162,6 @@ public sealed class CallSiteRuleTests
 
         // Assert
         Assert.Equal([LintCodes.ValueCountMismatch], diagnostics.Codes());
-    }
-
-    [Fact]
-    public void Should_report_a_named_value_the_key_never_reads()
-    {
-        // Act
-        var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() => locale["Stored {stored} of {total}.", ("stord", (object?)1), ("total", (object?)2)];""");
-
-        // Assert
-        Assert.Equal([LintCodes.UnreadValue], diagnostics.Codes());
-    }
-
-    [Fact]
-    public void Should_accept_named_values_the_key_reads()
-    {
-        // Act
-        var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() => locale["Stored {stored} of {total}.", ("stored", (object?)1), ("total", (object?)2)];""");
-
-        // Assert
-        Assert.Empty(diagnostics);
-    }
-
-    [Fact]
-    public void Should_accept_a_named_value_an_expression_reads()
-    {
-        // Act
-        var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() => locale["[$ [count] plural; one: # file; other: # files; $]", ("count", (object?)1)];""");
-
-        // Assert
-        Assert.Empty(diagnostics);
-    }
-
-    [Fact]
-    public void Should_report_an_expression_reading_a_name_the_named_values_miss()
-    {
-        // Act
-        var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() => locale["[$ [count] plural; one: # file; other: # files; $]", ("cont", (object?)1)];""");
-
-        // Assert
-        Assert.Equal(
-            [LintCodes.UnsuppliedPluralArgument, LintCodes.UnreadValue],
-            diagnostics.Codes().OrderBy(code => code.Id, StringComparer.Ordinal));
-    }
-
-    [Fact]
-    public void Should_report_an_expression_reading_a_name_an_interpolated_key_misses()
-    {
-        // Act
-        var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() { var count = 1; return locale[$"{count} [$ [cont] plural; one: file; other: files; $]"]; }""");
-
-        // Assert
-        Assert.Equal([LintCodes.UnsuppliedPluralArgument], diagnostics.Codes());
-    }
-
-    [Fact]
-    public void Should_judge_no_names_it_cannot_read()
-    {
-        // Act
-        var diagnostics = SourceLinterTestFactory.Lint(
-            """
-            public string Read()
-            {
-                var pair = ("stord", (object?)1);
-
-                return locale["Stored {stored} of {total}.", pair];
-            }
-            """);
-
-        // Assert
-        Assert.Empty(diagnostics);
     }
 
     [Theory]
@@ -317,17 +209,6 @@ public sealed class CallSiteRuleTests
 
         // Assert
         Assert.Empty(diagnostics);
-    }
-
-    [Fact]
-    public void Should_leave_an_interpolated_hole_to_the_rule_that_judges_it_as_code()
-    {
-        // Act
-        var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() { var items = new[] { 1 }; return locale[$"Stored {items.Length}"]; }""");
-
-        // Assert
-        Assert.Equal([LintCodes.HoleNotIdentifier], diagnostics.Codes());
     }
 
     [Theory]
@@ -384,7 +265,7 @@ public sealed class CallSiteRuleTests
     {
         // Act
         var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() => locale["[$ [a] plural; other: #; $] / [$ [b] plural; other: #; $]", ("a", (object?)1), ("b", (object?)2)];""");
+            """public string Read() => locale["[$ plural; other: #; $] / [$ plural; other: #; $]", 1];""");
 
         // Assert
         Assert.Equal([LintCodes.BareExpressionKey], diagnostics.Codes());
@@ -406,7 +287,7 @@ public sealed class CallSiteRuleTests
     {
         // Act
         var diagnostics = SourceLinterTestFactory.Lint(
-            """public string Read() => locale["Found: [$ [count] plural; other: #; $]", ("count", (object?)1)];""");
+            """public string Read() => locale["Found: [$ [count] plural; other: #; $]", 1];""");
 
         // Assert
         Assert.DoesNotContain(LintCodes.BareExpressionKey, diagnostics.Codes());

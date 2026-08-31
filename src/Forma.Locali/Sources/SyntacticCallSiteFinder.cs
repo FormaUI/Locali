@@ -36,6 +36,7 @@ public sealed class SyntacticCallSiteFinder : ILocalizerCallSiteFinder
     {
         var sites = new List<LocalizerCallSite>();
         var unreadable = new List<FileLinePositionSpan>();
+        var interpolated = new List<FileLinePositionSpan>();
 
         foreach (var node in root.DescendantNodes())
         {
@@ -60,14 +61,20 @@ public sealed class SyntacticCallSiteFinder : ILocalizerCallSiteFinder
             {
                 sites.Add(site);
             }
-            else if (!LocalizerContract.InsideLocalizer(node)
-                && CallSiteReader.UnreadableKey(tree, arguments) is { } location)
+            else if (!LocalizerContract.InsideLocalizer(node))
             {
-                unreadable.Add(location);
+                if (CallSiteReader.InterpolatedKey(tree, arguments) is { } key)
+                {
+                    interpolated.Add(key);
+                }
+                else if (CallSiteReader.UnreadableKey(tree, arguments) is { } location)
+                {
+                    unreadable.Add(location);
+                }
             }
         }
 
-        return new LocalizerLookups(sites, unreadable);
+        return new LocalizerLookups(sites, unreadable, interpolated);
     }
 
     // A local or parameter shadows the type's own members, so the nearest scope is read first.

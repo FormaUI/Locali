@@ -22,19 +22,18 @@ public static class LintCodes
             TranslationHoleShapedText,
             DuplicateKey,
             UnreachableTranslation,
-            HoleNotIdentifier,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
             MalformedSourceExpression,
             MissingPluralOther,
             RazorNotAnalysed,
-            UnreadValue,
             HoleShapedText,
             MissingTranslation,
             KeyNotAnalysed,
             BareHoleKey,
             BareExpressionKey,
+            InterpolatedKey,
         ];
 
     /// <summary>The key carries holes but no words for a translator to read.</summary>
@@ -61,17 +60,17 @@ public static class LintCodes
         LintSeverity.Error,
         "A file declares the same key more than once, so every translation but the last is dropped.");
 
-    /// <summary>A hole in an interpolated key is not a plain identifier.</summary>
-    public static LintCode HoleNotIdentifier { get; } = new(
-        "LOC0200",
-        LintSeverity.Error,
-        "A hole in an interpolated key is not a plain identifier, so the lookup throws.");
-
     /// <summary>A key writes text shaped like a hole whose name the runtime cannot read.</summary>
     public static LintCode HoleShapedText { get; } = new(
         "LOC0208",
         LintSeverity.Error,
         "A key writes text shaped like a hole that names nothing a value can be read by, so it renders as written.");
+
+    /// <summary>A lookup writes its key as an interpolated string with holes.</summary>
+    public static LintCode InterpolatedKey { get; } = new(
+        "LOC0213",
+        LintSeverity.Error,
+        "A lookup writes its key as an interpolated string with holes, so the formatted text becomes the key and no translation matches it.");
 
     /// <summary>The file is not readable JSON.</summary>
     public static LintCode InvalidJson { get; } = new(
@@ -174,12 +173,6 @@ public static class LintCodes
         "LOC0112",
         LintSeverity.Error,
         "No type exists with the full name this file's location implies, so the runtime never finds it.");
-
-    /// <summary>A value the lookup names is read by nothing in the key.</summary>
-    public static LintCode UnreadValue { get; } = new(
-        "LOC0207",
-        LintSeverity.Error,
-        "A lookup names a value the key never reads, so the hole it was meant for renders as written.");
 
     /// <summary>An expression names an argument the lookup never supplies.</summary>
     public static LintCode UnsuppliedPluralArgument { get; } = new(
