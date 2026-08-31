@@ -1,0 +1,20 @@
+namespace Forma.Locali.Sources;
+
+using Microsoft.CodeAnalysis;
+
+/// <summary>A place in source where a localization key is looked up.</summary>
+/// <param name="Key">The key the lookup reads, rebuilt from the parts when it is interpolated.</param>
+/// <param name="Location">Where the key sits, mapped back to the file a human wrote.</param>
+/// <param name="KeyOffset">Where the key's text starts inside the literal.</param>
+/// <param name="Arguments">How the lookup supplies the values its holes read.</param>
+/// <param name="ValueCount">How many values the lookup supplies.</param>
+/// <param name="Names">The names the lookup gives its values, empty when it names none.</param>
+/// <param name="ResourceType">The type whose translations the lookup reads, or null where nothing bound it.</param>
+public sealed record LocalizerCallSite(
+    string Key,
+    FileLinePositionSpan Location,
+    int KeyOffset,
+    LocalizerArguments Arguments,
+    int ValueCount,
+    IReadOnlyList<string> Names,
+    INamedTypeSymbol? ResourceType = null);

@@ -1,0 +1,18 @@
+<Project>
+
+    <!--
+        Forma Build Properties
+        
+        Shared properties for all Forma projects.
+    -->
+
+    <PropertyGroup>
+        <Features>runtime-async=on</Features>
+    </PropertyGroup>
+
+    <!-- Reports the .editorconfig IDE* code-style severities from the compiler, not just the IDE. -->
+    <PropertyGroup>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    </PropertyGroup>
+
+</Project>
