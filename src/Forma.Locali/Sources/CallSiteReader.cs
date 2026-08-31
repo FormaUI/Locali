@@ -89,7 +89,7 @@ internal static class CallSiteReader
 
     // The key's text starts after the opening quote, which a raw or verbatim literal makes more than one character.
     private static int Offset(LiteralExpressionSyntax literal)
-        => literal.Token.Text.Length - literal.Token.Text.TrimStart('@', '$', '"').Length;
+        => literal.Token.Text.Length - literal.Token.Text.TrimStart('@', '"').Length;
 
     private static LocalizerArguments Supplies(ISymbol? symbol, SemanticModel? model, SeparatedSyntaxList<ArgumentSyntax> list)
     {
