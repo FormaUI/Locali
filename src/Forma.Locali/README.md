@@ -350,8 +350,8 @@ dotnet format Forma.Locali.slnx --verify-no-changes
 `IStringLocale` and returns what the call-site rules report, so a rule can be tested
 against a bound compilation rather than a stub.
 
-Run a new rule over the sibling Forma repository's `src/Forma.UI.Blazor` and
-`src/Forma.UI.Blazor.Showcase` before trusting it; both lint clean, so anything it
+Run a new rule over the sibling Forma repository's `src/Forma.Blazor` and
+`src/Forma.Blazor.Showcase` before trusting it; both lint clean, so anything it
 reports there is a false positive. They do not cover every shape a call site can take —
 nothing there passes named `LocalizedArgument` values or a values collection whole — so
 those belong in unit tests.

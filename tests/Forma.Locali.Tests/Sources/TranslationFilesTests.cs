@@ -163,14 +163,14 @@ public sealed class TranslationFilesTests
     [Fact]
     public void Should_read_the_root_namespace_rather_than_the_assembly_name()
     {
-        // Arrange — an .Abstractions project embeds under the root its sibling shares, not its own name.
+        // Arrange — an AddOn embeds under the namespace it borrows, not its own name.
         var compilation = Compile("""
-            namespace Forma.UI.Features.Feedback;
+            namespace Forma.Framework.Emojis;
 
-            public sealed class ToastMessage;
+            public sealed class TwemojiEmojiProvider;
             """);
-        var project = new LoadedProject(ProjectPath, compilation, false, false, "Forma.UI.Features");
-        var file = Path.Combine("C:", "Scratch", "Feedback", "ToastMessage.he.json");
+        var project = new LoadedProject(ProjectPath, compilation, false, false, "Forma.Framework");
+        var file = Path.Combine("C:", "Scratch", "Emojis", "TwemojiEmojiProvider.he.json");
 
         // Act
         var resolved = Assert.Single(TranslationFiles.Resolve(project, [file]));
