@@ -1,6 +1,6 @@
 # locali
 
-`locali` checks that a solution's localization will actually work at run time.
+A static-analysis linter for Forma.Framework.Localization.Json, validating translation resources and C#/Razor call sites for malformed expressions, placeholder mismatches, missing translations, and silent runtime fallbacks.
 
 Two things go wrong quietly in a localized codebase, and a build catches neither:
 
