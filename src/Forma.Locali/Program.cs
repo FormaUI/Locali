@@ -89,6 +89,7 @@ internal static class Program
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, TranslationHolesChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, TranslationHoleShapeChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, DuplicateKeyChecker>();
+        builder.Services.AddSingleton<ILocalizationFileRuleChecker, InconsistentTranslationChecker>();
 
         builder.Services.AddSingleton<ICallSiteRuleChecker, MalformedExpressionChecker>();
         builder.Services.AddSingleton<ICallSiteRuleChecker, ValueCountChecker>();

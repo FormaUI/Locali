@@ -146,9 +146,18 @@ A file rule reports in the 100s, a call-site rule in the 200s.
 | LOC0110 | Error | A translation writes text shaped like a hole the runtime cannot read |
 | LOC0111 | Error | The file declares the same key more than once |
 | LOC0112 | Error | A translation file, or a section of one, names a type that does not exist |
+| LOC0113 | Warning | The file translates the same key differently across its sections |
 
 LOC0111 counts a key once per section, because a key repeats across sections whenever two
-types share a string.
+types share a string; LOC0113 reads those repeats and reports the ones that disagree.
+
+LOC0113 is a warning because both translations load: each type shows the one its own
+section declares, so the same English text reads two ways across the application. It
+compares the last declaration each section makes, reads a `null` as the key text, and
+reports every section after the first whose translation differs, naming the section it
+differs from. Two sections can disagree on purpose, where a translation agrees in gender or
+number with the thing its type describes, which is why the rule stays below the default
+severity.
 
 LOC0112 covers the drift a rename opens: the runtime resolves translations by the owning
 type's full name, from a file's position and the sections inside it, so moving a folder,

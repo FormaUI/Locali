@@ -22,6 +22,7 @@ public static class LintCodes
             TranslationHoleShapedText,
             DuplicateKey,
             UnreachableTranslation,
+            InconsistentTranslation,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
@@ -65,6 +66,12 @@ public static class LintCodes
         "LOC0208",
         LintSeverity.Error,
         "A key writes text shaped like a hole that names nothing a value can be read by, so it renders as written.");
+
+    /// <summary>A file translates the same key differently across its sections.</summary>
+    public static LintCode InconsistentTranslation { get; } = new(
+        "LOC0113",
+        LintSeverity.Warning,
+        "A file translates the same key differently across its sections, so the same English text reads two ways at run time.");
 
     /// <summary>A lookup writes its key as an interpolated string with holes.</summary>
     public static LintCode InterpolatedKey { get; } = new(

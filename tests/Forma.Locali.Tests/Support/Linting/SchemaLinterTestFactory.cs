@@ -23,5 +23,6 @@ public static class SchemaLinterTestFactory
             new TranslationHolesChecker(),
             new TranslationHoleShapeChecker(),
             new DuplicateKeyChecker(),
+            new InconsistentTranslationChecker(),
         ];
 }
