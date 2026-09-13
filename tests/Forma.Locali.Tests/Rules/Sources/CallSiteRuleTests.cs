@@ -292,4 +292,50 @@ public sealed class CallSiteRuleTests
         // Assert
         Assert.DoesNotContain(LintCodes.BareExpressionKey, diagnostics.Codes());
     }
+
+    [Theory]
+    [InlineData("$import")]
+    [InlineData("$shraed")]
+    [InlineData("$x")]
+    public void Should_report_a_key_shaped_like_a_reserved_entry(string key)
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint($"""public string Read() => locale["{key}"];""");
+
+        // Assert
+        Assert.Equal([LintCodes.ReservedShapedLookup], diagnostics.Codes());
+    }
+
+    [Theory]
+    [InlineData("$")]
+    [InlineData("$ per month")]
+    [InlineData("$5 off")]
+    [InlineData("$0.00")]
+    [InlineData("$USD")]
+    [InlineData("$camelCase")]
+    [InlineData("$_private")]
+    [InlineData("$tools.x")]
+    [InlineData("$import something")]
+    [InlineData("$price/month")]
+    [InlineData("Costs $5")]
+    public void Should_leave_a_key_that_is_not_one_lowercase_word_alone(string key)
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint($"""public string Read() => locale["{key}"];""");
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Theory]
+    [InlineData("$$price")]
+    [InlineData("$$import")]
+    public void Should_leave_an_escaped_key_alone(string key)
+    {
+        // Act — a doubled sign keeps the rest as text.
+        var diagnostics = SourceLinterTestFactory.Lint($"""public string Read() => locale["{key}"];""");
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
 }

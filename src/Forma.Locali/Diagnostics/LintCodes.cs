@@ -25,6 +25,8 @@ public static class LintCodes
             InconsistentTranslation,
             MalformedTools,
             ReservedEntryOutOfOrder,
+            ReservedShapedKey,
+            MalformedShared,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
@@ -37,6 +39,7 @@ public static class LintCodes
             BareHoleKey,
             BareExpressionKey,
             InterpolatedKey,
+            ReservedShapedLookup,
         ];
 
     /// <summary>The key carries holes but no words for a translator to read.</summary>
@@ -183,11 +186,29 @@ public static class LintCodes
         LintSeverity.Error,
         "The tools entry is misplaced or malformed, or what it holds for this linter names something this linter does not define, so nothing is left out.");
 
+    /// <summary>A shared entry is not an object holding translations alone.</summary>
+    public static LintCode MalformedShared { get; } = new(
+        "LOC0117",
+        LintSeverity.Error,
+        "A shared entry is not an object, or nests a section, so the file does not load; a shared section holds translations alone.");
+
     /// <summary>A reserved entry sits after an entry it has to precede.</summary>
     public static LintCode ReservedEntryOutOfOrder { get; } = new(
         "LOC0115",
         LintSeverity.Warning,
         "A reserved entry sits after an entry it has to precede: the metadata entry, then the tools entry, then the shared section lead a file.");
+
+    /// <summary>A key or section is shaped like a reserved entry the runtime does not define.</summary>
+    public static LintCode ReservedShapedKey { get; } = new(
+        "LOC0116",
+        LintSeverity.Error,
+        "A key or section is shaped like a reserved entry, '$' followed by one lowercase word, but names none the runtime defines, so the file does not load.");
+
+    /// <summary>A lookup writes a key shaped like a reserved entry.</summary>
+    public static LintCode ReservedShapedLookup { get; } = new(
+        "LOC0214",
+        LintSeverity.Error,
+        "A lookup writes a key shaped like a reserved entry, '$' followed by one lowercase word, which no file can answer.");
 
     /// <summary>A translation file, or a section of one, names a type that does not exist.</summary>
     public static LintCode UnreachableTranslation { get; } = new(

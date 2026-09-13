@@ -41,6 +41,20 @@ public sealed class TranslationCoverageLinterTests
     }
 
     [Fact]
+    public async Task Should_match_an_escaped_key_the_way_the_runtime_reads_it()
+    {
+        // Arrange — the file and the call site both write the escape, and the runtime drops it on both sides.
+        using var directory = new TempDirectory();
+        var file = directory.Write(FileName, LocalizationFileFakeData.WithTranslation("$$price", "מחיר"));
+
+        // Act
+        var diagnostics = await LintAsync(directory, """public void Show() => _ = L["$$price"];""", file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public async Task Should_treat_a_key_written_as_null_as_answered()
     {
         // Arrange — null is how a file declares a key it leaves in the source language on purpose.

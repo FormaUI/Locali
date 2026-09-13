@@ -92,6 +92,8 @@ internal static class Program
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, InconsistentTranslationChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, ToolsEntryChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, ReservedEntryOrderChecker>();
+        builder.Services.AddSingleton<ILocalizationFileRuleChecker, ReservedKeyShapeChecker>();
+        builder.Services.AddSingleton<ILocalizationFileRuleChecker, SharedEntryChecker>();
 
         builder.Services.AddSingleton<ICallSiteRuleChecker, MalformedExpressionChecker>();
         builder.Services.AddSingleton<ICallSiteRuleChecker, ValueCountChecker>();
@@ -101,6 +103,7 @@ internal static class Program
         builder.Services.AddSingleton<ICallSiteRuleChecker, HoleShapeChecker>();
         builder.Services.AddSingleton<ICallSiteRuleChecker, BareHoleKeyChecker>();
         builder.Services.AddSingleton<ICallSiteRuleChecker, BareExpressionKeyChecker>();
+        builder.Services.AddSingleton<ICallSiteRuleChecker, ReservedLookupShapeChecker>();
 
         builder.Services.AddSingleton<ISchemaLinter, SchemaLinter>();
         builder.Services.AddSingleton<ISourceLinter, SourceLinter>();

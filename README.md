@@ -149,6 +149,8 @@ A file rule reports in the 100s, a call-site rule in the 200s.
 | LOC0113 | Warning | The file translates the same key differently across its sections |
 | LOC0114 | Error | The `$tools` entry is misplaced or malformed, or its `locali.ignore` list names something that is not a rule |
 | LOC0115 | Warning | A reserved entry sits after an entry it has to precede |
+| LOC0116 | Error | A key or section is shaped like a reserved entry the runtime does not define |
+| LOC0117 | Error | The `$shared` entry is not an object holding translations alone |
 
 LOC0111 counts a key once per section, because a key repeats across sections whenever two
 types share a string; LOC0113 reads those repeats and reports the ones that disagree.
@@ -167,9 +169,22 @@ define, an ignore list that is not a list of text, and a name that is no rule, s
 entry or a misspelled identifier silences nothing. Another tool's entries are left to it.
 
 `$shared` is the runtime's: a section whose entries every type reached through the file gets, so
-a translation shared by every component in a category is written once. The file rules read it as
-a section named `$shared`, so LOC0113 compares it with the sections beside it, and a section that
-words a shared key differently on purpose says so through `locali.ignore`.
+a translation shared by every component in a category is written once. It holds translations
+alone: the runtime refuses a `$shared` that is not an object, and one nesting a section or
+another `$shared`, so LOC0117 reports both. The file rules read it as a section named `$shared`,
+so LOC0113 compares it with the sections beside it, and a section that words a shared key
+differently on purpose says so through `locali.ignore`.
+
+A name shaped like a reserved entry is the runtime's: `$` followed by one lowercase word
+and nothing else, so `$import` and `$shraed` are reserved. The runtime refuses a file naming
+one it does not define, and LOC0116 reports it, whether a key or a section at any level, so a
+misspelled `$shraed` or an invented `$import` is caught at lint time rather than at load;
+LOC0214 reports a lookup writing one, which no file can answer. Anything else that starts
+with `$` is prose:
+`$` alone, `$ per month`, `$5 off`, `$0.00`, `$USD`, `$camelCase`, `$import something`, and
+`$price/month`, because an uppercase letter, a digit, a dot, or a space breaks the shape. A
+doubled sign escapes it: `$$price` is the text `$price`, with one `$` dropped and the rest
+read as written.
 
 LOC0113 is a warning because both translations load: each type shows the one its own
 section declares, so the same English text reads two ways across the application. It
@@ -212,6 +227,7 @@ translation is legal. Reordering or dropping a name is legal.
 | LOC0211 | Warning | A key carries holes but no words anywhere else | works, but names no translation |
 | LOC0212 | Warning | An expression key carries no words in any field | works, but names no translation |
 | LOC0213 | Error | A lookup writes its key as an interpolated string with holes | the formatted text becomes the key, silently |
+| LOC0214 | Error | A lookup writes a key shaped like a reserved entry | falls back to the key, which no file can answer |
 
 LOC0200 and LOC0207 are retired, and neither number is reused.
 
@@ -321,6 +337,10 @@ Reporting these would flag code that is right:
   how the runtime pairs them. Counting it twice would report every correct call.
 - **A hole no value fills renders as written.** `Resolve` returns a pattern with its holes
   still open for the caller to fill, so an unfilled hole is the feature, not a mistake.
+- **A `$` that does not spell one lowercase word is prose.** `$`, `$ per month`, `$5 off`,
+  `$USD`, `$camelCase`, and `$price/month` render as written and were meant to, and `$$price`
+  is the escaped text `$price`. LOC0116 and LOC0214 take `$import`, whose shape could only
+  have been a reserved name.
 - **Text shaped like a hole, containing a space, is prose.** `{ color: red }`, `{ }` and
   `{colour, red}` render as written and were meant to. LOC0110 and LOC0208 take the other
   half, where the text could only have been a hole: `{0}`, `{a.b}`, and `{stored,x}`, whose

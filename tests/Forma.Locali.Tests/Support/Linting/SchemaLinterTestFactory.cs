@@ -26,5 +26,7 @@ public static class SchemaLinterTestFactory
             new InconsistentTranslationChecker(),
             new ToolsEntryChecker(),
             new ReservedEntryOrderChecker(),
+            new ReservedKeyShapeChecker(),
+            new SharedEntryChecker(),
         ];
 }

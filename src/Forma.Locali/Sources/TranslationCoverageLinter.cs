@@ -2,6 +2,7 @@ namespace Forma.Locali.Sources;
 
 using System.Globalization;
 
+using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 
 /// <summary>
@@ -31,11 +32,14 @@ public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
 
             var typeName = ResourceTypeNames.GetName(resource);
 
+            // The runtime matches the key behind its escape, and so do the entries it read from the file.
+            var key = LocalizationSchema.Unescape(site.Key);
+
             foreach (var culture in translations.Cultures)
             {
                 // A type with no translations in a culture is unlocalized there rather than under-translated.
                 var entries = translations.Read(typeName, culture);
-                if (entries.Count == 0 || IsAnswered(translations, typeName, culture, site.Key) || !seen.Add((site.Key, typeName, culture.Name)))
+                if (entries.Count == 0 || IsAnswered(translations, typeName, culture, key) || !seen.Add((key, typeName, culture.Name)))
                 {
                     continue;
                 }
