@@ -19,6 +19,21 @@ public sealed class TranslationHoleShapeCheckerTests
         Assert.Equal([LintCodes.TranslationHoleShapedText], diagnostics.Codes());
     }
 
+    [Fact]
+    public void Should_report_a_translation_inside_a_section()
+    {
+        // Arrange
+        var document = LocalizationDocumentTestFactory.Read(
+            LocalizationFileFakeData.HebrewName,
+            LocalizationFileFakeData.WithSection("Widget", "Stored {stored}.", "נשמרו {0}"));
+
+        // Act
+        var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
+
+        // Assert
+        Assert.Equal([LintCodes.TranslationHoleShapedText], diagnostics.Codes());
+    }
+
     [Theory]
     [InlineData("נשמרו {stored}.")]
     [InlineData("השתמשו ב {{curly}}")]

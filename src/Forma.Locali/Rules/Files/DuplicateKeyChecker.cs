@@ -2,7 +2,7 @@ namespace Forma.Locali.Rules.Files;
 
 using Forma.Locali.Diagnostics;
 
-/// <summary>Checks that a file declares each key once.</summary>
+/// <summary>Checks that a file declares each key once within a section, since the last declaration is the one the runtime keeps.</summary>
 public sealed class DuplicateKeyChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
@@ -14,11 +14,11 @@ public sealed class DuplicateKeyChecker : ILocalizationFileRuleChecker
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var seen = new Dictionary<string, int>(StringComparer.Ordinal);
+        var seen = new Dictionary<(string Section, string Name), int>();
 
         foreach (var entry in context.Document.Entries)
         {
-            if (seen.TryGetValue(entry.Name, out var line))
+            if (seen.TryGetValue((entry.Section, entry.Name), out var line))
             {
                 context.Report(
                     Code,
@@ -28,7 +28,7 @@ public sealed class DuplicateKeyChecker : ILocalizationFileRuleChecker
                 continue;
             }
 
-            seen[entry.Name] = context.Document.Map.Locate(entry.NameOffset).Line;
+            seen[(entry.Section, entry.Name)] = context.Document.Map.Locate(entry.NameOffset).Line;
         }
     }
 }

@@ -147,6 +147,9 @@ A file rule reports in the 100s, a call-site rule in the 200s.
 | LOC0111 | Error | The file declares the same key more than once |
 | LOC0112 | Error | A translation file, or a section of one, names a type that does not exist |
 
+LOC0111 counts a key once per section, because a key repeats across sections whenever two
+types share a string.
+
 LOC0112 covers the drift a rename opens: the runtime resolves translations by the owning
 type's full name, from a file's position and the sections inside it, so moving a folder,
 renaming a type, or misspelling a section leaves the translations stranded while every other

@@ -43,7 +43,7 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
                 : [];
         }
 
-        return document!.Entries.Any(static entry => entry.Name == LocalizationSchema.Marker) || culture is not null
+        return document!.Entries.Any(static entry => entry.IsTopLevel && entry.Name == LocalizationSchema.Marker) || culture is not null
             ? _schema.Lint(document, culture)
             : [];
     }

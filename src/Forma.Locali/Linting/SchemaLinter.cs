@@ -52,13 +52,13 @@ public sealed class SchemaLinter(IEnumerable<ILocalizationFileRuleChecker> check
         }
 
         var marker = document.Entries[index];
-        if (index != 0)
+        if (marker.PropertyIndex != 0)
         {
             // The runtime is order-agnostic about presence alone, so a marker sitting elsewhere still loads.
             diagnostics.Add(document.Diagnose(
                 marker.NameOffset,
                 LintCodes.MarkerNotFirst,
-                $"'{LocalizationSchema.Marker}' is entry {index + 1}; it has to be the first."));
+                $"'{LocalizationSchema.Marker}' is entry {marker.PropertyIndex + 1}; it has to be the first."));
         }
 
         if (marker.Value is not { } value)
@@ -89,7 +89,7 @@ public sealed class SchemaLinter(IEnumerable<ILocalizationFileRuleChecker> check
     {
         for (var index = 0; index < document.Entries.Count; index++)
         {
-            if (string.Equals(document.Entries[index].Name, LocalizationSchema.Marker, StringComparison.Ordinal))
+            if (document.Entries[index].IsTopLevel && string.Equals(document.Entries[index].Name, LocalizationSchema.Marker, StringComparison.Ordinal))
             {
                 return index;
             }

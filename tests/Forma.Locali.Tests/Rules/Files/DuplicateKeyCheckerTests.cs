@@ -18,6 +18,36 @@ public sealed class DuplicateKeyCheckerTests
     }
 
     [Fact]
+    public void Should_let_a_key_repeat_across_sections()
+    {
+        // Arrange — two types sharing a string each declare it in their own section.
+        var document = LocalizationDocumentTestFactory.Read(
+            LocalizationFileFakeData.HebrewName,
+            LocalizationFileFakeData.WithSections(("Widget", "Dismiss", "סגור"), ("Gallery", "Dismiss", "סגור")));
+
+        // Act
+        var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_a_key_a_section_declares_twice()
+    {
+        // Arrange
+        var document = LocalizationDocumentTestFactory.Read(
+            LocalizationFileFakeData.HebrewName,
+            """{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "Widget": { "Dismiss": "ראשון", "Dismiss": "אחרון" } }""");
+
+        // Act
+        var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
+
+        // Assert
+        Assert.Equal([LintCodes.DuplicateKey], diagnostics.Codes());
+    }
+
+    [Fact]
     public void Should_report_the_later_declaration_rather_than_the_first()
     {
         // Arrange

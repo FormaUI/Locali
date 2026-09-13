@@ -18,6 +18,36 @@ public sealed class SchemaLinterTests
     }
 
     [Fact]
+    public void Should_count_a_section_as_one_entry_before_the_marker()
+    {
+        // Arrange — the section holds two translations but is one property of the file.
+        var document = LocalizationDocumentTestFactory.Read(
+            LocalizationFileFakeData.HebrewName,
+            """{ "Widget": { "Today": "היום", "Tomorrow": "מחר" }, "$localization": "SchemaVersion: 1.0.0; Culture: he;" }""");
+
+        // Act
+        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"));
+
+        // Assert
+        Assert.Contains("is entry 2;", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_report_a_marker_that_follows_an_empty_section()
+    {
+        // Arrange
+        var document = LocalizationDocumentTestFactory.Read(
+            LocalizationFileFakeData.HebrewName,
+            """{ "Widget": { }, "$localization": "SchemaVersion: 1.0.0; Culture: he;" }""");
+
+        // Act
+        var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
+
+        // Assert
+        Assert.Equal([LintCodes.MarkerNotFirst], diagnostics.Codes());
+    }
+
+    [Fact]
     public void Should_treat_a_marker_out_of_first_place_as_a_warning()
     {
         // Arrange

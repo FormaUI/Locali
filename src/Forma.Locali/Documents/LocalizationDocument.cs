@@ -4,7 +4,7 @@ using System.Text.Json;
 
 using Forma.Locali.Diagnostics;
 
-/// <summary>A localization file read as ordered entries, so the linter sees the order a dictionary would lose.</summary>
+/// <summary>A localization file read as ordered entries, sections descended into, so the linter sees the order a dictionary would lose.</summary>
 public sealed class LocalizationDocument
 {
     private static readonly JsonReaderOptions ReaderOptions = new()
@@ -26,7 +26,7 @@ public sealed class LocalizationDocument
     /// <summary>Where each byte offset sits in the text.</summary>
     public TextMap Map { get; }
 
-    /// <summary>The top-level entries, in the order the file declares them.</summary>
+    /// <summary>Every entry, at the top level and inside sections, in the order the file declares them.</summary>
     public IReadOnlyList<LocalizationEntry> Entries { get; }
 
     /// <summary>Reads a file's entries, reporting the reason rather than throwing when it is not readable JSON.</summary>
@@ -55,27 +55,7 @@ public sealed class LocalizationDocument
                 return false;
             }
 
-            while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
-            {
-                var nameOffset = (int)reader.TokenStartIndex;
-                var name = reader.GetString() ?? string.Empty;
-
-                if (!reader.Read())
-                {
-                    break;
-                }
-
-                var valueOffset = (int)reader.TokenStartIndex;
-                var isText = reader.TokenType is JsonTokenType.String or JsonTokenType.Null;
-                var value = reader.TokenType == JsonTokenType.String ? reader.GetString() : null;
-
-                if (!isText)
-                {
-                    reader.Skip();
-                }
-
-                entries.Add(new LocalizationEntry(name, value, isText, nameOffset, valueOffset));
-            }
+            ReadEntries(ref reader, string.Empty, 0, entries);
         }
         catch (JsonException exception)
         {
@@ -87,6 +67,41 @@ public sealed class LocalizationDocument
         document = new LocalizationDocument(path, new TextMap(utf8), entries);
 
         return true;
+    }
+
+    // An object is a section holding the entries beneath it, named for the path of keys above them.
+    private static void ReadEntries(ref Utf8JsonReader reader, string section, int property, List<LocalizationEntry> entries)
+    {
+        for (var position = 0; reader.Read() && reader.TokenType == JsonTokenType.PropertyName; position++)
+        {
+            var nameOffset = (int)reader.TokenStartIndex;
+            var name = reader.GetString() ?? string.Empty;
+
+            if (!reader.Read())
+            {
+                return;
+            }
+
+            // The top level numbers its own properties; a section's entries share the number of the property that opens it.
+            var propertyIndex = section.Length == 0 ? position : property;
+
+            if (reader.TokenType == JsonTokenType.StartObject)
+            {
+                ReadEntries(ref reader, section.Length == 0 ? name : $"{section}.{name}", propertyIndex, entries);
+                continue;
+            }
+
+            var valueOffset = (int)reader.TokenStartIndex;
+            var isText = reader.TokenType is JsonTokenType.String or JsonTokenType.Null;
+            var value = reader.TokenType == JsonTokenType.String ? reader.GetString() : null;
+
+            if (!isText)
+            {
+                reader.Skip();
+            }
+
+            entries.Add(new LocalizationEntry(section, name, value, isText, nameOffset, valueOffset, propertyIndex));
+        }
     }
 
     /// <summary>Builds a diagnostic pointing at a byte offset in this file.</summary>
