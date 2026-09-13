@@ -22,7 +22,7 @@ public sealed class BareExpressionKeyChecker : ICallSiteRuleChecker
             return;
         }
 
-        var key = context.Site.Key;
+        var key = context.Lookup.Key.Text;
 
         if (WordsInAField(expressions, key) || WordsOutsideTheExpressions(expressions, key))
         {

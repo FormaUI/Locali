@@ -5,22 +5,22 @@ using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
 /// <summary>What a call-site rule reads, and what it reports through.</summary>
-/// <param name="site">The call site being checked.</param>
+/// <param name="lookup">The lookup being checked.</param>
 /// <param name="expression">The key's expressions, already parsed.</param>
-public sealed class CallSiteContext(LocalizerCallSite site, LocaleParseResult expression)
+public sealed class CallSiteContext(LocalizerLookup lookup, LocaleParseResult expression)
 {
     private readonly List<LintDiagnostic> _reported = [];
     private List<string>? _holes;
 
-    /// <summary>The call site being checked.</summary>
-    public LocalizerCallSite Site { get; } = site ?? throw new ArgumentNullException(nameof(site));
+    /// <summary>The lookup being checked.</summary>
+    public LocalizerLookup Lookup { get; } = lookup ?? throw new ArgumentNullException(nameof(lookup));
 
     /// <summary>The key's expressions, parsed once for every rule.</summary>
     public LocaleParseResult Expression { get; } = expression;
 
     /// <summary>The distinct names the key's holes read, in the order they first appear.</summary>
     public IReadOnlyList<string> Holes
-        => _holes ??= HoleNames.Distinct(Site.Key);
+        => _holes ??= HoleNames.Distinct(Lookup.Key.Text);
 
     /// <summary>Everything the rules reported.</summary>
     public IReadOnlyList<LintDiagnostic> Reported
@@ -34,9 +34,9 @@ public sealed class CallSiteContext(LocalizerCallSite site, LocaleParseResult ex
         ArgumentNullException.ThrowIfNull(code);
 
         _reported.Add(new LintDiagnostic(
-            Site.Location.Path,
-            Site.Location.StartLinePosition.Line + 1,
-            Site.Location.StartLinePosition.Character + 1 + Site.KeyOffset,
+            Lookup.Key.Location.Path,
+            Lookup.Key.Location.StartLinePosition.Line + 1,
+            Lookup.Key.Location.StartLinePosition.Character + 1 + Lookup.Key.TextOffset,
             code.DefaultSeverity,
             code,
             message));

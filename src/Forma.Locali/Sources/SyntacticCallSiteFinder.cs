@@ -34,7 +34,7 @@ public sealed class SyntacticCallSiteFinder : ILocalizerCallSiteFinder
         IReadOnlyDictionary<string, HashSet<string>> members,
         IReadOnlyDictionary<SyntaxNode, HashSet<string>> scopes)
     {
-        var sites = new List<LocalizerCallSite>();
+        var lookups = new List<LocalizerLookup>();
         var unreadable = new List<FileLinePositionSpan>();
         var interpolated = new List<FileLinePositionSpan>();
 
@@ -59,7 +59,7 @@ public sealed class SyntacticCallSiteFinder : ILocalizerCallSiteFinder
 
             if (CallSiteReader.Read(tree, arguments, null, null) is { } site)
             {
-                sites.Add(site);
+                lookups.Add(site);
             }
             else if (!LocalizerContract.InsideLocalizer(node))
             {
@@ -74,7 +74,7 @@ public sealed class SyntacticCallSiteFinder : ILocalizerCallSiteFinder
             }
         }
 
-        return new LocalizerLookups(sites, unreadable, interpolated);
+        return new LocalizerLookups(lookups, unreadable, interpolated);
     }
 
     // A local or parameter shadows the type's own members, so the nearest scope is read first.

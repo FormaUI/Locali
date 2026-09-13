@@ -16,7 +16,7 @@ public sealed class SoleArgumentChecker : ICallSiteRuleChecker
         ArgumentNullException.ThrowIfNull(context);
 
         // A lookup supplying nothing leaves the expression with no argument at all to read.
-        if (context.Site.Arguments is not LocalizerArguments.None || !context.Expression.IsValid)
+        if (context.Lookup.Arguments.Kind is not LocalizerArgumentKind.None || !context.Expression.IsValid)
         {
             return;
         }

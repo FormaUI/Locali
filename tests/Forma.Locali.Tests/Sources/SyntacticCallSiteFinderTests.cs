@@ -18,10 +18,10 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Sites;
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
-        Assert.Equal(["Today"], sites.Select(site => site.Key));
+        Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
     }
 
     [Fact]
@@ -40,10 +40,10 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Sites;
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
-        Assert.Equal(["Today"], sites.Select(site => site.Key));
+        Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Sites;
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.Empty(sites);
@@ -82,7 +82,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Sites;
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.Empty(sites);
@@ -111,10 +111,10 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Last()).Sites;
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Last()).Lookups;
 
         // Assert
-        Assert.Equal(["Today"], sites.Select(site => site.Key));
+        Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Last()).Sites;
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Last()).Lookups;
 
         // Assert
         Assert.Empty(sites);
@@ -160,10 +160,10 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Sites;
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
-        Assert.Equal(["Today"], sites.Select(site => site.Key));
+        Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
     }
 
     [Fact]
@@ -187,10 +187,10 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Sites;
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
-        Assert.Equal(["Today"], sites.Select(site => site.Key));
+        Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
     }
 
     [Fact]
@@ -209,10 +209,10 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Sites;
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
-        Assert.Equal(["Today"], sites.Select(site => site.Key));
+        Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
     }
 
     [Fact]
@@ -231,9 +231,53 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Sites;
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
-        Assert.True(Assert.Single(sites).IsFormatArgument);
+        Assert.True(Assert.Single(sites).IsFormatString);
+    }
+
+    [Fact]
+    public void Should_leave_a_lookup_at_a_later_position_alone_without_a_model()
+    {
+        // Arrange — no bound overload exists to confirm the lookup answers the format parameter rather than a value.
+        var compilation = CompilationTestFactory.Unreferenced("""
+            namespace Scratch;
+
+            public sealed class Widget
+            {
+                private IStringLocale<Widget> keys;
+
+                public object Show(int count) => string.Format("Searched for {0}.", keys["Query"]);
+            }
+            """);
+
+        // Act
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+
+        // Assert
+        Assert.False(Assert.Single(sites).IsFormatString);
+    }
+
+    [Fact]
+    public void Should_leave_a_lookup_named_for_a_different_parameter_alone_without_a_model()
+    {
+        // Arrange — the lookup sits first in source but explicitly claims a value parameter's name.
+        var compilation = CompilationTestFactory.Unreferenced("""
+            namespace Scratch;
+
+            public sealed class Widget
+            {
+                private IStringLocale<Widget> keys;
+
+                public object Show() => string.Format(arg0: keys["Query"], format: "Searched for {0}.");
+            }
+            """);
+
+        // Act
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+
+        // Assert
+        Assert.False(Assert.Single(sites).IsFormatString);
     }
 }

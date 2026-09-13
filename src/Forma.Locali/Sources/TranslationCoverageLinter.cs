@@ -13,7 +13,7 @@ using Forma.Locali.Diagnostics;
 public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
 {
     /// <inheritdoc />
-    public IReadOnlyList<LintDiagnostic> Lint(ProjectTranslations translations, IReadOnlyList<LocalizerCallSite> callSites)
+    public IReadOnlyList<LintDiagnostic> Lint(ProjectTranslations translations, IReadOnlyList<LocalizerLookup> callSites)
     {
         ArgumentNullException.ThrowIfNull(translations);
         ArgumentNullException.ThrowIfNull(callSites);
@@ -33,7 +33,7 @@ public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
             var typeName = ResourceTypeNames.GetName(resource);
 
             // The runtime matches the key behind its escape, and so do the entries it read from the file.
-            var key = LocalizationSchema.Unescape(site.Key);
+            var key = LocalizationSchema.Unescape(site.Key.Text);
 
             foreach (var culture in translations.Cultures)
             {
@@ -47,12 +47,12 @@ public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
                 var fileName = translations.Source.GetFile(entries[^1].FileName) is { } file ? Path.GetFileName(file.Path) : entries[^1].FileName;
 
                 diagnostics.Add(new LintDiagnostic(
-                    site.Location.Path,
-                    site.Location.StartLinePosition.Line + 1,
-                    site.Location.StartLinePosition.Character + 1 + site.KeyOffset,
+                    site.Key.Location.Path,
+                    site.Key.Location.StartLinePosition.Line + 1,
+                    site.Key.Location.StartLinePosition.Character + 1 + site.Key.TextOffset,
                     LintCodes.MissingTranslation.DefaultSeverity,
                     LintCodes.MissingTranslation,
-                    $"'{site.Key}' has no entry in '{fileName}', which translates '{typeName}' for '{culture.Name}', so it renders in the source language there."));
+                    $"'{site.Key.Text}' has no entry in '{fileName}', which translates '{typeName}' for '{culture.Name}', so it renders in the source language there."));
             }
         }
 
@@ -74,9 +74,9 @@ public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
     }
 
     // The walk that found the sites ran in parallel, so which site a key is reported at is settled here.
-    private static IEnumerable<LocalizerCallSite> Ordered(IReadOnlyList<LocalizerCallSite> callSites)
+    private static IEnumerable<LocalizerLookup> Ordered(IReadOnlyList<LocalizerLookup> callSites)
         => callSites
-            .OrderBy(site => site.Location.Path, StringComparer.Ordinal)
-            .ThenBy(site => site.Location.StartLinePosition.Line)
-            .ThenBy(site => site.Location.StartLinePosition.Character);
+            .OrderBy(site => site.Key.Location.Path, StringComparer.Ordinal)
+            .ThenBy(site => site.Key.Location.StartLinePosition.Line)
+            .ThenBy(site => site.Key.Location.StartLinePosition.Character);
 }

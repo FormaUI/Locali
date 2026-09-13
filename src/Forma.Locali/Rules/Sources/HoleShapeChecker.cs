@@ -15,7 +15,7 @@ public sealed class HoleShapeChecker : ICallSiteRuleChecker
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        foreach (var suspect in HoleShapes.Suspect(context.Site.Key))
+        foreach (var suspect in HoleShapes.Suspect(context.Lookup.Key.Text))
         {
             context.Report(
                 Code,

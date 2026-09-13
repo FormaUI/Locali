@@ -392,4 +392,37 @@ public sealed class CallSiteRuleTests
         // Assert
         Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
     }
+
+    [Fact]
+    public void Should_leave_a_lookup_supplied_as_a_replacement_value_alone()
+    {
+        // Act — the lookup fills a hole in someone else's format text; it does not supply the format text itself.
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Show() => string.Format("Searched for {0}.", locale["Query"]);""");
+
+        // Assert
+        Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_leave_a_lookup_supplied_as_a_named_replacement_value_alone()
+    {
+        // Act — a named argument puts the lookup first in source, but it still binds to the value parameter.
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Show() => string.Format(arg0: locale["Query"], format: "Searched for {0}.");""");
+
+        // Assert
+        Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_leave_a_lookup_supplied_as_one_of_several_replacement_values_alone()
+    {
+        // Act — four values force the params overload; the lookup sits inside the expanded array, not the format text.
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Show() => string.Format("Values: {0}, {1}, {2}, {3}", 1, 2, 3, locale["Query"]);""");
+
+        // Assert
+        Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
+    }
 }

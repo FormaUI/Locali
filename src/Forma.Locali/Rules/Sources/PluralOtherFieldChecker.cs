@@ -25,12 +25,12 @@ public sealed class PluralOtherFieldChecker : ICallSiteRuleChecker
 
         foreach (var expression in context.Expression.Expressions)
         {
-            if (!expression.KeywordSpan.Slice(context.Site.Key).SequenceEqual(PluralExpressionEvaluator.Keyword.Name))
+            if (!expression.KeywordSpan.Slice(context.Lookup.Key.Text).SequenceEqual(PluralExpressionEvaluator.Keyword.Name))
             {
                 continue;
             }
 
-            if (!Declares(expression.Fields, context.Site.Key))
+            if (!Declares(expression.Fields, context.Lookup.Key.Text))
             {
                 context.Report(Code, $"The plural expression omits '{Fallback}', so a count its categories miss renders as nothing.");
             }

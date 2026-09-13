@@ -27,7 +27,7 @@ public sealed class PluralArgumentChecker : ICallSiteRuleChecker
                 continue;
             }
 
-            var name = expression.NameSpan.Slice(context.Site.Key).ToString();
+            var name = expression.NameSpan.Slice(context.Lookup.Key.Text).ToString();
 
             if (!supplied.Contains(name, StringComparer.Ordinal))
             {
@@ -40,10 +40,10 @@ public sealed class PluralArgumentChecker : ICallSiteRuleChecker
 
     // Values paired by position are named after the key's holes.
     private static IReadOnlyList<string>? Supplied(CallSiteContext context)
-        => context.Site.Arguments switch
+        => context.Lookup.Arguments.Kind switch
         {
-            LocalizerArguments.None => [],
-            LocalizerArguments.Positional => context.Holes,
+            LocalizerArgumentKind.None => [],
+            LocalizerArgumentKind.Positional => context.Holes,
             _ => null,
         };
 }

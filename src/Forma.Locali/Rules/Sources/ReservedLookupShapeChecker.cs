@@ -14,11 +14,11 @@ public sealed class ReservedLookupShapeChecker : ICallSiteRuleChecker
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        if (ReservedNames.IsShaped(context.Site.Key))
+        if (ReservedNames.IsShaped(context.Lookup.Key.Text))
         {
             context.Report(
                 Code,
-                $"The key '{context.Site.Key}' is shaped like a reserved entry, which no file can answer; double the '$' to keep it as text.");
+                $"The key '{context.Lookup.Key.Text}' is shaped like a reserved entry, which no file can answer; double the '$' to keep it as text.");
         }
     }
 }

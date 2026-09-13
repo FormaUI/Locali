@@ -54,7 +54,7 @@ public sealed class SemanticCallSiteFinderTests
         Assert.Equal("Holder`1", site.ResourceType?.MetadataName);
     }
 
-    private static IReadOnlyList<LocalizerCallSite> Find(string body)
+    private static IReadOnlyList<LocalizerLookup> Find(string body)
     {
         var compilation = CompilationTestFactory.Referenced($$"""
             using Forma.Framework.Localization;
@@ -69,6 +69,6 @@ public sealed class SemanticCallSiteFinderTests
             }
             """);
 
-        return [.. compilation.SyntaxTrees.SelectMany(tree => new SemanticCallSiteFinder().Find(compilation, tree).Sites)];
+        return [.. compilation.SyntaxTrees.SelectMany(tree => new SemanticCallSiteFinder().Find(compilation, tree).Lookups)];
     }
 }

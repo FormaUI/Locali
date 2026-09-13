@@ -16,12 +16,11 @@ public sealed class ValueCountChecker : ICallSiteRuleChecker
         ArgumentNullException.ThrowIfNull(context);
 
         // Only values paired by position are counted against the key; named ones carry their own.
-        if (context.Site.Arguments is not LocalizerArguments.Positional)
+        if (context.Lookup.Arguments is not { Kind: LocalizerArgumentKind.Positional, ValueCount: { } supplied })
         {
             return;
         }
 
-        var supplied = context.Site.ValueCount;
         var holes = context.Holes.Count;
 
         if (holes == 0 && supplied > 1)

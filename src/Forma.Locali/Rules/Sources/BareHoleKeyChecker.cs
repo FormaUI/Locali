@@ -17,7 +17,7 @@ public sealed class BareHoleKeyChecker : ICallSiteRuleChecker
 
         var hasHole = false;
 
-        foreach (var segment in LocalizedSegment.Parse(context.Site.Key))
+        foreach (var segment in LocalizedSegment.Parse(context.Lookup.Key.Text))
         {
             if (segment.IsHole)
             {

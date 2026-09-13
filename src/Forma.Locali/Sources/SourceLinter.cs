@@ -54,7 +54,7 @@ public sealed class SourceLinter(
         var lookups = Walk(compilation, files, cancellationToken);
 
         // Each site parses its own key, so the rules run as wide as the walk that found them.
-        diagnostics.AddRange(lookups.Sites
+        diagnostics.AddRange(lookups.Lookups
             .AsParallel()
             .WithCancellation(cancellationToken)
             .SelectMany(Check));
@@ -62,7 +62,7 @@ public sealed class SourceLinter(
         diagnostics.AddRange(lookups.UnreadableKeys.Select(Unreadable));
         diagnostics.AddRange(lookups.InterpolatedKeys.Select(Interpolated));
 
-        return new SourceLintResult(diagnostics, lookups.Sites);
+        return new SourceLintResult(diagnostics, lookups.Lookups);
     }
 
     // Naming the blind spot keeps a run from reading as complete coverage when part of it was unreadable.
@@ -96,7 +96,7 @@ public sealed class SourceLinter(
             .ToArray();
 
         return new LocalizerLookups(
-            [.. found.SelectMany(lookups => lookups.Sites).Where(site => Wanted(site.Location, files))],
+            [.. found.SelectMany(lookups => lookups.Lookups).Where(site => Wanted(site.Key.Location, files))],
             [.. found.SelectMany(lookups => lookups.UnreadableKeys).Where(location => Wanted(location, files))],
             [.. found.SelectMany(lookups => lookups.InterpolatedKeys).Where(location => Wanted(location, files))]);
     }
@@ -105,10 +105,10 @@ public sealed class SourceLinter(
     private static bool Wanted(FileLinePositionSpan location, IReadOnlyCollection<string> files)
         => files.Contains(location.Path, StringComparer.OrdinalIgnoreCase);
 
-    private IReadOnlyList<LintDiagnostic> Check(LocalizerCallSite site)
+    private IReadOnlyList<LintDiagnostic> Check(LocalizerLookup site)
     {
         // The key parses once here rather than inside each rule that reads its expressions.
-        var context = new CallSiteContext(site, LocaleExpressionParser.Parse(site.Key, Known));
+        var context = new CallSiteContext(site, LocaleExpressionParser.Parse(site.Key.Text, Known));
 
         foreach (var checker in _checkers)
         {

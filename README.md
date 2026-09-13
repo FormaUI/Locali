@@ -229,19 +229,21 @@ translation is legal. Reordering or dropping a name is legal.
 | LOC0212 | Warning | An expression key carries no words in any field | works, but names no translation |
 | LOC0213 | Error | A lookup writes its key as an interpolated string with holes | the formatted text becomes the key, silently |
 | LOC0214 | Error | A lookup writes a key shaped like a reserved entry | falls back to the key, which no file can answer |
-| LOC0215 | Error | A lookup is passed to string.Format | throws once a translation names a hole |
+| LOC0215 | Error | A lookup supplies string.Format's format text | throws once a translation names a hole |
 
 LOC0200 and LOC0207 are retired, and neither number is reused.
 
-LOC0215 catches a lookup handed straight to `string.Format`: the runtime already substitutes
-a lookup's values into its holes, so wrapping the result in `string.Format` reads the
-translated text as a *second*, unrelated composite format string. A key shaped like
-`"Stored {0} of {1}."` survives that by accident, because a hole named `{0}` is also a valid
-.NET index; the same key written the way every other rule expects, `"Stored {stored} of
-{total}."`, throws `FormatException` the moment any culture is active, since `stored` is not
-a number `string.Format` can read. The rule reports the lookup itself, wherever it sits as an
-argument to `string.Format` or `String.Format`, and does not depend on whether the compilation
-bound the call, so it runs the same on the syntactic path.
+LOC0215 catches a lookup that itself supplies the *format text* `string.Format` reads, not a
+value passed alongside one: the runtime already substitutes a lookup's values into its holes,
+so feeding the translated result back into `string.Format` reads it as a second, unrelated
+composite format string. A key shaped like `"Stored {0} of {1}."` survives that by accident,
+because a hole named `{0}` is also a valid .NET index; the same key written the way every
+other rule expects, `"Stored {stored} of {total}."`, throws `FormatException` the moment any
+culture is active, since `stored` is not a number `string.Format` can read. Which argument the
+lookup fills, not where it sits in the source, decides this — `string.Format(provider, L[key],
+value)` and a named argument that reorders them are both read correctly — and a bound
+compilation confirms the parameter directly; without one, only the lookup written as the
+unnamed, or explicitly `format`-named, first argument is certain.
 
 LOC0209 catches the drift a new string opens. Adding `L["Details columns"]` to a component
 whose `he` and `es` files already exist leaves both files behind, and nothing else notices:
@@ -370,6 +372,9 @@ Nothing at the call site decides these, so there is nothing to judge:
 - **A result string.Format never sees directly.** LOC0215 reads the lookup's own syntax, so
   a result stored in a variable and formatted later, or passed through a method, is beyond
   it; only a lookup written straight into the argument list is certain.
+- **A value passed alongside the format text.** `string.Format("Found {0}.", L[key])` and
+  `string.Format(arg0: L[key], format: "Found {0}.")` both use the lookup as an ordinary
+  value, not as the format text a translation could collide with, so LOC0215 leaves them be.
 - **A translation file the run did not name.** LOC0112 and LOC0209 both read the files a
   project owns, so linting a lone `.razor` file checks its call sites and nothing else.
   Point `--path` at the project, the solution, or a folder to get them.

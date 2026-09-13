@@ -134,20 +134,20 @@ public sealed class SourceLinterTests
             """;
 
         // Act
-        var site = Assert.Single(Sites(Body));
+        var site = Assert.Single(Lookups(Body));
 
         // Assert
-        Assert.Equal("Stored {stored}.", site.Key);
+        Assert.Equal("Stored {stored}.", site.Key.Text);
     }
 
     [Fact]
     public void Should_read_the_key_a_folded_concatenation_holds()
     {
         // Act
-        var site = Assert.Single(Sites("""public void Show() => _ = L["Stored " + "here."];"""));
+        var site = Assert.Single(Lookups("""public void Show() => _ = L["Stored " + "here."];"""));
 
         // Assert
-        Assert.Equal("Stored here.", site.Key);
+        Assert.Equal("Stored here.", site.Key.Text);
     }
 
     [Fact]
@@ -226,7 +226,7 @@ public sealed class SourceLinterTests
     private static IReadOnlyList<LintDiagnostic> Lint(string body, LintCode code)
         => Reported(Compile(body), code);
 
-    private static IReadOnlyList<LocalizerCallSite> Sites(string body)
+    private static IReadOnlyList<LocalizerLookup> Lookups(string body)
         => Result(Compile(body)).CallSites;
 
     private static IReadOnlyList<LintDiagnostic> Reported(Compilation compilation)

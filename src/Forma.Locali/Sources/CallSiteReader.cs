@@ -3,6 +3,7 @@ namespace Forma.Locali.Sources;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
 
 /// <summary>Reads the key out of a lookup's arguments, mapped back to the file a human wrote.</summary>
 internal static class CallSiteReader
@@ -10,43 +11,53 @@ internal static class CallSiteReader
     /// <summary>The name a lookup goes through when it is not an indexer.</summary>
     public const string ResolveMethod = "Resolve";
 
-    /// <summary>The call site a lookup's arguments describe, or null when the key is not readable text.</summary>
+    /// <summary>The lookup its arguments describe, or null when the key is not readable text.</summary>
     /// <param name="tree">The tree the arguments were parsed from.</param>
     /// <param name="arguments">The arguments the lookup was given.</param>
     /// <param name="symbol">The overload the lookup binds to, or null when nothing bound it.</param>
     /// <param name="model">The model that bound the arguments, or null when none did.</param>
-    public static LocalizerCallSite? Read(SyntaxTree tree, BaseArgumentListSyntax arguments, ISymbol? symbol, SemanticModel? model)
+    public static LocalizerLookup? Read(SyntaxTree tree, BaseArgumentListSyntax arguments, ISymbol? symbol, SemanticModel? model)
     {
         var list = arguments.Arguments;
-
-        var formatArgument = IsFormatArgument(arguments, model);
+        var supplies = Supplies(symbol, model, list);
+        var formatString = IsFormatString(arguments, model);
 
         return list.FirstOrDefault()?.Expression switch
         {
             LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression)
-                => Literal(tree, literal, Supplies(symbol, model, list), list.Count - 1, formatArgument),
+                => new LocalizerLookup(Literal(tree, literal), supplies, formatString),
             { } expression when Constant(expression, model) is { } text
-                => Constant(tree, expression, text, Supplies(symbol, model, list), list.Count - 1, formatArgument),
+                => new LocalizerLookup(Constant(tree, expression, text), supplies, formatString),
             _ => null,
         };
     }
 
     // The lookup's own expression is the argument list's parent, whether it opens with a bracket or a paren.
-    private static bool IsFormatArgument(BaseArgumentListSyntax arguments, SemanticModel? model)
-        => arguments.Parent?.Parent is ArgumentSyntax { Parent: ArgumentListSyntax { Parent: InvocationExpressionSyntax invocation } }
-            && IsStringFormat(invocation, model);
+    private static bool IsFormatString(BaseArgumentListSyntax arguments, SemanticModel? model)
+        => arguments.Parent?.Parent is ArgumentSyntax { Parent: ArgumentListSyntax { Parent: InvocationExpressionSyntax invocation } } argument
+            && SuppliesFormatText(invocation, argument, model);
 
-    // A bound compilation names the real System.String; without one, matching the name is all this path has.
-    private static bool IsStringFormat(InvocationExpressionSyntax invocation, SemanticModel? model)
+    // A value passed alongside the format text is no less an argument to string.Format, so the parameter the
+    // lookup actually bound to is what decides this, not where it sits in the source; a named argument can
+    // reorder them freely.
+    private static bool SuppliesFormatText(InvocationExpressionSyntax invocation, ArgumentSyntax argument, SemanticModel? model)
     {
         if (invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Format" } member)
         {
             return false;
         }
 
-        return model?.GetSymbolInfo(invocation).Symbol is { } symbol
-            ? symbol is IMethodSymbol { ContainingType.SpecialType: SpecialType.System_String }
-            : IsStringType(member.Expression);
+        if (model is not null)
+        {
+            return model.GetSymbolInfo(invocation).Symbol is IMethodSymbol { ContainingType.SpecialType: SpecialType.System_String }
+                && model.GetOperation(argument) is IArgumentOperation { Parameter.Name: "format" };
+        }
+
+        // Without a bound overload, only the argument written first is certain, and only when it does not
+        // itself claim to be a different parameter; a provider overload needs binding to tell apart.
+        return IsStringType(member.Expression)
+            && invocation.ArgumentList.Arguments.FirstOrDefault() == argument
+            && argument.NameColon is null or { Name.Identifier.ValueText: "format" };
     }
 
     private static bool IsStringType(ExpressionSyntax expression)
@@ -78,20 +89,8 @@ internal static class CallSiteReader
         => model?.GetConstantValue(expression) is { HasValue: true, Value: string text } ? text : null;
 
     // The span covers a reference rather than a quoted literal, so the key starts where the span does.
-    private static LocalizerCallSite Constant(
-        SyntaxTree tree,
-        ExpressionSyntax expression,
-        string key,
-        LocalizerArguments supplies,
-        int values,
-        bool formatArgument)
-        => new(
-            key,
-            tree.GetMappedLineSpan(expression.Span),
-            0,
-            supplies,
-            values,
-            formatArgument);
+    private static LocalizationKeyReference Constant(SyntaxTree tree, ExpressionSyntax expression, string key)
+        => new(key, tree.GetMappedLineSpan(expression.Span), 0);
 
     // Passing the collection itself rather than its items leaves nothing to count.
     private static bool Collection(ITypeSymbol argument, ITypeSymbol parameter, ITypeSymbol element)
@@ -106,19 +105,8 @@ internal static class CallSiteReader
             _ => null,
         };
 
-    private static LocalizerCallSite Literal(
-        SyntaxTree tree,
-        LiteralExpressionSyntax literal,
-        LocalizerArguments supplies,
-        int values,
-        bool formatArgument)
-        => new(
-            literal.Token.ValueText,
-            tree.GetMappedLineSpan(literal.Span),
-            Offset(literal),
-            supplies,
-            values,
-            formatArgument);
+    private static LocalizationKeyReference Literal(SyntaxTree tree, LiteralExpressionSyntax literal)
+        => new(literal.Token.ValueText, tree.GetMappedLineSpan(literal.Span), Offset(literal));
 
     // The key's text starts after the opening quote, which a raw or verbatim literal makes more than one character.
     private static int Offset(LiteralExpressionSyntax literal)
@@ -151,7 +139,7 @@ internal static class CallSiteReader
         }
 
         return element.SpecialType is SpecialType.System_Object
-            ? LocalizerArguments.Positional
+            ? LocalizerArguments.Positional(list.Count - 1)
             : LocalizerArguments.Unknown;
     }
 }

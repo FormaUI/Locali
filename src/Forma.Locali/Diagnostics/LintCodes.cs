@@ -211,11 +211,11 @@ public static class LintCodes
         LintSeverity.Error,
         "A lookup writes a key shaped like a reserved entry, '$' followed by one lowercase word, which no file can answer.");
 
-    /// <summary>A lookup's already-substituted result is passed to string.Format.</summary>
+    /// <summary>A lookup's already-substituted result supplies string.Format's format text.</summary>
     public static LintCode ReformattedLookup { get; } = new(
         "LOC0215",
         LintSeverity.Error,
-        "A lookup is passed to string.Format, which formats its own '{0}' rather than the runtime's holes, and throws once a translation names one.");
+        "A lookup supplies string.Format's format text, which reads its own '{0}' rather than the runtime's holes, and throws once a translation names one.");
 
     /// <summary>A translation file, or a section of one, names a type that does not exist.</summary>
     public static LintCode UnreachableTranslation { get; } = new(
