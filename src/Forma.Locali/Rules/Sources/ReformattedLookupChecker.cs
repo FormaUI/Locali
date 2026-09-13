@@ -6,8 +6,8 @@ using Forma.Locali.Diagnostics;
 public sealed class ReformattedLookupChecker : ICallSiteRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.ReformattedLookup;
+    public LintingCode Code
+        => LintingCodes.ReformattedLookup;
 
     /// <inheritdoc />
     public void Check(CallSiteContext context)

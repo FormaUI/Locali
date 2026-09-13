@@ -14,7 +14,7 @@ public sealed class DuplicateKeyCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.DuplicateKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.DuplicateKey], diagnostics.Codes());
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class DuplicateKeyCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.DuplicateKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.DuplicateKey], diagnostics.Codes());
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public sealed class DuplicateKeyCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.DuplicateKey, LintCodes.DuplicateKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.DuplicateKey, LintingCodes.DuplicateKey], diagnostics.Codes());
     }
 
     [Fact]

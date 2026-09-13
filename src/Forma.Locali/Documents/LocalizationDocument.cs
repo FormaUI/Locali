@@ -136,12 +136,12 @@ public sealed class LocalizationDocument
     /// <param name="code">The rule the diagnostic is reported under.</param>
     /// <param name="message">What is wrong, in a sentence.</param>
     /// <param name="severity">How much the diagnostic matters, which defaults to the rule's own severity.</param>
-    public LintDiagnostic Diagnose(int offset, LintCode code, string message, LintSeverity? severity = null)
+    public LintingDiagnostic Diagnose(int offset, LintingCode code, string message, LintingSeverity? severity = null)
     {
         ArgumentNullException.ThrowIfNull(code);
 
         var (line, column) = Map.Locate(offset);
 
-        return new LintDiagnostic(Path, line, column, severity ?? code.DefaultSeverity, code, message);
+        return new LintingDiagnostic(Path, line, column, severity ?? code.DefaultSeverity, code, message);
     }
 }

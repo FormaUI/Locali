@@ -10,8 +10,8 @@ public sealed class ToolsEntryChecker : ILocalizationFileRuleChecker
     private static readonly string OwnPrefix = ToolEntries.Tool + '.';
 
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.MalformedTools;
+    public LintingCode Code
+        => LintingCodes.MalformedTools;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)
@@ -55,7 +55,7 @@ public sealed class ToolsEntryChecker : ILocalizationFileRuleChecker
         {
             if (sections[1] == ToolEntries.Tool || sections[1].StartsWith(OwnPrefix, StringComparison.Ordinal))
             {
-                context.Report(LintCodes.MalformedTools, entry.NameOffset, $"'{sections[1]}' holds an object; this linter reads its entries directly under '{LocalizationSchema.ToolsKey}', as '{ToolEntries.Ignore}'.");
+                context.Report(LintingCodes.MalformedTools, entry.NameOffset, $"'{sections[1]}' holds an object; this linter reads its entries directly under '{LocalizationSchema.ToolsKey}', as '{ToolEntries.Ignore}'.");
             }
 
             return;
@@ -65,19 +65,19 @@ public sealed class ToolsEntryChecker : ILocalizationFileRuleChecker
         {
             if (entry.Items is not { } items)
             {
-                context.Report(LintCodes.MalformedTools, entry.ValueOffset, $"'{ToolEntries.Ignore}' is not a list of text; it lists rule identifiers.");
+                context.Report(LintingCodes.MalformedTools, entry.ValueOffset, $"'{ToolEntries.Ignore}' is not a list of text; it lists rule identifiers.");
 
                 return;
             }
 
             foreach (var unknown in IgnoredRules.Parse(items).Unknown)
             {
-                context.Report(LintCodes.MalformedTools, entry.ValueOffset, $"'{ToolEntries.Ignore}' names '{unknown}', which is not a rule this linter defines.");
+                context.Report(LintingCodes.MalformedTools, entry.ValueOffset, $"'{ToolEntries.Ignore}' names '{unknown}', which is not a rule this linter defines.");
             }
         }
         else if (entry.Name.StartsWith(OwnPrefix, StringComparison.Ordinal))
         {
-            context.Report(LintCodes.MalformedTools, entry.NameOffset, $"'{entry.Name}' is not an entry this linter defines; it reads '{ToolEntries.Ignore}'.");
+            context.Report(LintingCodes.MalformedTools, entry.NameOffset, $"'{entry.Name}' is not an entry this linter defines; it reads '{ToolEntries.Ignore}'.");
         }
     }
 }

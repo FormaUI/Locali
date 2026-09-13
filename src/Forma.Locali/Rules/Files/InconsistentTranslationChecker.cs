@@ -8,8 +8,8 @@ using Forma.Locali.Documents;
 public sealed class InconsistentTranslationChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.InconsistentTranslation;
+    public LintingCode Code
+        => LintingCodes.InconsistentTranslation;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

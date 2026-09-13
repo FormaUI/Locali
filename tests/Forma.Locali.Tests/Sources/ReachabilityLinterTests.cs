@@ -22,7 +22,7 @@ public sealed class ReachabilityLinterTests
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal(LintCodes.UnreachableTranslation, diagnostic.Code),
+            () => Assert.Equal(LintingCodes.UnreachableTranslation, diagnostic.Code),
             () => Assert.Equal(file, diagnostic.Path),
             () => Assert.Contains("Scratch.Components.Gallery", diagnostic.Message, StringComparison.Ordinal));
     }
@@ -99,9 +99,9 @@ public sealed class ReachabilityLinterTests
     }
 
     [Fact]
-    public void Should_leave_a_file_that_ignores_the_rule_alone()
+    public void Should_report_even_a_file_that_ignores_the_rule()
     {
-        // Arrange — a section names no type, which the file says is meant.
+        // Arrange — a section names no type, which the file says is meant; leaving it out is a caller's decision.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine("Components", "Components.he.json"), LocalizationFileFakeData.WithIgnore(["LOC0112"], ("Widget", "Today", "היום"), ("Gallery", "Today", "היום")));
 
@@ -109,7 +109,7 @@ public sealed class ReachabilityLinterTests
         var diagnostics = Lint(directory, Widget, file);
 
         // Assert
-        Assert.Empty(diagnostics);
+        Assert.Equal([LintingCodes.UnreachableTranslation], diagnostics.Codes());
     }
 
     [Fact]
@@ -212,7 +212,7 @@ public sealed class ReachabilityLinterTests
         Assert.Empty(diagnostics);
     }
 
-    private static IReadOnlyList<LintDiagnostic> Lint(TempDirectory directory, string source, params string[] files)
+    private static IReadOnlyList<LintingDiagnostic> Lint(TempDirectory directory, string source, params string[] files)
     {
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(source), false, false);
 

@@ -7,8 +7,8 @@ using Forma.Locali.Sources;
 public sealed class PluralArgumentChecker : ICallSiteRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.UnsuppliedPluralArgument;
+    public LintingCode Code
+        => LintingCodes.UnsuppliedPluralArgument;
 
     /// <inheritdoc />
     public void Check(CallSiteContext context)

@@ -7,8 +7,8 @@ using Forma.Locali.Diagnostics;
 public sealed class SchemaVersionChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.SchemaVersionMismatch;
+    public LintingCode Code
+        => LintingCodes.SchemaVersionMismatch;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)
@@ -23,8 +23,8 @@ public sealed class SchemaVersionChecker : ILocalizationFileRuleChecker
 
         // The runtime rejects only a differing major; a differing minor or patch still loads.
         var severity = Version.TryParse(written, out var schema) && schema.Major == LocalizationSchema.SupportedMajor
-            ? LintSeverity.Warning
-            : LintSeverity.Error;
+            ? LintingSeverity.Warning
+            : LintingSeverity.Error;
 
         context.Report(
             Code,

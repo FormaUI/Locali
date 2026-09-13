@@ -1,6 +1,7 @@
 namespace Forma.Locali;
 
 using Forma.Locali.Cli;
+using Forma.Locali.Configuration;
 using Forma.Locali.Linting;
 using Forma.Locali.Projects;
 using Forma.Locali.Reporting;
@@ -39,7 +40,7 @@ internal static class Program
         try
         {
             // RunAsync disposes the provider before it returns, so the service has to be held from before the run.
-            var lint = host.Services.GetRequiredService<LintHostedService>();
+            var lint = host.Services.GetRequiredService<LintingHostedService>();
 
             await host.RunAsync().ConfigureAwait(false);
 
@@ -75,7 +76,10 @@ internal static class Program
                 $"'{options.Path}' is neither a file nor a directory.")
             .ValidateOnStart();
 
-        builder.Services.AddSingleton<ILintTargetResolver, LintTargetResolver>();
+        // One instance for the whole run, so a glob's usage tracked while excluding files is the same
+        // tracking read back while deciding what a file's own configuration leaves out.
+        builder.Services.AddSingleton<ILintingConfiguration, LintingConfiguration>();
+        builder.Services.AddSingleton<ILintingTargetResolver, LintingTargetResolver>();
         builder.Services.AddSingleton<ILocalizationFileLinter, LocalizationFileLinter>();
         builder.Services.AddSingleton<IProjectLoader, MSBuildProjectLoader>();
         builder.Services.AddSingleton<SemanticCallSiteFinder>();
@@ -110,7 +114,7 @@ internal static class Program
         builder.Services.AddSingleton<ISourceLinter, SourceLinter>();
         builder.Services.AddSingleton<IReachabilityLinter, ReachabilityLinter>();
         builder.Services.AddSingleton<ITranslationCoverageLinter, TranslationCoverageLinter>();
-        builder.Services.AddSingleton<ILintService, LintService>();
+        builder.Services.AddSingleton<ILintingService, LintingService>();
 
         builder.Services.AddSingleton<IDiagnosticReporter>(_ => new ConsoleDiagnosticReporter(Console.Out));
 
@@ -120,8 +124,8 @@ internal static class Program
             builder.Services.AddSingleton<IDiagnosticReporter>(_ => new JsonDiagnosticReporter(report));
         }
 
-        builder.Services.AddSingleton<LintHostedService>();
-        builder.Services.AddHostedService(provider => provider.GetRequiredService<LintHostedService>());
+        builder.Services.AddSingleton<LintingHostedService>();
+        builder.Services.AddHostedService(provider => provider.GetRequiredService<LintingHostedService>());
 
         return builder.Build();
     }

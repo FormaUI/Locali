@@ -33,16 +33,16 @@ public sealed class SourceLinter(
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(files);
 
-        var diagnostics = new List<LintDiagnostic>();
+        var diagnostics = new List<LintingDiagnostic>();
 
         if (project.HasRazorMarkup && !project.HasGeneratedSources)
         {
-            diagnostics.Add(new LintDiagnostic(
+            diagnostics.Add(new LintingDiagnostic(
                 project.Path,
                 1,
                 1,
-                LintCodes.RazorNotAnalysed.DefaultSeverity,
-                LintCodes.RazorNotAnalysed,
+                LintingCodes.RazorNotAnalysed.DefaultSeverity,
+                LintingCodes.RazorNotAnalysed,
                 "The project carries Razor markup but no generated C# was found; build with EmitCompilerGeneratedFiles=true or its call sites go unchecked."));
         }
 
@@ -66,22 +66,22 @@ public sealed class SourceLinter(
     }
 
     // Naming the blind spot keeps a run from reading as complete coverage when part of it was unreadable.
-    private static LintDiagnostic Unreadable(FileLinePositionSpan location)
+    private static LintingDiagnostic Unreadable(FileLinePositionSpan location)
         => new(
             location.Path,
             location.StartLinePosition.Line + 1,
             location.StartLinePosition.Character + 1,
-            LintCodes.KeyNotAnalysed.DefaultSeverity,
-            LintCodes.KeyNotAnalysed,
+            LintingCodes.KeyNotAnalysed.DefaultSeverity,
+            LintingCodes.KeyNotAnalysed,
             "The lookup's key is an expression rather than text, so no rule could check what it reads.");
 
-    private static LintDiagnostic Interpolated(FileLinePositionSpan location)
+    private static LintingDiagnostic Interpolated(FileLinePositionSpan location)
         => new(
             location.Path,
             location.StartLinePosition.Line + 1,
             location.StartLinePosition.Character + 1,
-            LintCodes.InterpolatedKey.DefaultSeverity,
-            LintCodes.InterpolatedKey,
+            LintingCodes.InterpolatedKey.DefaultSeverity,
+            LintingCodes.InterpolatedKey,
             "The lookup's key is an interpolated string, so the formatted text becomes the key and no translation matches it; write the key as a literal and pass the values positionally.");
 
     private LocalizerLookups Walk(Compilation compilation, IReadOnlyCollection<string> files, CancellationToken cancellationToken)
@@ -105,7 +105,7 @@ public sealed class SourceLinter(
     private static bool Wanted(FileLinePositionSpan location, IReadOnlyCollection<string> files)
         => files.Contains(location.Path, StringComparer.OrdinalIgnoreCase);
 
-    private IReadOnlyList<LintDiagnostic> Check(LocalizerLookup site)
+    private IReadOnlyList<LintingDiagnostic> Check(LocalizerLookup site)
     {
         // The key parses once here rather than inside each rule that reads its expressions.
         var context = new CallSiteContext(site, LocaleExpressionParser.Parse(site.Key.Text, Known));

@@ -6,12 +6,14 @@ global using System.Threading.Tasks;
 
 global using Forma.Locali;
 global using Forma.Locali.Cli;
+global using Forma.Locali.Configuration;
 global using Forma.Locali.Diagnostics;
 global using Forma.Locali.Documents;
 global using Forma.Locali.Linting;
 global using Forma.Locali.Reporting;
 global using Forma.Locali.Sources;
 global using Forma.Locali.Tests.Support;
+global using Forma.Locali.Tests.Support.Configuration;
 global using Forma.Locali.Tests.Support.Diagnostics;
 global using Forma.Locali.Tests.Support.Documents;
 global using Forma.Locali.Tests.Support.Linting;

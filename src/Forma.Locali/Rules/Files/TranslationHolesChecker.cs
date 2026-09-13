@@ -8,8 +8,8 @@ using Forma.Locali.Documents;
 public sealed class TranslationHolesChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.UnknownTranslationHole;
+    public LintingCode Code
+        => LintingCodes.UnknownTranslationHole;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

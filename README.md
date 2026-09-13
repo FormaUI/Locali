@@ -63,11 +63,13 @@ up to the nearest `.csproj`.
 `--exclude` is what makes a test tree lintable. A test project's fixtures are often
 malformed on purpose — a file with no `$localization` entry, a culture that disagrees with
 its own name — so linting them reports what the fixture exists to prove. Excluding the
-folder they live in leaves the rest of the tree checked.
+folder they live in leaves the rest of the tree checked. A `.locali.json` file's own
+`exclude` entry does the same thing without a flag on every invocation; see
+[Linting configuration](#linting-configuration).
 
 `--severity` decides what counts as a finding. An error is something the runtime will get
 wrong; a warning is something worth changing that still loads. `warning` includes both,
-since `LintSeverity` is declared in ascending order and the comparison is `>=`.
+since `LintingSeverity` is declared in ascending order and the comparison is `>=`.
 
 ## Output
 
@@ -77,21 +79,25 @@ Console output is MSBuild-formatted, so an editor can navigate it:
 path(line,col): severity CODE: message
 ```
 
-A diagnostic below `--severity` is left out of the console, the JSON report, and the exit
-code alike, but a default run still briefs what it left out, so a warning is never silently
-dropped:
+A diagnostic below `--severity`, or one a file's own configuration leaves out — its
+`$tools.locali.ignore` entry, or a `.locali.json` above it — is left out of the console, the
+JSON report, and the exit code alike, but a default run still briefs what it left out, so
+nothing disappears without a trace:
 
 ```text
 Linted 658 file(s); 6 diagnostic(s).
 
-8 warning(s) not shown:
+8 diagnostic(s) not shown:
   - LOC0106 (1)
   - LOC0205 (1), LOC0209 (4), LOC0210 (2)
 Pass --severity warning to read them.
 ```
 
 The brief names each rule and how many it contributed, a line per family, so a run says
-whether the warnings are one rule worth looking at or noise already known about.
+whether the diagnostics are one rule worth looking at or noise already known about. The
+closing line only ever promises what raising `--severity` will actually reveal: where the
+linting configuration accounts for some or all of what is left out, it says so instead,
+since no severity uncovers a diagnostic a file was told to leave out.
 
 | Exit code | Meaning |
 |-----------|---------|
@@ -100,7 +106,9 @@ whether the warnings are one rule worth looking at or noise already known about.
 | 2 | The command line was wrong, or a path could not be read |
 
 `--report` writes a JSON report carrying `fileCount`, `diagnosticCount`, `suppressedCount`,
-and a `diagnostics` array of `path`, `line`, `column`, `severity`, `code`, `message`.
+`ignoredCount` — how many of the suppressed diagnostics a file's own configuration left out
+rather than the severity — and a `diagnostics` array of `path`, `line`, `column`,
+`severity`, `code`, `message`.
 
 ## How call sites are found
 
@@ -127,7 +135,52 @@ Loading Roslyn is itself a workaround, described under
 
 ## Rules
 
-A file rule reports in the 100s, a call-site rule in the 200s.
+The [linting configuration](#linting-configuration) reports under 100, a file rule in
+the 100s, and a call-site rule in the 200s.
+
+### Linting configuration (LOC0020–LOC0099)
+
+| Code | Severity | Reports |
+|------|----------|---------|
+| LOC0020 | Error | The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define |
+| LOC0021 | Warning | A glob in the linting configuration matched no file the run reached |
+
+A `.locali.json` beside or above a file is that file's linting configuration, discovered the
+way an `.editorconfig` would: every one found walking up from the file, root to the file's
+own folder, applies together, so a solution-wide file at the root and a narrower one for one
+project both take effect, the nearer file adding to the root's rather than replacing it. Its
+globs read exactly like `--exclude`'s: case-insensitive, forward slashes, and `*` or `**` —
+the two mean the same thing — spanning separators; each one is read relative to the folder
+its own `.locali.json` sits in, so the file stays correct wherever the tree that carries it
+is checked out.
+
+```json
+{
+  "ignore": {
+    "**/Forma.Blazor.Showcase/**/LocalizationPage.razor": ["LOC0209"]
+  },
+  "exclude": ["*/Fixtures/*"]
+}
+```
+
+`ignore` pairs a glob with the rules a file it matches is left out of, the same rules a
+translation file's own `$tools.locali.ignore` can name; the two are a union, so either can
+excuse a finding and neither has to know about the other. `.locali.json` is what reaches a
+file that cannot carry `$tools` itself, a `.razor` file among them, or when a maintainer
+would rather keep the exception out of the translation files entirely. `exclude` mirrors the
+command line's own flag, so a fixture folder a whole team excludes needs writing once rather
+than on every invocation; the two lists combine there as well.
+
+Both entries are judged the same way `$tools` is: LOC0020 reports a rule identifier neither
+list names, so a typo silences nothing, and the rule over `.locali.json` itself can never be
+named in its own `ignore` list, the same loophole `$tools` closes for LOC0114. LOC0021
+reports a glob that never matched a file the run actually reached, so an exception a rename
+left behind does not sit unnoticed; a file moved out of the tree the run reads is exactly
+when its `.locali.json` entries go stale.
+
+Leaving a diagnostic out this way is never silent: it is still counted in `suppressedCount`
+and still named in the console brief, exactly as a diagnostic below `--severity` is, so the
+linting configuration cannot make a finding disappear without a trace.
 
 ### Translation files (LOC0100–LOC0199)
 
@@ -394,8 +447,9 @@ Nothing at the call site decides these, so there is nothing to judge:
 
 | Folder | Holds |
 |--------|-------|
-| `Cli/` | Argument parsing, options, exit codes, target resolution |
-| `Diagnostics/` | `LintCode`, the `LintCodes` catalogue, `LintDiagnostic` |
+| `Cli/` | Argument parsing, options, exit codes, target resolution, the shared glob matcher |
+| `Configuration/` | Reading `.locali.json` into the linting configuration a run applies |
+| `Diagnostics/` | `LintingCode`, the `LintingCodes` catalogue, `LintingDiagnostic` |
 | `Documents/` | Reading a translation file into ordered entries with offsets |
 | `Linting/` | The services that drive file and schema linting |
 | `Projects/` | MSBuild loading, and binding Roslyn to the SDK's copy |
@@ -407,8 +461,9 @@ Nothing at the call site decides these, so there is nothing to judge:
 
 ### Adding a rule
 
-1. Add a `LintCode` to `Diagnostics/LintCodes.cs` and to its `All` list, numbered in the
-   100s for a file rule or the 200s for a call-site rule.
+1. Add a `LintingCode` to `Diagnostics/LintingCodes.cs` and to its `All` list, numbered
+   under 100 for the linting configuration, in the 100s for a file rule, or in the 200s
+   for a call-site rule.
 2. Implement `ILocalizationFileRuleChecker` or `ICallSiteRuleChecker` under
    `Rules/Files/` or `Rules/Sources/`. Expose the code through `Code` and report through
    the context, which owns the position.

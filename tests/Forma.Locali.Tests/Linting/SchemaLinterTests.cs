@@ -14,7 +14,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.MarkerNotFirst], diagnostics.Codes());
+        Assert.Equal([LintingCodes.MarkerNotFirst], diagnostics.Codes());
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.MarkerNotFirst], diagnostics.Codes());
+        Assert.Equal([LintingCodes.MarkerNotFirst], diagnostics.Codes());
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal(LintSeverity.Warning, diagnostics.SoleSeverity());
+        Assert.Equal(LintingSeverity.Warning, diagnostics.SoleSeverity());
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.MalformedMetadata], diagnostics.Codes());
+        Assert.Equal([LintingCodes.MalformedMetadata], diagnostics.Codes());
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.MissingRequiredField], diagnostics.Codes());
+        Assert.Equal([LintingCodes.MissingRequiredField], diagnostics.Codes());
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.RequiredFieldOutOfOrder], diagnostics.Codes());
+        Assert.Equal([LintingCodes.RequiredFieldOutOfOrder], diagnostics.Codes());
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal(LintSeverity.Warning, diagnostics.SoleSeverity());
+        Assert.Equal(LintingSeverity.Warning, diagnostics.SoleSeverity());
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.SchemaVersionMismatch], diagnostics.Codes());
+        Assert.Equal([LintingCodes.SchemaVersionMismatch], diagnostics.Codes());
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal(LintSeverity.Warning, diagnostics.SoleSeverity());
+        Assert.Equal(LintingSeverity.Warning, diagnostics.SoleSeverity());
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal(LintSeverity.Error, diagnostics.SoleSeverity());
+        Assert.Equal(LintingSeverity.Error, diagnostics.SoleSeverity());
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.UnknownMetadataField], diagnostics.Codes());
+        Assert.Equal([LintingCodes.UnknownMetadataField], diagnostics.Codes());
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal(LintSeverity.Warning, diagnostics.SoleSeverity());
+        Assert.Equal(LintingSeverity.Warning, diagnostics.SoleSeverity());
     }
 
     [Fact]
@@ -224,7 +224,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.CultureMismatch], diagnostics.Codes());
+        Assert.Equal([LintingCodes.CultureMismatch], diagnostics.Codes());
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public sealed class SchemaLinterTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal(LintSeverity.Error, diagnostics.SoleSeverity());
+        Assert.Equal(LintingSeverity.Error, diagnostics.SoleSeverity());
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public sealed class SchemaLinterTests
     public void Should_write_a_diagnostic_an_editor_can_navigate_to()
     {
         // Arrange
-        var diagnostic = new LintDiagnostic("C:/x/Colocated.he.json", 2, 20, LintSeverity.Error, LintCodes.CultureMismatch, "Wrong.");
+        var diagnostic = new LintingDiagnostic("C:/x/Colocated.he.json", 2, 20, LintingSeverity.Error, LintingCodes.CultureMismatch, "Wrong.");
 
         // Act
         var written = diagnostic.ToString();

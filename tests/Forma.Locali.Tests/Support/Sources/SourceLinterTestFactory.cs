@@ -27,7 +27,7 @@ public static class SourceLinterTestFactory
 
     /// <summary>What the call-site rules report over members of a class that holds a localizer.</summary>
     /// <param name="body">The members to place inside the class.</param>
-    public static IReadOnlyList<LintDiagnostic> Lint(string body)
+    public static IReadOnlyList<LintingDiagnostic> Lint(string body)
     {
         ArgumentNullException.ThrowIfNull(body);
 

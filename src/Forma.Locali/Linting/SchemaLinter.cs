@@ -13,11 +13,11 @@ public sealed class SchemaLinter(IEnumerable<ILocalizationFileRuleChecker> check
     private readonly IEnumerable<ILocalizationFileRuleChecker> _checkers = checkers ?? throw new ArgumentNullException(nameof(checkers));
 
     /// <inheritdoc />
-    public IReadOnlyList<LintDiagnostic> Lint(LocalizationDocument document, string? expectedCulture)
+    public IReadOnlyList<LintingDiagnostic> Lint(LocalizationDocument document, string? expectedCulture)
     {
         ArgumentNullException.ThrowIfNull(document);
 
-        var diagnostics = new List<LintDiagnostic>();
+        var diagnostics = new List<LintingDiagnostic>();
 
         // Every rule reads the metadata, so a file whose metadata cannot be read reports that once
         // rather than letting each rule report the same absence again.
@@ -38,14 +38,14 @@ public sealed class SchemaLinter(IEnumerable<ILocalizationFileRuleChecker> check
     private static LocalizationFileContext? Establish(
         LocalizationDocument document,
         string? expectedCulture,
-        List<LintDiagnostic> diagnostics)
+        List<LintingDiagnostic> diagnostics)
     {
         var index = IndexOfMarker(document);
         if (index < 0)
         {
             diagnostics.Add(document.Diagnose(
                 0,
-                LintCodes.MissingMarker,
+                LintingCodes.MissingMarker,
                 $"The file carries no '{LocalizationSchema.Marker}' entry, so it cannot be read as a localization file."));
 
             return null;
@@ -57,7 +57,7 @@ public sealed class SchemaLinter(IEnumerable<ILocalizationFileRuleChecker> check
             // The runtime is order-agnostic about presence alone, so a marker sitting elsewhere still loads.
             diagnostics.Add(document.Diagnose(
                 marker.NameOffset,
-                LintCodes.MarkerNotFirst,
+                LintingCodes.MarkerNotFirst,
                 $"'{LocalizationSchema.Marker}' is entry {marker.PropertyIndex + 1}; it has to be the first."));
         }
 
@@ -65,7 +65,7 @@ public sealed class SchemaLinter(IEnumerable<ILocalizationFileRuleChecker> check
         {
             diagnostics.Add(document.Diagnose(
                 marker.ValueOffset,
-                LintCodes.MalformedMetadata,
+                LintingCodes.MalformedMetadata,
                 $"'{LocalizationSchema.Marker}' carries no text."));
 
             return null;
@@ -76,7 +76,7 @@ public sealed class SchemaLinter(IEnumerable<ILocalizationFileRuleChecker> check
         {
             diagnostics.Add(document.Diagnose(
                 marker.ValueOffset,
-                LintCodes.MalformedMetadata,
+                LintingCodes.MalformedMetadata,
                 $"'{LocalizationSchema.Marker}' is malformed; expected '{Expected(expectedCulture)}'."));
 
             return null;

@@ -14,7 +14,7 @@ public sealed class ToolsEntryCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.MalformedTools, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.MalformedTools, diagnostics.Codes());
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public sealed class ToolsEntryCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.MalformedTools, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.MalformedTools, diagnostics.Codes());
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed class ToolsEntryCheckerTests
             LocalizationFileFakeData.WithIgnore(["LOC0113", "hole shape"], ("Widget", "Today", "היום")));
 
         // Act
-        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintCodes.MalformedTools);
+        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintingCodes.MalformedTools);
 
         // Assert
         Assert.Contains("'hole shape'", diagnostic.Message, StringComparison.Ordinal);
@@ -56,7 +56,7 @@ public sealed class ToolsEntryCheckerTests
             """{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "$tools": { "locali.ignore": "LOC0113" }, "Widget": { "Today": "היום" } }""");
 
         // Act
-        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintCodes.MalformedTools);
+        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintingCodes.MalformedTools);
 
         // Assert
         Assert.Contains("not a list", diagnostic.Message, StringComparison.Ordinal);
@@ -71,7 +71,7 @@ public sealed class ToolsEntryCheckerTests
             """{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "$tools": { "locali.ignores": ["LOC0113"] }, "Widget": { "Today": "היום" } }""");
 
         // Act
-        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintCodes.MalformedTools);
+        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintingCodes.MalformedTools);
 
         // Assert
         Assert.Contains("'locali.ignores'", diagnostic.Message, StringComparison.Ordinal);
@@ -86,7 +86,7 @@ public sealed class ToolsEntryCheckerTests
             """{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "$tools": { "locali": { "ignore": ["LOC0113"] } }, "Widget": { "Today": "היום" } }""");
 
         // Act
-        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintCodes.MalformedTools);
+        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintingCodes.MalformedTools);
 
         // Assert
         Assert.Contains("'locali.ignore'", diagnostic.Message, StringComparison.Ordinal);
@@ -101,7 +101,7 @@ public sealed class ToolsEntryCheckerTests
             """{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "$tools": ["LOC0113"], "Widget": { "Today": "היום" } }""");
 
         // Act
-        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintCodes.MalformedTools);
+        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintingCodes.MalformedTools);
 
         // Assert
         Assert.Contains("not an object", diagnostic.Message, StringComparison.Ordinal);
@@ -116,7 +116,7 @@ public sealed class ToolsEntryCheckerTests
             """{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "Widget": { "$tools": { "locali.ignore": ["LOC0113"] }, "Today": "היום" } }""");
 
         // Act
-        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintCodes.MalformedTools);
+        var diagnostic = Assert.Single(SchemaLinterTestFactory.Create().Lint(document, "he"), diagnostic => diagnostic.Code == LintingCodes.MalformedTools);
 
         // Assert
         Assert.Contains("under 'Widget'", diagnostic.Message, StringComparison.Ordinal);

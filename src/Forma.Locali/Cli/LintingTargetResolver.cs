@@ -1,14 +1,17 @@
 namespace Forma.Locali.Cli;
 
-using System.IO.Enumeration;
+using Forma.Locali.Configuration;
 
 /// <summary>Reads a path as a solution, a project, a directory or a single file.</summary>
-public sealed class LintTargetResolver : ILintTargetResolver
+/// <param name="lintingConfiguration">Leaves out whatever a file's own <c>.locali.json</c> excludes.</param>
+public sealed class LintingTargetResolver(ILintingConfiguration lintingConfiguration) : ILintingTargetResolver
 {
     private static readonly string[] SourceExtensions = [".cs", ".razor"];
 
+    private readonly ILintingConfiguration _lintingConfiguration = lintingConfiguration ?? throw new ArgumentNullException(nameof(lintingConfiguration));
+
     /// <inheritdoc />
-    public LintTarget Resolve(string path, IReadOnlyCollection<string>? excludes = null)
+    public LintingTarget Resolve(string path, IReadOnlyCollection<string>? excludes = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
 
@@ -21,7 +24,7 @@ public sealed class LintTargetResolver : ILintTargetResolver
 
         if (!File.Exists(path))
         {
-            return LintTarget.Empty;
+            return LintingTarget.Empty;
         }
 
         return Path.GetExtension(path).ToUpperInvariant() switch
@@ -60,13 +63,15 @@ public sealed class LintTargetResolver : ILintTargetResolver
             .Where(static file => !IsBuildOutput(file))
             .Where(static file => IsLocalizationFile(file) || IsSourceFile(file));
 
+    // The linting configuration file ends in .json like a translation file, but it is never one.
     private static bool IsLocalizationFile(string file)
-        => Path.GetExtension(file).Equals(".json", StringComparison.OrdinalIgnoreCase);
+        => Path.GetExtension(file).Equals(".json", StringComparison.OrdinalIgnoreCase)
+            && !Path.GetFileName(file).Equals(LintingConfiguration.FileName, StringComparison.OrdinalIgnoreCase);
 
     private static bool IsSourceFile(string file)
         => SourceExtensions.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase);
 
-    private static LintTarget FromFiles(IEnumerable<string> files, IReadOnlyCollection<string> excludes)
+    private LintingTarget FromFiles(IEnumerable<string> files, IReadOnlyCollection<string> excludes)
     {
         var localization = new List<string>();
         var sources = new List<string>();
@@ -108,14 +113,14 @@ public sealed class LintTargetResolver : ILintTargetResolver
             }
         }
 
-        return new LintTarget(
+        return new LintingTarget(
             [.. localization],
             [.. sources],
             [.. projects],
             owned.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.OrdinalIgnoreCase));
     }
 
-    private static LintTarget FromProject(string project, IReadOnlyCollection<string> excludes)
+    private LintingTarget FromProject(string project, IReadOnlyCollection<string> excludes)
     {
         var folder = Path.GetDirectoryName(Path.GetFullPath(project))!;
         var target = FromFiles(Walk(folder), excludes);
@@ -123,7 +128,7 @@ public sealed class LintTargetResolver : ILintTargetResolver
         return target with { Projects = [project] };
     }
 
-    private static LintTarget FromSolution(string solution, IReadOnlyCollection<string> excludes)
+    private LintingTarget FromSolution(string solution, IReadOnlyCollection<string> excludes)
     {
         var folder = Path.GetDirectoryName(Path.GetFullPath(solution))!;
         var target = FromFiles(Walk(folder), excludes);
@@ -131,17 +136,11 @@ public sealed class LintTargetResolver : ILintTargetResolver
         return target with { Projects = [solution] };
     }
 
-    // A glob reads against the whole path with forward slashes, so one pattern serves either platform,
-    // and '*' spans separators so a folder can be named without counting the folders above it.
-    private static bool IsExcluded(string file, IReadOnlyCollection<string> excludes)
+    // A glob from the command line and one from a file's own .locali.json carry the same weight.
+    private bool IsExcluded(string file, IReadOnlyCollection<string> excludes)
     {
-        if (excludes.Count == 0)
-        {
-            return false;
-        }
+        var path = Path.GetFullPath(file);
 
-        var path = Path.GetFullPath(file).Replace(Path.DirectorySeparatorChar, '/');
-
-        return excludes.Any(pattern => FileSystemName.MatchesSimpleExpression(pattern, path, ignoreCase: true));
+        return excludes.Any(pattern => GlobPattern.Matches(pattern, path)) || _lintingConfiguration.IsExcluded(path);
     }
 }

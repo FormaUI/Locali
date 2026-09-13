@@ -7,8 +7,8 @@ using Forma.Locali.Diagnostics;
 public sealed class TranslationHoleShapeChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.TranslationHoleShapedText;
+    public LintingCode Code
+        => LintingCodes.TranslationHoleShapedText;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

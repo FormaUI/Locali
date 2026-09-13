@@ -13,7 +13,7 @@ public sealed record LintReportEntry(string Path, int Line, int Column, string S
 {
     /// <summary>Reads an entry off a diagnostic.</summary>
     /// <param name="diagnostic">The diagnostic to describe.</param>
-    public static LintReportEntry From(LintDiagnostic diagnostic)
+    public static LintReportEntry From(LintingDiagnostic diagnostic)
     {
         ArgumentNullException.ThrowIfNull(diagnostic);
 

@@ -10,14 +10,15 @@ using Forma.Locali.Diagnostics;
 public sealed class ReachabilityLinter : IReachabilityLinter
 {
     /// <inheritdoc />
-    public IReadOnlyList<LintDiagnostic> Lint(ProjectTranslations translations)
+    public IReadOnlyList<LintingDiagnostic> Lint(ProjectTranslations translations)
     {
         ArgumentNullException.ThrowIfNull(translations);
 
         var reachable = GetReachable(translations);
-        var diagnostics = new List<LintDiagnostic>();
+        var diagnostics = new List<LintingDiagnostic>();
 
-        foreach (var file in translations.Files.Where(file => !translations.Source.IsContested(file) && !file.Ignored.Ignores(LintCodes.UnreachableTranslation)))
+        // What a file's tools entry leaves out is left to the caller to apply, so a run can still count and brief it.
+        foreach (var file in translations.Files.Where(file => !translations.Source.IsContested(file)))
         {
             var read = reachable.GetValueOrDefault(file.Path) ?? [];
             var unreachable = file.File.GetEntries()
@@ -75,6 +76,6 @@ public sealed class ReachabilityLinter : IReachabilityLinter
         return reachable;
     }
 
-    private static LintDiagnostic Diagnose(TranslationFile file, string message)
-        => new(file.Path, 1, 1, LintCodes.UnreachableTranslation.DefaultSeverity, LintCodes.UnreachableTranslation, message);
+    private static LintingDiagnostic Diagnose(TranslationFile file, string message)
+        => new(file.Path, 1, 1, LintingCodes.UnreachableTranslation.DefaultSeverity, LintingCodes.UnreachableTranslation, message);
 }

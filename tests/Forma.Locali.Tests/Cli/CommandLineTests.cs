@@ -74,14 +74,14 @@ public sealed class CommandLineTests
         _ = CommandLine.TryParse(["--path", "x"], out var options, out _);
 
         // Assert
-        Assert.Equal(LintSeverity.Error, options!.MinimumSeverity);
+        Assert.Equal(LintingSeverity.Error, options!.MinimumSeverity);
     }
 
     [Theory]
-    [InlineData("warning", LintSeverity.Warning)]
-    [InlineData("WARNING", LintSeverity.Warning)]
-    [InlineData("error", LintSeverity.Error)]
-    public void Should_read_the_severity_whatever_case_it_is_written_in(string written, LintSeverity expected)
+    [InlineData("warning", LintingSeverity.Warning)]
+    [InlineData("WARNING", LintingSeverity.Warning)]
+    [InlineData("error", LintingSeverity.Error)]
+    public void Should_read_the_severity_whatever_case_it_is_written_in(string written, LintingSeverity expected)
     {
         // Act
         _ = CommandLine.TryParse(["--path", "x", "--severity", written], out var options, out _);

@@ -7,8 +7,8 @@ using Forma.Locali.Diagnostics;
 public sealed class BareExpressionKeyChecker : ICallSiteRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.BareExpressionKey;
+    public LintingCode Code
+        => LintingCodes.BareExpressionKey;
 
     /// <inheritdoc />
     public void Check(CallSiteContext context)

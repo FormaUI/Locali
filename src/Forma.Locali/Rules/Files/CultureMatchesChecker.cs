@@ -7,8 +7,8 @@ using Forma.Locali.Diagnostics;
 public sealed class CultureMatchesChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.CultureMismatch;
+    public LintingCode Code
+        => LintingCodes.CultureMismatch;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

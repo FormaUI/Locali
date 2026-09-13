@@ -4,7 +4,7 @@ namespace Forma.Locali.Diagnostics;
 /// <param name="Id">The identifier a build log and an editor show.</param>
 /// <param name="DefaultSeverity">How much the rule matters when nothing says otherwise.</param>
 /// <param name="Description">What the rule looks for, in a sentence.</param>
-public sealed record LintCode(string Id, LintSeverity DefaultSeverity, string Description)
+public sealed record LintingCode(string Id, LintingSeverity DefaultSeverity, string Description)
 {
     /// <inheritdoc />
     public override string ToString()

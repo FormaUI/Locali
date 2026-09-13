@@ -7,8 +7,8 @@ using Forma.Locali.Diagnostics;
 public sealed class UnknownFieldChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.UnknownMetadataField;
+    public LintingCode Code
+        => LintingCodes.UnknownMetadataField;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

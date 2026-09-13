@@ -20,8 +20,8 @@ public sealed class TranslationCoverageLinterTests
         var diagnostic = Assert.Single(diagnostics);
 
         Assert.Multiple(
-            () => Assert.Equal(LintCodes.MissingTranslation, diagnostic.Code),
-            () => Assert.Equal(LintSeverity.Warning, diagnostic.Severity),
+            () => Assert.Equal(LintingCodes.MissingTranslation, diagnostic.Code),
+            () => Assert.Equal(LintingSeverity.Warning, diagnostic.Severity),
             () => Assert.Contains("'Tomorrow'", diagnostic.Message, StringComparison.Ordinal),
             () => Assert.Contains(FileName, diagnostic.Message, StringComparison.Ordinal));
     }
@@ -222,7 +222,7 @@ public sealed class TranslationCoverageLinterTests
         Assert.Empty(diagnostics);
     }
 
-    private static ValueTask<IReadOnlyList<LintDiagnostic>> LintAsync(
+    private static ValueTask<IReadOnlyList<LintingDiagnostic>> LintAsync(
         TempDirectory directory,
         string body,
         params string[] localizationFiles)

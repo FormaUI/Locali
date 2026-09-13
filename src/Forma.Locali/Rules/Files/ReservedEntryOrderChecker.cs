@@ -8,8 +8,8 @@ using Forma.Locali.Documents;
 public sealed class ReservedEntryOrderChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.ReservedEntryOutOfOrder;
+    public LintingCode Code
+        => LintingCodes.ReservedEntryOutOfOrder;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

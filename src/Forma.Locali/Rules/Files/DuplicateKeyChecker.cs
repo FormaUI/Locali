@@ -6,8 +6,8 @@ using Forma.Locali.Diagnostics;
 public sealed class DuplicateKeyChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.DuplicateKey;
+    public LintingCode Code
+        => LintingCodes.DuplicateKey;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

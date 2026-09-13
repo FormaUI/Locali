@@ -9,7 +9,7 @@ public sealed class ConsoleDiagnosticReporter(TextWriter writer) : IDiagnosticRe
     private readonly TextWriter _writer = writer ?? throw new ArgumentNullException(nameof(writer));
 
     /// <inheritdoc />
-    public async ValueTask ReportAsync(LintResult result, CancellationToken cancellationToken = default)
+    public async ValueTask ReportAsync(LintingResult result, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(result);
 
@@ -31,7 +31,7 @@ public sealed class ConsoleDiagnosticReporter(TextWriter writer) : IDiagnosticRe
 
         await _writer.WriteLineAsync(ReadOnlyMemory<char>.Empty, cancellationToken).ConfigureAwait(false);
         await _writer
-            .WriteLineAsync($"{result.SuppressedCount} warning(s) not shown:".AsMemory(), cancellationToken)
+            .WriteLineAsync($"{result.SuppressedCount} diagnostic(s) not shown:".AsMemory(), cancellationToken)
             .ConfigureAwait(false);
 
         foreach (var family in result.Suppressed.GroupBy(Family))
@@ -41,12 +41,18 @@ public sealed class ConsoleDiagnosticReporter(TextWriter writer) : IDiagnosticRe
             await _writer.WriteLineAsync($"  - {codes}".AsMemory(), cancellationToken).ConfigureAwait(false);
         }
 
-        await _writer
-            .WriteLineAsync("Pass --severity warning to read them.".AsMemory(), cancellationToken)
-            .ConfigureAwait(false);
+        // Raising the severity only ever reveals a warning; an ignored diagnostic needs its own configuration read instead.
+        var hint = result.IgnoredCount == 0
+            ? "Pass --severity warning to read them."
+            : result.IgnoredCount == result.SuppressedCount
+                ? "A file's own tools entry or .locali.json accounts for all of them."
+                : "Pass --severity warning to read the rest; a file's own tools entry or .locali.json accounts for the others.";
+
+        await _writer.WriteLineAsync(hint.AsMemory(), cancellationToken).ConfigureAwait(false);
     }
 
-    // A file rule reports in the 100s and a call-site rule in the 200s, so the range gives the brief its lines.
+    // The linting configuration reports under 100, a file rule in the 100s, and a call-site rule in the
+    // 200s, so the range gives the brief its lines.
     private static string Family(SuppressedRule rule)
         => rule.Code.Id[..^2];
 }

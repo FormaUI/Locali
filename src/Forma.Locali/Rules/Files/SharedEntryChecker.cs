@@ -8,8 +8,8 @@ using Forma.Locali.Documents;
 public sealed class SharedEntryChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.MalformedShared;
+    public LintingCode Code
+        => LintingCodes.MalformedShared;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

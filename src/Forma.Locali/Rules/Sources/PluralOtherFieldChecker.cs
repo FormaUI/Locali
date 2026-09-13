@@ -10,8 +10,8 @@ public sealed class PluralOtherFieldChecker : ICallSiteRuleChecker
     private const string Fallback = "other";
 
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.MissingPluralOther;
+    public LintingCode Code
+        => LintingCodes.MissingPluralOther;
 
     /// <inheritdoc />
     public void Check(CallSiteContext context)

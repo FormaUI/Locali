@@ -13,12 +13,12 @@ using Forma.Locali.Diagnostics;
 public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
 {
     /// <inheritdoc />
-    public IReadOnlyList<LintDiagnostic> Lint(ProjectTranslations translations, IReadOnlyList<LocalizerLookup> callSites)
+    public IReadOnlyList<LintingDiagnostic> Lint(ProjectTranslations translations, IReadOnlyList<LocalizerLookup> callSites)
     {
         ArgumentNullException.ThrowIfNull(translations);
         ArgumentNullException.ThrowIfNull(callSites);
 
-        var diagnostics = new List<LintDiagnostic>();
+        var diagnostics = new List<LintingDiagnostic>();
 
         // A key written at several sites is reported once per culture it is missing from, at the first site.
         var seen = new HashSet<(string Key, string TypeName, string CultureName)>();
@@ -46,12 +46,12 @@ public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
 
                 var fileName = translations.Source.GetFile(entries[^1].FileName) is { } file ? Path.GetFileName(file.Path) : entries[^1].FileName;
 
-                diagnostics.Add(new LintDiagnostic(
+                diagnostics.Add(new LintingDiagnostic(
                     site.Key.Location.Path,
                     site.Key.Location.StartLinePosition.Line + 1,
                     site.Key.Location.StartLinePosition.Character + 1 + site.Key.TextOffset,
-                    LintCodes.MissingTranslation.DefaultSeverity,
-                    LintCodes.MissingTranslation,
+                    LintingCodes.MissingTranslation.DefaultSeverity,
+                    LintingCodes.MissingTranslation,
                     $"'{site.Key.Text}' has no entry in '{fileName}', which translates '{typeName}' for '{culture.Name}', so it renders in the source language there."));
             }
         }

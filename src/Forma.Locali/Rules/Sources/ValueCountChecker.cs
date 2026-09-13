@@ -7,8 +7,8 @@ using Forma.Locali.Sources;
 public sealed class ValueCountChecker : ICallSiteRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.ValueCountMismatch;
+    public LintingCode Code
+        => LintingCodes.ValueCountMismatch;
 
     /// <inheritdoc />
     public void Check(CallSiteContext context)

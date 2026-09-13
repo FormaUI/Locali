@@ -7,8 +7,8 @@ using Forma.Locali.Sources;
 public sealed class SoleArgumentChecker : ICallSiteRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.SoleArgumentExpected;
+    public LintingCode Code
+        => LintingCodes.SoleArgumentExpected;
 
     /// <inheritdoc />
     public void Check(CallSiteContext context)

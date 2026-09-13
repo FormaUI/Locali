@@ -7,8 +7,8 @@ using Forma.Locali.Diagnostics;
 public sealed class RequiredFieldsChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.MissingRequiredField;
+    public LintingCode Code
+        => LintingCodes.MissingRequiredField;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

@@ -6,8 +6,8 @@ using Forma.Locali.Diagnostics;
 public sealed class ReservedLookupShapeChecker : ICallSiteRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.ReservedShapedLookup;
+    public LintingCode Code
+        => LintingCodes.ReservedShapedLookup;
 
     /// <inheritdoc />
     public void Check(CallSiteContext context)

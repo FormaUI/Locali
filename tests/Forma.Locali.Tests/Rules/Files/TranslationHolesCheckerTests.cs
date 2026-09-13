@@ -14,7 +14,7 @@ public sealed class TranslationHolesCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.UnknownTranslationHole], diagnostics.Codes());
+        Assert.Equal([LintingCodes.UnknownTranslationHole], diagnostics.Codes());
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public sealed class TranslationHolesCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.UnknownTranslationHole], diagnostics.Codes());
+        Assert.Equal([LintingCodes.UnknownTranslationHole], diagnostics.Codes());
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public sealed class TranslationHolesCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.UnknownTranslationHole], diagnostics.Codes());
+        Assert.Equal([LintingCodes.UnknownTranslationHole], diagnostics.Codes());
     }
 
     [Fact]

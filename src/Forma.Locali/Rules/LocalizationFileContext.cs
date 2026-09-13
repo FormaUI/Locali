@@ -17,7 +17,7 @@ public sealed class LocalizationFileContext(
     string metadataText,
     string? expectedCulture)
 {
-    private readonly List<LintDiagnostic> _reported = [];
+    private readonly List<LintingDiagnostic> _reported = [];
 
     /// <summary>The file being checked.</summary>
     public LocalizationDocument Document { get; } = document ?? throw new ArgumentNullException(nameof(document));
@@ -35,7 +35,7 @@ public sealed class LocalizationFileContext(
     public string? ExpectedCulture { get; } = expectedCulture;
 
     /// <summary>Everything the rules reported.</summary>
-    public IReadOnlyList<LintDiagnostic> Reported
+    public IReadOnlyList<LintingDiagnostic> Reported
         => _reported;
 
     /// <summary>The value a metadata field carries, or null when it declares none.</summary>
@@ -62,14 +62,14 @@ public sealed class LocalizationFileContext(
     /// <summary>Reports against the metadata entry.</summary>
     /// <param name="code">The rule reporting.</param>
     /// <param name="message">What is wrong, in a sentence.</param>
-    public void Report(LintCode code, string message)
+    public void Report(LintingCode code, string message)
         => Report(code, Marker.ValueOffset, message);
 
     /// <summary>Reports against a byte offset in the file.</summary>
     /// <param name="code">The rule reporting.</param>
     /// <param name="offset">Where in the file the diagnostic belongs.</param>
     /// <param name="message">What is wrong, in a sentence.</param>
-    public void Report(LintCode code, int offset, string message)
+    public void Report(LintingCode code, int offset, string message)
     {
         ArgumentNullException.ThrowIfNull(code);
 
@@ -81,7 +81,7 @@ public sealed class LocalizationFileContext(
     /// <param name="offset">Where in the file the diagnostic belongs.</param>
     /// <param name="message">What is wrong, in a sentence.</param>
     /// <param name="severity">How much this particular finding matters.</param>
-    public void Report(LintCode code, int offset, string message, LintSeverity severity)
+    public void Report(LintingCode code, int offset, string message, LintingSeverity severity)
     {
         ArgumentNullException.ThrowIfNull(code);
 

@@ -6,8 +6,8 @@ using Forma.Locali.Diagnostics;
 public sealed class MalformedExpressionChecker : ICallSiteRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.MalformedSourceExpression;
+    public LintingCode Code
+        => LintingCodes.MalformedSourceExpression;
 
     /// <inheritdoc />
     public void Check(CallSiteContext context)

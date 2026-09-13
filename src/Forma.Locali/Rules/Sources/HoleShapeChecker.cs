@@ -7,8 +7,8 @@ using Forma.Locali.Sources;
 public sealed class HoleShapeChecker : ICallSiteRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.HoleShapedText;
+    public LintingCode Code
+        => LintingCodes.HoleShapedText;
 
     /// <inheritdoc />
     public void Check(CallSiteContext context)

@@ -16,8 +16,8 @@ public sealed class SourceLinterTests
         var diagnostic = Assert.Single(diagnostics);
 
         Assert.Multiple(
-            () => Assert.Equal(LintCodes.KeyNotAnalysed, diagnostic.Code),
-            () => Assert.Equal(LintSeverity.Warning, diagnostic.Severity));
+            () => Assert.Equal(LintingCodes.KeyNotAnalysed, diagnostic.Code),
+            () => Assert.Equal(LintingSeverity.Warning, diagnostic.Severity));
     }
 
     [Fact]
@@ -27,31 +27,31 @@ public sealed class SourceLinterTests
         var diagnostics = Lint("""public void Show(object column) => _ = L[column.ToString()];""");
 
         // Assert
-        Assert.Equal(LintCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
+        Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
     }
 
     [Fact]
     public void Should_report_an_interpolated_key()
     {
         // Act
-        var diagnostics = Lint("""public void Show(int count) => _ = L[$"Stored {count}."];""", LintCodes.InterpolatedKey);
+        var diagnostics = Lint("""public void Show(int count) => _ = L[$"Stored {count}."];""", LintingCodes.InterpolatedKey);
 
         // Assert
         var diagnostic = Assert.Single(diagnostics);
 
         Assert.Multiple(
-            () => Assert.Equal(LintCodes.InterpolatedKey, diagnostic.Code),
-            () => Assert.Equal(LintSeverity.Error, diagnostic.Severity));
+            () => Assert.Equal(LintingCodes.InterpolatedKey, diagnostic.Code),
+            () => Assert.Equal(LintingSeverity.Error, diagnostic.Severity));
     }
 
     [Fact]
     public void Should_report_an_interpolated_key_through_resolve()
     {
         // Act
-        var diagnostics = Lint("""public void Show(int count) => _ = L.Resolve($"Stored {count}.");""", LintCodes.InterpolatedKey);
+        var diagnostics = Lint("""public void Show(int count) => _ = L.Resolve($"Stored {count}.");""", LintingCodes.InterpolatedKey);
 
         // Assert
-        Assert.Equal(LintCodes.InterpolatedKey, Assert.Single(diagnostics).Code);
+        Assert.Equal(LintingCodes.InterpolatedKey, Assert.Single(diagnostics).Code);
     }
 
     [Fact]
@@ -70,10 +70,10 @@ public sealed class SourceLinterTests
             """);
 
         // Act
-        var diagnostics = Reported(compilation, LintCodes.InterpolatedKey);
+        var diagnostics = Reported(compilation, LintingCodes.InterpolatedKey);
 
         // Assert
-        Assert.Equal(LintCodes.InterpolatedKey, Assert.Single(diagnostics).Code);
+        Assert.Equal(LintingCodes.InterpolatedKey, Assert.Single(diagnostics).Code);
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public sealed class SourceLinterTests
             """);
 
         // Act
-        var diagnostics = Reported(compilation, LintCodes.InterpolatedKey);
+        var diagnostics = Reported(compilation, LintingCodes.InterpolatedKey);
 
         // Assert
         Assert.Empty(diagnostics);
@@ -217,22 +217,22 @@ public sealed class SourceLinterTests
         var diagnostics = Reported(compilation);
 
         // Assert
-        Assert.Equal(LintCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
+        Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
     }
 
-    private static IReadOnlyList<LintDiagnostic> Lint(string body)
+    private static IReadOnlyList<LintingDiagnostic> Lint(string body)
         => Reported(Compile(body));
 
-    private static IReadOnlyList<LintDiagnostic> Lint(string body, LintCode code)
+    private static IReadOnlyList<LintingDiagnostic> Lint(string body, LintingCode code)
         => Reported(Compile(body), code);
 
     private static IReadOnlyList<LocalizerLookup> Lookups(string body)
         => Result(Compile(body)).CallSites;
 
-    private static IReadOnlyList<LintDiagnostic> Reported(Compilation compilation)
-        => Reported(compilation, LintCodes.KeyNotAnalysed);
+    private static IReadOnlyList<LintingDiagnostic> Reported(Compilation compilation)
+        => Reported(compilation, LintingCodes.KeyNotAnalysed);
 
-    private static IReadOnlyList<LintDiagnostic> Reported(Compilation compilation, LintCode code)
+    private static IReadOnlyList<LintingDiagnostic> Reported(Compilation compilation, LintingCode code)
         => [.. Result(compilation).Diagnostics.Where(diagnostic => diagnostic.Code == code)];
 
     private static SourceLintResult Result(Compilation compilation)

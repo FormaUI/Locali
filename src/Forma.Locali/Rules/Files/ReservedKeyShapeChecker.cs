@@ -9,8 +9,8 @@ public sealed class ReservedKeyShapeChecker : ILocalizationFileRuleChecker
     private const string Explanation = "is shaped like a reserved entry the runtime does not define, so the file does not load; double the '$' to keep it as text.";
 
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.ReservedShapedKey;
+    public LintingCode Code
+        => LintingCodes.ReservedShapedKey;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

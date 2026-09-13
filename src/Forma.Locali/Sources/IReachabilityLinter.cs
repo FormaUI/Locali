@@ -7,5 +7,5 @@ public interface IReachabilityLinter
 {
     /// <summary>Every file, and every section of a file, that no type of the project reads.</summary>
     /// <param name="translations">The project's translation files, resolved against its types.</param>
-    IReadOnlyList<LintDiagnostic> Lint(ProjectTranslations translations);
+    IReadOnlyList<LintingDiagnostic> Lint(ProjectTranslations translations);
 }

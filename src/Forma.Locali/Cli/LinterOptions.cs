@@ -15,5 +15,5 @@ public sealed class LinterOptions
     public IReadOnlyList<string> Excludes { get; set; } = [];
 
     /// <summary>The lowest severity the run reports; anything below it is counted and dropped.</summary>
-    public LintSeverity MinimumSeverity { get; set; } = LintSeverity.Error;
+    public LintingSeverity MinimumSeverity { get; set; } = LintingSeverity.Error;
 }

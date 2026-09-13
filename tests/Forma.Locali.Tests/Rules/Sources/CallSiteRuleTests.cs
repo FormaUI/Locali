@@ -10,7 +10,7 @@ public sealed class CallSiteRuleTests
             """public string Read() => locale["Stored {stored} of {total}.", 1];""");
 
         // Assert
-        Assert.Equal([LintCodes.ValueCountMismatch], diagnostics.Codes());
+        Assert.Equal([LintingCodes.ValueCountMismatch], diagnostics.Codes());
     }
 
     [Fact]
@@ -20,7 +20,7 @@ public sealed class CallSiteRuleTests
         var diagnostics = SourceLinterTestFactory.Lint("""public string Read() => locale["Saved.", 1, 2];""");
 
         // Assert
-        Assert.Equal([LintCodes.ValueCountMismatch], diagnostics.Codes());
+        Assert.Equal([LintingCodes.ValueCountMismatch], diagnostics.Codes());
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class CallSiteRuleTests
             """public string Read() { var count = 1; return locale[$"Stored {count}"]; }""");
 
         // Assert
-        Assert.Equal([LintCodes.InterpolatedKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.InterpolatedKey], diagnostics.Codes());
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public sealed class CallSiteRuleTests
             """public string Read() => locale["[$ [count] plural; one: # file; other: # files; $]"];""");
 
         // Assert
-        Assert.Equal([LintCodes.UnsuppliedPluralArgument], diagnostics.Codes());
+        Assert.Equal([LintingCodes.UnsuppliedPluralArgument], diagnostics.Codes());
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public sealed class CallSiteRuleTests
             """public string Read() => locale["[$ plural; one: # file; other: # files; $]"];""");
 
         // Assert
-        Assert.Equal([LintCodes.SoleArgumentExpected], diagnostics.Codes());
+        Assert.Equal([LintingCodes.SoleArgumentExpected], diagnostics.Codes());
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public sealed class CallSiteRuleTests
             """public string Read() => locale["{count} [$ [count] plural; one: file; $]", 1];""");
 
         // Assert
-        Assert.Equal([LintCodes.MissingPluralOther], diagnostics.Codes());
+        Assert.Equal([LintingCodes.MissingPluralOther], diagnostics.Codes());
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public sealed class CallSiteRuleTests
             """public string Read() => locale["Stored {stored} of {total}.", ("stored", (object?)1)];""");
 
         // Assert
-        Assert.Equal([LintCodes.ValueCountMismatch], diagnostics.Codes());
+        Assert.Equal([LintingCodes.ValueCountMismatch], diagnostics.Codes());
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public sealed class CallSiteRuleTests
             """public string Read() { int[] values = [1, 2]; return locale["Stored {stored} of {total}.", values]; }""");
 
         // Assert
-        Assert.Equal([LintCodes.ValueCountMismatch], diagnostics.Codes());
+        Assert.Equal([LintingCodes.ValueCountMismatch], diagnostics.Codes());
     }
 
     [Theory]
@@ -178,7 +178,7 @@ public sealed class CallSiteRuleTests
         var diagnostics = SourceLinterTestFactory.Lint($"""public string Read() => locale["{key}"];""");
 
         // Assert
-        Assert.Equal([LintCodes.HoleShapedText], diagnostics.Codes());
+        Assert.Equal([LintingCodes.HoleShapedText], diagnostics.Codes());
     }
 
     [Theory]
@@ -221,7 +221,7 @@ public sealed class CallSiteRuleTests
         var diagnostics = SourceLinterTestFactory.Lint(source);
 
         // Assert
-        Assert.Equal([LintCodes.BareHoleKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.BareHoleKey], diagnostics.Codes());
     }
 
     [Theory]
@@ -234,7 +234,7 @@ public sealed class CallSiteRuleTests
         var diagnostics = SourceLinterTestFactory.Lint(source);
 
         // Assert
-        Assert.DoesNotContain(LintCodes.BareHoleKey, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.BareHoleKey, diagnostics.Codes());
     }
 
     [Fact]
@@ -245,7 +245,7 @@ public sealed class CallSiteRuleTests
             """public string Read() => locale["[$ plural; other: #; $]", 1];""");
 
         // Assert
-        Assert.Equal([LintCodes.BareExpressionKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.BareExpressionKey], diagnostics.Codes());
     }
 
     [Theory]
@@ -257,7 +257,7 @@ public sealed class CallSiteRuleTests
         var diagnostics = SourceLinterTestFactory.Lint(source);
 
         // Assert
-        Assert.Equal([LintCodes.BareExpressionKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.BareExpressionKey], diagnostics.Codes());
     }
 
     [Fact]
@@ -268,7 +268,7 @@ public sealed class CallSiteRuleTests
             """public string Read() => locale["[$ plural; other: #; $] / [$ plural; other: #; $]", 1];""");
 
         // Assert
-        Assert.Equal([LintCodes.BareExpressionKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.BareExpressionKey], diagnostics.Codes());
     }
 
     [Fact]
@@ -279,7 +279,7 @@ public sealed class CallSiteRuleTests
             """public string Read() => locale["[$ plural; one: # file; other: # files; $]", 1];""");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.BareExpressionKey, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.BareExpressionKey, diagnostics.Codes());
     }
 
     [Fact]
@@ -290,7 +290,7 @@ public sealed class CallSiteRuleTests
             """public string Read() => locale["Found: [$ [count] plural; other: #; $]", 1];""");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.BareExpressionKey, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.BareExpressionKey, diagnostics.Codes());
     }
 
     [Theory]
@@ -303,7 +303,7 @@ public sealed class CallSiteRuleTests
         var diagnostics = SourceLinterTestFactory.Lint($"""public string Read() => locale["{key}"];""");
 
         // Assert
-        Assert.Equal([LintCodes.ReservedShapedLookup], diagnostics.Codes());
+        Assert.Equal([LintingCodes.ReservedShapedLookup], diagnostics.Codes());
     }
 
     [Theory]
@@ -347,7 +347,7 @@ public sealed class CallSiteRuleTests
             """public string Show() => string.Format(locale["Stored {Count} of {Total}."], 1, 2);""");
 
         // Assert
-        Assert.Contains(LintCodes.ReformattedLookup, diagnostics.Codes());
+        Assert.Contains(LintingCodes.ReformattedLookup, diagnostics.Codes());
     }
 
     [Fact]
@@ -358,7 +358,7 @@ public sealed class CallSiteRuleTests
             """public string Show() => string.Format(System.Globalization.CultureInfo.InvariantCulture, locale["Stored {Count} of {Total}."], 1, 2);""");
 
         // Assert
-        Assert.Contains(LintCodes.ReformattedLookup, diagnostics.Codes());
+        Assert.Contains(LintingCodes.ReformattedLookup, diagnostics.Codes());
     }
 
     [Fact]
@@ -369,7 +369,7 @@ public sealed class CallSiteRuleTests
             """public string Show() => string.Format(locale["Stored {Count} of {Total}.", 1, 2]);""");
 
         // Assert
-        Assert.Contains(LintCodes.ReformattedLookup, diagnostics.Codes());
+        Assert.Contains(LintingCodes.ReformattedLookup, diagnostics.Codes());
     }
 
     [Fact]
@@ -380,7 +380,7 @@ public sealed class CallSiteRuleTests
             """public string Show() => locale["Stored {Count} of {Total}.", 1, 2];""");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.ReformattedLookup, diagnostics.Codes());
     }
 
     [Fact]
@@ -390,7 +390,7 @@ public sealed class CallSiteRuleTests
         var diagnostics = SourceLinterTestFactory.Lint("""public string Show() => string.Concat(locale["Saved."], "!");""");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.ReformattedLookup, diagnostics.Codes());
     }
 
     [Fact]
@@ -401,7 +401,7 @@ public sealed class CallSiteRuleTests
             """public string Show() => string.Format("Searched for {0}.", locale["Query"]);""");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.ReformattedLookup, diagnostics.Codes());
     }
 
     [Fact]
@@ -412,7 +412,7 @@ public sealed class CallSiteRuleTests
             """public string Show() => string.Format(arg0: locale["Query"], format: "Searched for {0}.");""");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.ReformattedLookup, diagnostics.Codes());
     }
 
     [Fact]
@@ -423,6 +423,6 @@ public sealed class CallSiteRuleTests
             """public string Show() => string.Format("Values: {0}, {1}, {2}, {3}", 1, 2, 3, locale["Query"]);""");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.ReformattedLookup, diagnostics.Codes());
     }
 }

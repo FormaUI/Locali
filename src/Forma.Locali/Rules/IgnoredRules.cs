@@ -7,7 +7,7 @@ using Forma.Locali.Documents;
 /// <summary>The rules a file's tools entry lists under this linter's ignore entry.</summary>
 /// <param name="Known">The rules listed that this linter defines.</param>
 /// <param name="Unknown">The names that match no rule.</param>
-public sealed record IgnoredRules(IReadOnlyList<LintCode> Known, IReadOnlyList<string> Unknown)
+public sealed record IgnoredRules(IReadOnlyList<LintingCode> Known, IReadOnlyList<string> Unknown)
 {
     /// <summary>No rules, which a file without an ignore entry is left out of.</summary>
     public static IgnoredRules None { get; } = new([], []);
@@ -18,12 +18,12 @@ public sealed record IgnoredRules(IReadOnlyList<LintCode> Known, IReadOnlyList<s
     {
         ArgumentNullException.ThrowIfNull(identifiers);
 
-        var known = new List<LintCode>();
+        var known = new List<LintingCode>();
         var unknown = new List<string>();
 
         foreach (var identifier in identifiers)
         {
-            if (LintCodes.All.FirstOrDefault(code => code.Id == identifier) is { } code)
+            if (LintingCodes.All.FirstOrDefault(code => code.Id == identifier) is { } code)
             {
                 known.Add(code);
             }
@@ -49,6 +49,6 @@ public sealed record IgnoredRules(IReadOnlyList<LintCode> Known, IReadOnlyList<s
 
     /// <summary>Whether the file leaves a rule out; the rule over the tools entry itself is never left out.</summary>
     /// <param name="code">The rule.</param>
-    public bool Ignores(LintCode code)
-        => code != LintCodes.MalformedTools && Known.Contains(code);
+    public bool Ignores(LintingCode code)
+        => code != LintingCodes.MalformedTools && Known.Contains(code);
 }

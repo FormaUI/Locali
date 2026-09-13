@@ -16,7 +16,7 @@ public sealed class ReservedEntryOrderCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.ReservedEntryOutOfOrder, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.ReservedEntryOutOfOrder, diagnostics.Codes());
     }
 
     [Theory]
@@ -32,6 +32,6 @@ public sealed class ReservedEntryOrderCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Contains(LintCodes.ReservedEntryOutOfOrder, diagnostics.Codes());
+        Assert.Contains(LintingCodes.ReservedEntryOutOfOrder, diagnostics.Codes());
     }
 }

@@ -14,7 +14,7 @@ public sealed class InconsistentTranslationCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.InconsistentTranslation], diagnostics.Codes());
+        Assert.Equal([LintingCodes.InconsistentTranslation], diagnostics.Codes());
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public sealed class InconsistentTranslationCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.InconsistentTranslation, LintCodes.InconsistentTranslation], diagnostics.Codes());
+        Assert.Equal([LintingCodes.InconsistentTranslation, LintingCodes.InconsistentTranslation], diagnostics.Codes());
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public sealed class InconsistentTranslationCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.InconsistentTranslation], diagnostics.Codes());
+        Assert.Equal([LintingCodes.InconsistentTranslation], diagnostics.Codes());
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public sealed class InconsistentTranslationCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.InconsistentTranslation], diagnostics.Codes());
+        Assert.Equal([LintingCodes.InconsistentTranslation], diagnostics.Codes());
     }
 
     [Fact]
@@ -192,7 +192,7 @@ public sealed class InconsistentTranslationCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.DuplicateKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.DuplicateKey], diagnostics.Codes());
     }
 
     [Fact]
@@ -207,7 +207,7 @@ public sealed class InconsistentTranslationCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.DuplicateKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.DuplicateKey], diagnostics.Codes());
     }
 
     [Fact]

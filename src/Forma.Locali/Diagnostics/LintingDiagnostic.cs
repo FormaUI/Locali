@@ -7,11 +7,11 @@ namespace Forma.Locali.Diagnostics;
 /// <param name="Severity">How much the diagnostic matters.</param>
 /// <param name="Code">The rule the diagnostic is reported under.</param>
 /// <param name="Message">What is wrong, in a sentence.</param>
-public sealed record LintDiagnostic(string Path, int Line, int Column, LintSeverity Severity, LintCode Code, string Message)
+public sealed record LintingDiagnostic(string Path, int Line, int Column, LintingSeverity Severity, LintingCode Code, string Message)
 {
     /// <summary>The severity as a build log writes it.</summary>
     public string SeverityLabel
-        => Severity == LintSeverity.Error ? "error" : "warning";
+        => Severity == LintingSeverity.Error ? "error" : "warning";
 
     /// <summary>The diagnostic as an editor-navigable line.</summary>
     public override string ToString()

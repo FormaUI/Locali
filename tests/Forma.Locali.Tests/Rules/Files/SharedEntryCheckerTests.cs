@@ -22,7 +22,7 @@ public sealed class SharedEntryCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.MalformedShared], diagnostics.Codes());
+        Assert.Equal([LintingCodes.MalformedShared], diagnostics.Codes());
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed class SharedEntryCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.MalformedShared], diagnostics.Codes());
+        Assert.Equal([LintingCodes.MalformedShared], diagnostics.Codes());
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public sealed class SharedEntryCheckerTests
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal(LintCodes.MalformedShared, diagnostic.Code),
+            () => Assert.Equal(LintingCodes.MalformedShared, diagnostic.Code),
             () => Assert.Contains("nests 'Sub'", diagnostic.Message, StringComparison.Ordinal));
     }
 
@@ -81,7 +81,7 @@ public sealed class SharedEntryCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.MalformedShared], diagnostics.Codes());
+        Assert.Equal([LintingCodes.MalformedShared], diagnostics.Codes());
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public sealed class SharedEntryCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.MalformedShared], diagnostics.Codes());
+        Assert.Equal([LintingCodes.MalformedShared], diagnostics.Codes());
     }
 
     [Fact]
@@ -153,6 +153,6 @@ public sealed class SharedEntryCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.MalformedShared, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.MalformedShared, diagnostics.Codes());
     }
 }

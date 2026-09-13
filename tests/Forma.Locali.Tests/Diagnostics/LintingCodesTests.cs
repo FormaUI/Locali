@@ -1,22 +1,22 @@
 namespace Forma.Locali.Tests.Diagnostics;
 
-public sealed class LintCodesTests
+public sealed class LintingCodesTests
 {
     [Fact]
     public void Should_give_every_rule_a_distinct_identifier()
     {
         // Act
-        var ids = LintCodes.All.Select(code => code.Id).Distinct(StringComparer.Ordinal);
+        var ids = LintingCodes.All.Select(code => code.Id).Distinct(StringComparer.Ordinal);
 
         // Assert
-        Assert.Equal(LintCodes.All.Count, ids.Count());
+        Assert.Equal(LintingCodes.All.Count, ids.Count());
     }
 
     [Fact]
     public void Should_describe_every_rule()
     {
         // Assert
-        Assert.All(LintCodes.All, code => Assert.False(string.IsNullOrWhiteSpace(code.Description)));
+        Assert.All(LintingCodes.All, code => Assert.False(string.IsNullOrWhiteSpace(code.Description)));
     }
 
     [Fact]
@@ -26,7 +26,7 @@ public sealed class LintCodesTests
         var codes = SchemaLinterTestFactory.Checkers().Select(checker => checker.Code);
 
         // Assert
-        Assert.All(codes, code => Assert.Contains(code, LintCodes.All));
+        Assert.All(codes, code => Assert.Contains(code, LintingCodes.All));
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public sealed class LintCodesTests
         var codes = SourceLinterTestFactory.Checkers().Select(checker => checker.Code);
 
         // Assert
-        Assert.All(codes, code => Assert.Contains(code, LintCodes.All));
+        Assert.All(codes, code => Assert.Contains(code, LintingCodes.All));
     }
 
     [Fact]
@@ -63,12 +63,14 @@ public sealed class LintCodesTests
     public void Should_number_every_catalogued_code_in_a_family_range()
     {
         // Act
-        var ids = LintCodes.All.Select(code => code.Id);
+        var ids = LintingCodes.All.Select(code => code.Id);
 
         // Assert
         Assert.All(ids, id => Assert.True(
-            id.StartsWith("LOC01", StringComparison.Ordinal) || id.StartsWith("LOC02", StringComparison.Ordinal),
-            $"'{id}' is in neither the file range nor the call-site range."));
+            id.StartsWith("LOC00", StringComparison.Ordinal)
+                || id.StartsWith("LOC01", StringComparison.Ordinal)
+                || id.StartsWith("LOC02", StringComparison.Ordinal),
+            $"'{id}' is in no family range: linting configuration, file, or call-site."));
     }
 
     [Fact]

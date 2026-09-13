@@ -9,7 +9,7 @@ using Forma.Locali.Sources;
 /// <param name="expression">The key's expressions, already parsed.</param>
 public sealed class CallSiteContext(LocalizerLookup lookup, LocaleParseResult expression)
 {
-    private readonly List<LintDiagnostic> _reported = [];
+    private readonly List<LintingDiagnostic> _reported = [];
     private List<string>? _holes;
 
     /// <summary>The lookup being checked.</summary>
@@ -23,17 +23,17 @@ public sealed class CallSiteContext(LocalizerLookup lookup, LocaleParseResult ex
         => _holes ??= HoleNames.Distinct(Lookup.Key.Text);
 
     /// <summary>Everything the rules reported.</summary>
-    public IReadOnlyList<LintDiagnostic> Reported
+    public IReadOnlyList<LintingDiagnostic> Reported
         => _reported;
 
     /// <summary>Reports against the key.</summary>
     /// <param name="code">The rule reporting.</param>
     /// <param name="message">What is wrong, in a sentence.</param>
-    public void Report(LintCode code, string message)
+    public void Report(LintingCode code, string message)
     {
         ArgumentNullException.ThrowIfNull(code);
 
-        _reported.Add(new LintDiagnostic(
+        _reported.Add(new LintingDiagnostic(
             Lookup.Key.Location.Path,
             Lookup.Key.Location.StartLinePosition.Line + 1,
             Lookup.Key.Location.StartLinePosition.Character + 1 + Lookup.Key.TextOffset,

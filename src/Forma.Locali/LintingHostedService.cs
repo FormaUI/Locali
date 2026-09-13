@@ -14,16 +14,16 @@ using Microsoft.Extensions.Logging;
 /// <param name="reporters">Writes what the run found.</param>
 /// <param name="lifetime">Stops the application once the run has been reported.</param>
 /// <param name="logger">Records a failure the run could not report.</param>
-public sealed partial class LintHostedService(
-    ILintService service,
+public sealed partial class LintingHostedService(
+    ILintingService service,
     IEnumerable<IDiagnosticReporter> reporters,
     IHostApplicationLifetime lifetime,
-    ILogger<LintHostedService> logger) : BackgroundService
+    ILogger<LintingHostedService> logger) : BackgroundService
 {
-    private readonly ILintService _service = service ?? throw new ArgumentNullException(nameof(service));
+    private readonly ILintingService _service = service ?? throw new ArgumentNullException(nameof(service));
     private readonly IEnumerable<IDiagnosticReporter> _reporters = reporters ?? throw new ArgumentNullException(nameof(reporters));
     private readonly IHostApplicationLifetime _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
-    private readonly ILogger<LintHostedService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly ILogger<LintingHostedService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// <summary>The code the process should exit with.</summary>
     public ExitCode ExitCode { get; private set; } = ExitCode.Clean;

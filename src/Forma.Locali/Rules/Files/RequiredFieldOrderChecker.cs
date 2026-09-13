@@ -7,8 +7,8 @@ using Forma.Locali.Diagnostics;
 public sealed class RequiredFieldOrderChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
-    public LintCode Code
-        => LintCodes.RequiredFieldOutOfOrder;
+    public LintingCode Code
+        => LintingCodes.RequiredFieldOutOfOrder;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

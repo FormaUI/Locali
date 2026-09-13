@@ -16,7 +16,7 @@ public sealed class TranslationHoleShapeCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.TranslationHoleShapedText], diagnostics.Codes());
+        Assert.Equal([LintingCodes.TranslationHoleShapedText], diagnostics.Codes());
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public sealed class TranslationHoleShapeCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.TranslationHoleShapedText], diagnostics.Codes());
+        Assert.Equal([LintingCodes.TranslationHoleShapedText], diagnostics.Codes());
     }
 
     [Theory]

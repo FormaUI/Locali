@@ -21,7 +21,7 @@ public sealed class JsonDiagnosticReporter(string path) : IDiagnosticReporter
         : throw new ArgumentException("A report needs somewhere to go.", nameof(path));
 
     /// <inheritdoc />
-    public async ValueTask ReportAsync(LintResult result, CancellationToken cancellationToken = default)
+    public async ValueTask ReportAsync(LintingResult result, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(result);
 
@@ -35,6 +35,7 @@ public sealed class JsonDiagnosticReporter(string path) : IDiagnosticReporter
             result.FileCount,
             result.Diagnostics.Count,
             result.SuppressedCount,
+            result.IgnoredCount,
             [.. result.Diagnostics.Select(LintReportEntry.From)]);
 
         var stream = File.Create(_path);

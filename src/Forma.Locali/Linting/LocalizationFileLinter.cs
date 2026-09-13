@@ -16,7 +16,7 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
     private readonly ISchemaLinter _schema = schema ?? throw new ArgumentNullException(nameof(schema));
 
     /// <inheritdoc />
-    public async ValueTask<IReadOnlyList<LintDiagnostic>> LintAsync(string file, CancellationToken cancellationToken = default)
+    public async ValueTask<LocalizationFileLintResult> LintAsync(string file, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(file);
 
@@ -27,11 +27,11 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
         }
         catch (IOException exception)
         {
-            return [Unreadable(file, exception.Message)];
+            return new LocalizationFileLintResult([Unreadable(file, exception.Message)], IgnoredRules.None);
         }
         catch (UnauthorizedAccessException exception)
         {
-            return [Unreadable(file, exception.Message)];
+            return new LocalizationFileLintResult([Unreadable(file, exception.Message)], IgnoredRules.None);
         }
 
         var culture = LocalizationFileName.CultureOf(file);
@@ -40,24 +40,22 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
         {
             // Unreadable JSON is only this linter's business when the file claims to be a localization file.
             return HasMarker(content) || culture is not null
-                ? [Unreadable(file, error ?? "the file is not readable JSON")]
-                : [];
+                ? new LocalizationFileLintResult([Unreadable(file, error ?? "the file is not readable JSON")], IgnoredRules.None)
+                : LocalizationFileLintResult.Empty;
         }
 
         if (!document!.Entries.Any(static entry => entry.IsTopLevel && entry.Name == LocalizationSchema.Marker) && culture is null)
         {
-            return [];
+            return LocalizationFileLintResult.Empty;
         }
 
-        // A file leaves the rules its tools entry lists out of its own report; the entry itself is still judged.
-        var ignored = IgnoredRules.Read(document);
-
-        return [.. _schema.Lint(document, culture).Where(diagnostic => !ignored.Ignores(diagnostic.Code))];
+        // What a file's tools entry leaves out is left to the caller to apply, so a run can still count and brief it.
+        return new LocalizationFileLintResult(_schema.Lint(document, culture), IgnoredRules.Read(document));
     }
 
     private static bool HasMarker(byte[] content)
         => content.AsSpan().IndexOf(MarkerUtf8) >= 0;
 
-    private static LintDiagnostic Unreadable(string file, string message)
-        => new(file, 1, 1, LintCodes.InvalidJson.DefaultSeverity, LintCodes.InvalidJson, message);
+    private static LintingDiagnostic Unreadable(string file, string message)
+        => new(file, 1, 1, LintingCodes.InvalidJson.DefaultSeverity, LintingCodes.InvalidJson, message);
 }

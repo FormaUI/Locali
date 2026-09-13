@@ -3,8 +3,10 @@ namespace Forma.Locali.Linting;
 using System.Collections.Concurrent;
 
 using Forma.Locali.Cli;
+using Forma.Locali.Configuration;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Projects;
+using Forma.Locali.Rules;
 using Forma.Locali.Sources;
 
 using Microsoft.Extensions.Options;
@@ -17,28 +19,34 @@ using Microsoft.Extensions.Options;
 /// <param name="sourcesLinter">Checks the keys written at call sites.</param>
 /// <param name="reachabilityLinter">Checks that a project's translation files can still be found by type.</param>
 /// <param name="coverageLinter">Checks that a project's keys are answered by the translation files it owns.</param>
-public sealed class LintService(
+/// <param name="lintingConfiguration">What the linting configuration's <c>.locali.json</c> files leave out.</param>
+public sealed class LintingService(
     IOptions<LinterOptions> options,
-    ILintTargetResolver resolver,
+    ILintingTargetResolver resolver,
     IProjectLoader loader,
     ILocalizationFileLinter localizationFileLinter,
     ISourceLinter sourcesLinter,
     IReachabilityLinter reachabilityLinter,
-    ITranslationCoverageLinter coverageLinter) : ILintService
+    ITranslationCoverageLinter coverageLinter,
+    ILintingConfiguration lintingConfiguration) : ILintingService
 {
+    private static readonly IReadOnlySet<LintingCode> NoConfigIgnores = new HashSet<LintingCode>();
+
     private readonly LinterOptions _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
-    private readonly ILintTargetResolver _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+    private readonly ILintingTargetResolver _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
     private readonly IProjectLoader _loader = loader ?? throw new ArgumentNullException(nameof(loader));
     private readonly ILocalizationFileLinter _linter = localizationFileLinter ?? throw new ArgumentNullException(nameof(localizationFileLinter));
     private readonly ISourceLinter _sources = sourcesLinter ?? throw new ArgumentNullException(nameof(sourcesLinter));
     private readonly IReachabilityLinter _reachability = reachabilityLinter ?? throw new ArgumentNullException(nameof(reachabilityLinter));
     private readonly ITranslationCoverageLinter _coverage = coverageLinter ?? throw new ArgumentNullException(nameof(coverageLinter));
+    private readonly ILintingConfiguration _lintingConfiguration = lintingConfiguration ?? throw new ArgumentNullException(nameof(lintingConfiguration));
 
     /// <inheritdoc />
-    public async ValueTask<LintResult> RunAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<LintingResult> RunAsync(CancellationToken cancellationToken = default)
     {
         var target = _resolver.Resolve(_options.Path, _options.Excludes);
-        var diagnostics = new ConcurrentBag<LintDiagnostic>();
+        var diagnostics = new ConcurrentBag<LintingDiagnostic>();
+        var fileIgnores = new ConcurrentDictionary<string, IgnoredRules>(StringComparer.OrdinalIgnoreCase);
 
         // Each file is read independently, so they overlap rather than queueing behind one another.
         await Parallel.ForEachAsync(
@@ -46,7 +54,10 @@ public sealed class LintService(
             cancellationToken,
             async (file, token) =>
             {
-                foreach (var diagnostic in await _linter.LintAsync(file, token).ConfigureAwait(false))
+                var result = await _linter.LintAsync(file, token).ConfigureAwait(false);
+                fileIgnores[Path.GetFullPath(file)] = result.Ignored;
+
+                foreach (var diagnostic in result.Diagnostics)
                 {
                     diagnostics.Add(diagnostic);
                 }
@@ -57,30 +68,52 @@ public sealed class LintService(
             diagnostics.Add(diagnostic);
         }
 
-        // A diagnostic below the severity leaves the result entirely, so it cannot reach the exit code either.
-        LintDiagnostic[] reported =
+        // The linting configuration is asked about every file it reads, even one with nothing to report, so
+        // a glob matching only a clean file is not mistaken for one matching nothing at all.
+        var configIgnores = target.LocalizationFiles
+            .Concat(target.SourceFiles)
+            .ToDictionary(Path.GetFullPath, _lintingConfiguration.GetIgnoredCodes, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var diagnostic in _lintingConfiguration.GetDiagnostics())
+        {
+            diagnostics.Add(diagnostic);
+        }
+
+        var all = diagnostics.ToArray();
+
+        bool IsIgnored(LintingDiagnostic diagnostic)
+        {
+            var path = Path.GetFullPath(diagnostic.Path);
+
+            return fileIgnores.GetValueOrDefault(path, IgnoredRules.None).Ignores(diagnostic.Code)
+                || configIgnores.GetValueOrDefault(path, NoConfigIgnores).Contains(diagnostic.Code);
+        }
+
+        // What a file's own configuration leaves out never reaches the result, whatever the severity.
+        LintingDiagnostic[] reported =
         [
-            .. diagnostics
-                .Where(diagnostic => diagnostic.Severity >= _options.MinimumSeverity)
+            .. all
+                .Where(diagnostic => !IsIgnored(diagnostic) && diagnostic.Severity >= _options.MinimumSeverity)
                 .OrderBy(diagnostic => diagnostic.Path, StringComparer.Ordinal)
                 .ThenBy(diagnostic => diagnostic.Line)
                 .ThenBy(diagnostic => diagnostic.Column),
         ];
 
-        // What was left out is still counted per rule, so a default run says what it is not showing.
+        // What was left out is still counted per rule, whether the severity or a file's own configuration is why.
+        var leftOut = all.Where(diagnostic => IsIgnored(diagnostic) || diagnostic.Severity < _options.MinimumSeverity).ToArray();
+
         SuppressedRule[] suppressed =
         [
-            .. diagnostics
-                .Where(diagnostic => diagnostic.Severity < _options.MinimumSeverity)
+            .. leftOut
                 .GroupBy(diagnostic => diagnostic.Code)
                 .Select(rule => new SuppressedRule(rule.Key, rule.Count()))
                 .OrderBy(rule => rule.Code.Id, StringComparer.Ordinal),
         ];
 
-        return new LintResult(reported, target.FileCount, suppressed);
+        return new LintingResult(reported, target.FileCount, suppressed, leftOut.Count(IsIgnored));
     }
 
-    private async ValueTask<IReadOnlyList<LintDiagnostic>> LintProjectsAsync(LintTarget target, CancellationToken cancellationToken)
+    private async ValueTask<IReadOnlyList<LintingDiagnostic>> LintProjectsAsync(LintingTarget target, CancellationToken cancellationToken)
     {
         if (target.Projects.Count == 0)
         {
@@ -89,7 +122,7 @@ public sealed class LintService(
 
         // A project compiles whole because binding needs it, but only the named files are reported on.
         var wanted = target.SourceFiles.Select(Path.GetFullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var diagnostics = new List<LintDiagnostic>();
+        var diagnostics = new List<LintingDiagnostic>();
 
         foreach (var project in await _loader.LoadAsync(target.Projects, cancellationToken).ConfigureAwait(false))
         {

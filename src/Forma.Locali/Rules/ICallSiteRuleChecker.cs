@@ -6,7 +6,7 @@ using Forma.Locali.Diagnostics;
 public interface ICallSiteRuleChecker
 {
     /// <summary>The rule this checker reports under.</summary>
-    LintCode Code { get; }
+    LintingCode Code { get; }
 
     /// <summary>Reads the context and reports whatever it finds wrong.</summary>
     /// <param name="context">What the checker reads, and what it reports through.</param>

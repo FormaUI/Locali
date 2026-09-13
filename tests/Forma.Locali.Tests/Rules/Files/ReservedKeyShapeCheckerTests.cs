@@ -17,7 +17,7 @@ public sealed class ReservedKeyShapeCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.ReservedShapedKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.ReservedShapedKey], diagnostics.Codes());
     }
 
     [Theory]
@@ -76,7 +76,7 @@ public sealed class ReservedKeyShapeCheckerTests
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal(LintCodes.ReservedShapedKey, diagnostic.Code),
+            () => Assert.Equal(LintingCodes.ReservedShapedKey, diagnostic.Code),
             () => Assert.StartsWith("Section '$shraed'", diagnostic.Message, StringComparison.Ordinal));
     }
 
@@ -96,7 +96,7 @@ public sealed class ReservedKeyShapeCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.ReservedShapedKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.ReservedShapedKey], diagnostics.Codes());
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public sealed class ReservedKeyShapeCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintCodes.ReservedShapedKey], diagnostics.Codes());
+        Assert.Equal([LintingCodes.ReservedShapedKey], diagnostics.Codes());
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public sealed class ReservedKeyShapeCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.DoesNotContain(LintCodes.ReservedShapedKey, diagnostics.Codes());
+        Assert.DoesNotContain(LintingCodes.ReservedShapedKey, diagnostics.Codes());
     }
 
     [Fact]

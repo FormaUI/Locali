@@ -8,11 +8,11 @@ public sealed class JsonDiagnosticReporterTests
         // Arrange
         using var directory = new TempDirectory();
         var report = Path.Combine(directory.Root, "report.json");
-        var diagnostic = new LintDiagnostic("File.he.json", 2, 20, LintSeverity.Error, LintCodes.CultureMismatch, "Wrong.");
+        var diagnostic = new LintingDiagnostic("File.he.json", 2, 20, LintingSeverity.Error, LintingCodes.CultureMismatch, "Wrong.");
 
         // Act
         await new JsonDiagnosticReporter(report).ReportAsync(
-            new LintResult([diagnostic], 4, []),
+            new LintingResult([diagnostic], 4, [], 0),
             TestContext.Current.CancellationToken);
 
         // Assert
@@ -21,7 +21,7 @@ public sealed class JsonDiagnosticReporterTests
         Assert.Multiple(
             () => Assert.Equal(4, written.FileCount),
             () => Assert.Equal(1, written.DiagnosticCount),
-            () => Assert.Equal(LintCodes.CultureMismatch.Id, written.Diagnostics[0].Code),
+            () => Assert.Equal(LintingCodes.CultureMismatch.Id, written.Diagnostics[0].Code),
             () => Assert.Equal("error", written.Diagnostics[0].Severity));
     }
 
@@ -34,13 +34,31 @@ public sealed class JsonDiagnosticReporterTests
 
         // Act
         await new JsonDiagnosticReporter(report).ReportAsync(
-            new LintResult([], 4, [new SuppressedRule(LintCodes.MissingTranslation, 2)]),
+            new LintingResult([], 4, [new SuppressedRule(LintingCodes.MissingTranslation, 2)], 0),
             TestContext.Current.CancellationToken);
 
         // Assert
         var written = LintReportTestReader.Read(await File.ReadAllTextAsync(report, TestContext.Current.CancellationToken));
 
         Assert.Equal(2, written.SuppressedCount);
+    }
+
+    [Fact]
+    public async Task Should_write_how_many_diagnostics_a_files_own_configuration_left_out()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var report = Path.Combine(directory.Root, "report.json");
+
+        // Act
+        await new JsonDiagnosticReporter(report).ReportAsync(
+            new LintingResult([], 4, [new SuppressedRule(LintingCodes.InconsistentTranslation, 3)], 3),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var written = LintReportTestReader.Read(await File.ReadAllTextAsync(report, TestContext.Current.CancellationToken));
+
+        Assert.Equal(3, written.IgnoredCount);
     }
 
     [Fact]
@@ -52,7 +70,7 @@ public sealed class JsonDiagnosticReporterTests
 
         // Act
         await new JsonDiagnosticReporter(report).ReportAsync(
-            new LintResult([], 0, []),
+            new LintingResult([], 0, [], 0),
             TestContext.Current.CancellationToken);
 
         // Assert

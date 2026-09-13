@@ -38,7 +38,7 @@ public static class CommandLine
         string? report = null;
         var wantsReport = false;
         var excludes = new List<string>();
-        var severity = LintSeverity.Error;
+        var severity = LintingSeverity.Error;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -122,11 +122,11 @@ public static class CommandLine
         return true;
     }
 
-    private static LintSeverity? ParseSeverity(string value)
+    private static LintingSeverity? ParseSeverity(string value)
         => value switch
         {
-            _ when value.Equals("error", StringComparison.OrdinalIgnoreCase) => LintSeverity.Error,
-            _ when value.Equals("warning", StringComparison.OrdinalIgnoreCase) => LintSeverity.Warning,
+            _ when value.Equals("error", StringComparison.OrdinalIgnoreCase) => LintingSeverity.Error,
+            _ when value.Equals("warning", StringComparison.OrdinalIgnoreCase) => LintingSeverity.Warning,
             _ => null,
         };
 
