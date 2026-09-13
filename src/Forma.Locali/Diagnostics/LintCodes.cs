@@ -120,11 +120,11 @@ public static class LintCodes
         LintSeverity.Error,
         "A metadata entry omits a field the schema requires.");
 
-    /// <summary>A key written in source has no entry in one of its type's translation files.</summary>
+    /// <summary>A key written in source is not answered in a culture its type is already translated for.</summary>
     public static LintCode MissingTranslation { get; } = new(
         "LOC0209",
         LintSeverity.Warning,
-        "A key written at a call site has no entry in a translation file its type already owns, so it renders untranslated.");
+        "A key written at a call site has no entry in a culture its type is already translated for, so it renders untranslated.");
 
     /// <summary>A project's Razor markup was not checked, because no generated C# was found.</summary>
     public static LintCode RazorNotAnalysed { get; } = new(
@@ -168,11 +168,11 @@ public static class LintCodes
         LintSeverity.Error,
         "A translation fills a hole its key does not name, so it renders as written.");
 
-    /// <summary>No type exists with the full name a translation file's own location implies.</summary>
+    /// <summary>A translation file, or a section of one, names a type that does not exist.</summary>
     public static LintCode UnreachableTranslation { get; } = new(
         "LOC0112",
         LintSeverity.Error,
-        "No type exists with the full name this file's location implies, so the runtime never finds it.");
+        "No type reads this file, or a section of it, by the full name its position implies, so the runtime never finds those translations.");
 
     /// <summary>An expression names an argument the lookup never supplies.</summary>
     public static LintCode UnsuppliedPluralArgument { get; } = new(

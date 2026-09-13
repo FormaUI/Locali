@@ -1,6 +1,6 @@
 namespace Forma.Locali.Linting;
 
-using Forma.Framework.Localization.Json;
+using Forma.Framework.Localization.Files;
 using Forma.Framework.Localization.Parser;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;

@@ -30,7 +30,7 @@ Forma.Locali.slnx
 └── tests/Forma.Locali.Tests    # its only test project
 ```
 
-- Do keep the dependency on the runtime as a cross-repository `ProjectReference` into `..\Forma\src\Forma.Framework.Localization.Json`, which pulls `Forma.Framework.Localization` transitively. The Forma repository must sit beside this one for the solution to build.
+- Do keep the dependency on the runtime as cross-repository `ProjectReference`s into `..\Forma\src\Forma.Framework.Localization`, whose file layout and parsers the rules call, and `..\Forma\src\Forma.Framework.Localization.Json`, whose format reads the files. The Forma repository must sit beside this one for the solution to build.
 - Do compile against the real runtime rather than re-implementing any of its parsing here; the linter's promise is that a rule and the runtime cannot disagree, and it keeps that promise by calling the runtime's own parser, plural rules, and schema types.
 - Do keep a folder and its namespace in step, so `src/Forma.Locali/Rules/Files/` holds `Forma.Locali.Rules.Files`.
 - Do reference the narrowest thing that supplies what the code uses, give every project its own reference for what it uses directly, and keep no reference no code uses.

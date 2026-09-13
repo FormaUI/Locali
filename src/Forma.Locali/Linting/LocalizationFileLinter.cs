@@ -2,7 +2,7 @@ namespace Forma.Locali.Linting;
 
 using System.Text;
 
-using Forma.Framework.Localization.Json;
+using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 

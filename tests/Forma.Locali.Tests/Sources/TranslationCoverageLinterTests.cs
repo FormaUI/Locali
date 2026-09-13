@@ -134,6 +134,34 @@ public sealed class TranslationCoverageLinterTests
     }
 
     [Fact]
+    public async Task Should_let_a_folders_file_answer_through_a_section()
+    {
+        // Arrange — the type's translations sit in the file named for the folder, in a section of its own.
+        using var directory = new TempDirectory();
+        var file = directory.Write("Scratch.he.json", LocalizationFileFakeData.WithSection("Widget", "Tomorrow", "מחר"));
+
+        // Act
+        var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task Should_report_a_key_a_folders_file_leaves_out()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write("Scratch.he.json", LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+
+        // Act
+        var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", file);
+
+        // Assert
+        Assert.Contains("Scratch.he.json", Assert.Single(diagnostics).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_leave_a_type_that_owns_no_translations_alone()
     {
         // Arrange
@@ -180,7 +208,7 @@ public sealed class TranslationCoverageLinterTests
         Assert.Empty(diagnostics);
     }
 
-    private static async ValueTask<IReadOnlyList<LintDiagnostic>> LintAsync(
+    private static ValueTask<IReadOnlyList<LintDiagnostic>> LintAsync(
         TempDirectory directory,
         string body,
         params string[] localizationFiles)
@@ -208,9 +236,6 @@ public sealed class TranslationCoverageLinterTests
             .Lint(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)])
             .CallSites;
 
-        return await new TranslationCoverageLinter().LintAsync(
-            TranslationFiles.Resolve(project, localizationFiles),
-            sites,
-            TestContext.Current.CancellationToken);
+        return ValueTask.FromResult(new TranslationCoverageLinter().Lint(TranslationFiles.Resolve(project, localizationFiles)!, sites));
     }
 }

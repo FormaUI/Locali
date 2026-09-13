@@ -1,31 +1,38 @@
 namespace Forma.Locali.Sources;
 
 using System.Globalization;
+using System.Text.Json;
 
+using Forma.Framework.Localization.Files;
+using Forma.Framework.Localization.Json;
 using Forma.Locali.Documents;
 using Forma.Locali.Projects;
 
-/// <summary>Resolves a project's translation files to the types the runtime finds them by.</summary>
+/// <summary>Resolves a project's translation files against the types the runtime finds them by.</summary>
 public static class TranslationFiles
 {
-    /// <summary>Every culture-named file the project owns, each resolved once against the compilation.</summary>
+    // A folder of this name beside the project holds a host's own files, which translate other assemblies' types.
+    private const string HostFolder = "locales";
+
+    /// <summary>Every readable culture-named file the project embeds, resolved against the compilation, or null when the project would not load.</summary>
     /// <param name="project">The project the files belong to.</param>
     /// <param name="localizationFiles">The translation files this project owns, which the target attributed.</param>
-    public static IReadOnlyList<TranslationFile> Resolve(LoadedProject project, IReadOnlyCollection<string> localizationFiles)
+    public static ProjectTranslations? Resolve(LoadedProject project, IReadOnlyCollection<string> localizationFiles)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
         if (project.Compilation is not { AssemblyName.Length: > 0 } compilation)
         {
-            return [];
+            return null;
         }
 
         var projectDirectory = Path.GetDirectoryName(Path.GetFullPath(project.Path))!;
 
         // The SDK embeds under RootNamespace, which a project may declare apart from its assembly name.
         var root = project.RootNamespace ?? compilation.AssemblyName!;
-        var resolved = new List<TranslationFile>();
+        var format = new JsonLocaleFileFormat();
+        var files = new List<TranslationFile>();
 
         foreach (var file in localizationFiles)
         {
@@ -35,15 +42,62 @@ public static class TranslationFiles
             }
 
             var fullPath = Path.GetFullPath(file);
-            var candidates = ResourceBaseNames.Candidates(root, projectDirectory, fullPath);
+            var relative = Path.GetRelativePath(projectDirectory, Path.GetDirectoryName(fullPath)!);
+            string[] segments = relative is "." ? [] : relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-            resolved.Add(new TranslationFile(
-                fullPath,
-                CultureInfo.GetCultureInfo(culture),
-                candidates.Select(compilation.GetTypeByMetadataName).FirstOrDefault(type => type is not null),
-                candidates[0]));
+            if (segments.Length > 0 && string.Equals(segments[0], HostFolder, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // A file that will not read is the file rules' business, and the runtime reads nothing from it.
+            if (Read(format, fullPath, culture) is not { } read)
+            {
+                continue;
+            }
+
+            var baseName = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(fullPath));
+            var names = GetNames(root, segments, baseName, culture, format.Extension);
+
+            files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), names[0][..^(culture.Length + format.Extension.Length + 1)], names, read));
         }
 
-        return resolved;
+        return new ProjectTranslations(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, format);
+    }
+
+    // The SDK embeds a file as {RootNamespace}.{RelativeFolderPath}.{Name}; ResourcesPath then inserts leading folder
+    // segments that no project file records, so each may be shed in turn.
+    private static IReadOnlyList<string> GetNames(string root, string[] segments, string baseName, string culture, string extension)
+        =>
+        [
+            .. Enumerable
+                .Range(0, segments.Length + 1)
+                .Select(dropped => $"{string.Join('.', new[] { root }.Concat(segments[dropped..]).Append(baseName))}.{culture}{extension}"),
+        ];
+
+    private static LocaleFile? Read(JsonLocaleFileFormat format, string path, string culture)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+
+            return format.Read(stream, path, culture);
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (LocalizationMetadataException)
+        {
+            return null;
+        }
     }
 }

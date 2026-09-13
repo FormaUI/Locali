@@ -8,194 +8,148 @@ using Microsoft.CodeAnalysis;
 
 public sealed class TranslationFilesTests
 {
-    private static readonly string ProjectPath = Path.Combine("C:", "Scratch", "Scratch.csproj");
-
     [Fact]
-    public void Should_resolve_a_file_to_the_type_its_location_names()
+    public void Should_name_a_file_for_its_folder_position_under_the_root()
     {
         // Arrange
-        var compilation = Compile("""
-            namespace Scratch.Components.Explorer;
-
-            public sealed class FormaExplorer;
-            """);
-        var file = Path.Combine("C:", "Scratch", "Components", "Explorer", "FormaExplorer.he.json");
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", "Explorer", "FormaExplorer.he.json"), LocalizationFileFakeData.Valid);
 
         // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(Project(compilation), [file]));
-
-        // Assert
-        Assert.Equal("Scratch.Components.Explorer.FormaExplorer", resolved.Type?.ToDisplayString());
-    }
-
-    [Fact]
-    public void Should_resolve_no_type_for_a_file_none_answers_to()
-    {
-        // Arrange
-        var compilation = Compile("""
-            namespace Scratch.Components.Explorer;
-
-            public sealed class FormaExplorer;
-            """);
-        var file = Path.Combine("C:", "Scratch", "Components", "Explorer", "FormaGallery.he.json");
-
-        // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(Project(compilation), [file]));
+        var resolved = Assert.Single(Resolve(directory, Compile("namespace Scratch;"), file).Files);
 
         // Assert
         Assert.Multiple(
-            () => Assert.Null(resolved.Type),
-            () => Assert.Equal("Scratch.Components.Explorer.FormaGallery", resolved.ExpectedName));
+            () => Assert.Equal("Scratch.Components.Explorer.FormaExplorer", resolved.ExpectedName),
+            () => Assert.Equal("Scratch.Components.Explorer.FormaExplorer.he.json", resolved.Names[0]),
+            () => Assert.Equal(CultureInfo.GetCultureInfo("he"), resolved.Culture));
+    }
+
+    [Fact]
+    public void Should_shed_the_folders_a_resources_path_inserts()
+    {
+        // Arrange — the file sits under Resources/Fixtures, which ResourcesPath inserts before the type's own folder.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Resources", "Fixtures", "PathScoped.he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var resolved = Assert.Single(Resolve(directory, Compile("namespace Scratch;"), file).Files);
+
+        // Assert
+        Assert.Equal(
+            ["Scratch.Resources.Fixtures.PathScoped.he.json", "Scratch.Fixtures.PathScoped.he.json", "Scratch.PathScoped.he.json"],
+            resolved.Names);
+    }
+
+    [Fact]
+    public void Should_name_a_file_under_the_root_namespace_rather_than_the_assembly_name()
+    {
+        // Arrange — an AddOn embeds under the namespace it borrows, not its own name.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Emojis", "TwemojiEmojiProvider.he.json"), LocalizationFileFakeData.Valid);
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, "Forma.Framework");
+
+        // Act
+        var resolved = Assert.Single(TranslationFiles.Resolve(project, [file])!.Files);
+
+        // Assert
+        Assert.Equal("Forma.Framework.Emojis.TwemojiEmojiProvider", resolved.ExpectedName);
     }
 
     [Fact]
     public void Should_carry_the_culture_the_file_name_gives_it()
     {
         // Arrange
-        var file = Path.Combine("C:", "Scratch", "ResourceFormatter.es-419.json");
+        using var directory = new TempDirectory();
+        var file = directory.Write("ResourceFormatter.es-419.json", LocalizationFileFakeData.ForCulture("es-419", "Today", "hoy"));
 
         // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(Project(Compile("namespace Scratch;")), [file]));
+        var resolved = Assert.Single(Resolve(directory, Compile("namespace Scratch;"), file).Files);
 
         // Assert
         Assert.Equal(CultureInfo.GetCultureInfo("es-419"), resolved.Culture);
     }
 
     [Fact]
-    public void Should_find_a_type_declared_at_the_project_root()
-    {
-        // Arrange
-        var compilation = Compile("""
-            namespace Scratch;
-
-            public sealed class ResourceFormatter;
-            """);
-        var file = Path.Combine("C:", "Scratch", "ResourceFormatter.he.json");
-
-        // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(Project(compilation), [file]));
-
-        // Assert
-        Assert.NotNull(resolved.Type);
-    }
-
-    [Fact]
     public void Should_skip_a_file_carrying_no_recognised_culture()
     {
         // Arrange
-        var file = Path.Combine("C:", "Scratch", "launchSettings.json");
+        using var directory = new TempDirectory();
+        var file = directory.Write("launchSettings.json", LocalizationFileFakeData.Valid);
 
         // Act
-        var resolved = TranslationFiles.Resolve(Project(Compile("namespace Scratch;")), [file]);
+        var resolved = Resolve(directory, Compile("namespace Scratch;"), file);
 
         // Assert
-        Assert.Empty(resolved);
+        Assert.Empty(resolved.Files);
     }
 
     [Fact]
-    public void Should_shed_the_folders_a_resources_path_inserts()
+    public void Should_skip_a_file_the_runtime_cannot_read()
     {
-        // Arrange — the type sits at Fixtures, the file under Resources/Fixtures, which ResourcesPath inserts.
-        var compilation = Compile("""
-            namespace Scratch.Fixtures;
-
-            public sealed class PathScoped;
-            """);
-        var file = Path.Combine("C:", "Scratch", "Resources", "Fixtures", "PathScoped.he.json");
+        // Arrange — an unreadable file is the file rules' business, and the runtime reads nothing from it.
+        using var directory = new TempDirectory();
+        var file = directory.Write("Widget.he.json", LocalizationFileFakeData.Unmarked);
 
         // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(Project(compilation), [file]));
+        var resolved = Resolve(directory, Compile("namespace Scratch;"), file);
 
         // Assert
-        Assert.NotNull(resolved.Type);
+        Assert.Empty(resolved.Files);
     }
 
     [Fact]
-    public void Should_resolve_no_type_when_the_tail_names_none()
+    public void Should_skip_the_hosts_own_folder()
     {
-        // Arrange — shedding every leading segment must not turn an absent type into a match.
-        var compilation = Compile("""
-            namespace Scratch.Fixtures;
-
-            public sealed class PathScoped;
-            """);
-        var file = Path.Combine("C:", "Scratch", "Resources", "Fixtures", "Renamed.he.json");
+        // Arrange — a locales folder beside the project translates other assemblies' types, which the runtime reads apart.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("locales", "Forma.Blazor.he.json"), LocalizationFileFakeData.Valid);
 
         // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(Project(compilation), [file]));
+        var resolved = Resolve(directory, Compile("namespace Scratch;"), file);
 
         // Assert
-        Assert.Null(resolved.Type);
+        Assert.Empty(resolved.Files);
     }
 
     [Fact]
-    public void Should_resolve_a_generic_type_whose_arity_the_file_name_drops()
+    public void Should_list_every_type_the_project_declares()
     {
         // Arrange
+        using var directory = new TempDirectory();
         var compilation = Compile("""
-            namespace Scratch.Fixtures;
+            namespace Scratch.Bars;
 
-            public sealed class GenericArity<TValue>;
+            public sealed class Outer
+            {
+                public sealed class Inner<TValue>;
+            }
             """);
-        var file = Path.Combine("C:", "Scratch", "Fixtures", "GenericArity.he.json");
 
         // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(Project(compilation), [file]));
+        var resolved = Resolve(directory, compilation);
 
         // Assert
-        Assert.Equal("GenericArity`1", resolved.Type?.MetadataName);
-    }
-
-    [Fact]
-    public void Should_resolve_a_type_in_the_global_namespace()
-    {
-        // Arrange
-        var compilation = Compile("public sealed class GlobalRoot;");
-        var file = Path.Combine("C:", "Scratch", "Fixtures", "GlobalRoot.he.json");
-
-        // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(Project(compilation), [file]));
-
-        // Assert
-        Assert.NotNull(resolved.Type);
-    }
-
-    [Fact]
-    public void Should_read_the_root_namespace_rather_than_the_assembly_name()
-    {
-        // Arrange — an AddOn embeds under the namespace it borrows, not its own name.
-        var compilation = Compile("""
-            namespace Forma.Framework.Emojis;
-
-            public sealed class TwemojiEmojiProvider;
-            """);
-        var project = new LoadedProject(ProjectPath, compilation, false, false, "Forma.Framework");
-        var file = Path.Combine("C:", "Scratch", "Emojis", "TwemojiEmojiProvider.he.json");
-
-        // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(project, [file]));
-
-        // Assert
-        Assert.NotNull(resolved.Type);
+        Assert.Equal(["Scratch.Bars.Outer", "Scratch.Bars.Outer.Inner"], resolved.TypeNames);
     }
 
     [Fact]
     public void Should_resolve_nothing_when_the_project_failed_to_load()
     {
         // Arrange
-        var project = new LoadedProject(ProjectPath, null, false, false);
-        var file = Path.Combine("C:", "Scratch", "FormaGallery.he.json");
+        using var directory = new TempDirectory();
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), null, false, false);
 
         // Act
-        var resolved = TranslationFiles.Resolve(project, [file]);
+        var resolved = TranslationFiles.Resolve(project, [directory.Write("Widget.he.json", LocalizationFileFakeData.Valid)]);
 
         // Assert
-        Assert.Empty(resolved);
+        Assert.Null(resolved);
     }
 
     private static Compilation Compile(string source)
         => CompilationTestFactory.Unreferenced(source);
 
-    private static LoadedProject Project(Compilation compilation)
-        => new(ProjectPath, compilation, HasGeneratedSources: false, HasRazorMarkup: false);
+    private static ProjectTranslations Resolve(TempDirectory directory, Compilation compilation, params string[] files)
+        => TranslationFiles.Resolve(new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false), files)!;
 }

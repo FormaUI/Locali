@@ -145,16 +145,19 @@ A file rule reports in the 100s, a call-site rule in the 200s.
 | LOC0109 | Error | A translation fills a hole its key does not name |
 | LOC0110 | Error | A translation writes text shaped like a hole the runtime cannot read |
 | LOC0111 | Error | The file declares the same key more than once |
-| LOC0112 | Error | No type exists with the full name a translation file's own location implies |
+| LOC0112 | Error | A translation file, or a section of one, names a type that does not exist |
 
-LOC0112 covers the drift a rename opens: `JsonStringLocaleFactory` resolves a file by the
-owning type's full name, never by where the file sits, so moving a folder or renaming a type
-leaves the translations stranded while every other check stays green. The rule reads the name
-the default embedding convention gives a file and asks whether any type answers to it,
-allowing for the leading segments `ResourcesPath` inserts, the arity a generic's metadata name
-carries, and the missing root of a type in the global namespace. A file the project embeds
-under an explicit `LogicalName` is beyond it, because that decouples the file's position from
-its logical name entirely.
+LOC0112 covers the drift a rename opens: the runtime resolves translations by the owning
+type's full name, from a file's position and the sections inside it, so moving a folder,
+renaming a type, or misspelling a section leaves the translations stranded while every other
+check stays green. The rule runs the runtime's own walk, from the file named for the assembly
+down to the file named for the type, for every type the project declares and every culture
+its files carry, and reports whatever no walk read: a whole file when nothing in it is
+reached, a section when it names no type, or the entries outside any section in a file read
+for its sections alone. It reads a file under every name the build could give it, allowing
+for the leading segments `ResourcesPath` inserts, and names generic and nested types as the
+runtime does. A file the project embeds under an explicit `LogicalName` is beyond it, because
+that decouples the file's position from its logical name entirely.
 
 LOC0109 catches the silent case: `"Stored {stored}."` translated as `"…{stord}…"` renders
 `{stord}` literally. A name may be written as a brace hole or as a plural expression's
@@ -172,7 +175,7 @@ translation is legal. Reordering or dropping a name is legal.
 | LOC0205 | Warning | A plural expression omits `other` | renders nothing, silently |
 | LOC0206 | Warning | A project's Razor markup went unchecked | — |
 | LOC0208 | Error | A key writes text shaped like a hole the runtime cannot read | renders as written, silently |
-| LOC0209 | Warning | A key has no entry in a translation file its type owns | renders untranslated, silently |
+| LOC0209 | Warning | A key is not answered in a culture its type is translated for | renders untranslated, silently |
 | LOC0210 | Warning | A lookup writes its key as an expression | unchecked, whatever it reads |
 | LOC0211 | Warning | A key carries holes but no words anywhere else | works, but names no translation |
 | LOC0212 | Warning | An expression key carries no words in any field | works, but names no translation |
@@ -186,10 +189,13 @@ falling back to the key is exactly what an absent entry is defined to do, so the
 renders in English and every other rule stays green.
 
 The type is read from the receiver's `IStringLocale<T>`, so the rule needs the semantic
-path; a lookup through the unbound `IStringLocale` names no file to check against. Only
-files the type already owns are checked, because a component with no translations at all is
-unlocalized rather than under-translated. One diagnostic is reported per key per file, at
-the first call site writing it, so a key used in ten places reports twice and not twenty.
+path; a lookup through the unbound `IStringLocale` names no type to check against. The rule
+asks the runtime's own walk what the type reads in each culture the project's files carry,
+whether from the file named for the type, a section of its folder's file, or the assembly's
+file. Only cultures the type already has translations in are checked, because a component
+with no translations at all is unlocalized rather than under-translated. One diagnostic is
+reported per key per culture, at the first call site writing it, so a key used in ten places
+reports twice and not twenty.
 
 Writing the key with a JSON `null` answers it:
 
@@ -300,6 +306,10 @@ Nothing at the call site decides these, so there is nothing to judge:
 - **A translation file the run did not name.** LOC0112 and LOC0209 both read the files a
   project owns, so linting a lone `.razor` file checks its call sites and nothing else.
   Point `--path` at the project, the solution, or a folder to get them.
+- **A host's own `locales` folder.** Files under a `locales` folder beside the project
+  translate other assemblies' types, which the runtime reads from that folder rather than
+  from the assembly. LOC0112 and LOC0209 read a project's embedded files alone; the file
+  rules still read every file.
 
 ## Contributing
 

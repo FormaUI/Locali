@@ -18,6 +18,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\..\Forma\src\Forma.Framework.Localization\Forma.Framework.Localization.csproj" />
         <ProjectReference Include="..\..\..\Forma\src\Forma.Framework.Localization.Json\Forma.Framework.Localization.Json.csproj" />
         <ProjectReference Include="..\..\src\Forma.Locali\Forma.Locali.csproj" />
     </ItemGroup>

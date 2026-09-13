@@ -16,10 +16,12 @@ The runtime lives in the sibling Forma repository as `Forma.Framework.Localizati
 
 ## Files
 
-- A type's translations live in `{Type}.{culture}.json` files resolved from the type's **full name**, never from where the file sits, which is the drift LOC0112 exists to catch.
+- A type's translations are resolved from the type's **full name**, never from where a file sits, which is the drift LOC0112 exists to catch. They live in the file named for the type, `{Type}.{culture}.json`, or in a file named for a namespace above it, beside that folder or inside it under the folder's own name, where a nested object is a section completing the rest of the name; the file named for the assembly sits at the project root. A file closer to the type wins over one higher up.
+- The runtime's walk, `LocaleSource` in `Forma.Framework.Localization`, is the only authority on which file a type reads; the linter runs that walk over the project tree through `ProjectLocaleSource` and never re-derives the layout.
 - The file's first property is the metadata entry: `"$localization": "SchemaVersion: 1.0.0; Culture: he;"` — required fields in that order, and the culture must agree with the file's own name.
-- Every other property maps English source text to its translation. A JSON `null` value declares that the key's right translation *is* the source text; the runtime reads it as found, which differs from absent wherever a caller can tell (`ResourceNotFound`, `RequireMatchingLocalization`, `GetAllStrings`).
+- Every other property maps English source text to its translation, or holds a section. A JSON `null` value declares that the key's right translation *is* the source text; the runtime reads it as found, which differs from absent wherever a caller can tell (`ResourceNotFound`, `RequireMatchingLocalization`, `GetAllStrings`).
 - A parent culture answers for its children: `Widget.es-419.json` may carry only what differs from `Widget.es.json`, and only a key neither declares is missing.
+- A `locales` folder beside a project is the host's, translating other assemblies' types; the file rules read it, the type-bound rules do not.
 
 ## Holes and expressions
 

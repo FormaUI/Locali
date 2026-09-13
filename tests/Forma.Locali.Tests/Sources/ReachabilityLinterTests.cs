@@ -1,77 +1,192 @@
 namespace Forma.Locali.Tests.Sources;
 
-using System.Globalization;
-
-using Microsoft.CodeAnalysis;
+using Forma.Locali.Projects;
 
 public sealed class ReachabilityLinterTests
 {
-    private const string ExpectedName = "Scratch.Components.Explorer.FormaGallery";
+    private const string Widget = """
+        namespace Scratch.Components;
+
+        public sealed class Widget;
+        """;
 
     [Fact]
-    public void Should_report_a_file_no_type_answers_to()
+    public void Should_report_a_file_no_type_reads()
     {
         // Arrange
-        var file = Unresolved(Path.Combine("C:", "Scratch", "FormaGallery.he.json"));
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", "Gallery.he.json"), LocalizationFileFakeData.Valid);
 
         // Act
-        var diagnostics = new ReachabilityLinter().Lint([file]);
+        var diagnostic = Assert.Single(Lint(directory, Widget, file));
 
         // Assert
-        var diagnostic = Assert.Single(diagnostics);
-
         Assert.Multiple(
             () => Assert.Equal(LintCodes.UnreachableTranslation, diagnostic.Code),
-            () => Assert.Equal(file.Path, diagnostic.Path),
-            () => Assert.Contains(ExpectedName, diagnostic.Message, StringComparison.Ordinal));
+            () => Assert.Equal(file, diagnostic.Path),
+            () => Assert.Contains("Scratch.Components.Gallery", diagnostic.Message, StringComparison.Ordinal));
     }
 
     [Fact]
-    public void Should_leave_a_file_a_type_still_answers_to_alone()
+    public void Should_leave_the_file_named_for_a_type_alone()
     {
         // Arrange
-        var compilation = CompilationTestFactory.Unreferenced("""
-            namespace Scratch;
-
-            public sealed class FormaExplorer;
-            """);
-        var file = new TranslationFile(
-            Path.Combine("C:", "Scratch", "FormaExplorer.he.json"),
-            CultureInfo.GetCultureInfo("he"),
-            compilation.GetTypeByMetadataName("Scratch.FormaExplorer"),
-            "Scratch.FormaExplorer");
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
 
         // Act
-        var diagnostics = new ReachabilityLinter().Lint([file]);
+        var diagnostics = Lint(directory, Widget, file);
 
         // Assert
         Assert.Empty(diagnostics);
     }
 
     [Fact]
-    public void Should_report_every_file_no_type_answers_to()
+    public void Should_let_the_file_at_the_conventional_position_answer_before_one_shedding_folders()
     {
-        // Arrange
-        var first = Unresolved(Path.Combine("C:", "Scratch", "FormaGallery.he.json"));
-        var second = Unresolved(Path.Combine("C:", "Scratch", "FormaGallery.es.json"));
+        // Arrange — a deeper file sheds to the same name, and is listed first.
+        using var directory = new TempDirectory();
+        var shed = directory.Write(Path.Combine("Resources", "Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var conventional = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
 
         // Act
-        var diagnostics = new ReachabilityLinter().Lint([first, second]);
+        var diagnostics = Lint(directory, Widget, shed, conventional);
 
         // Assert
-        Assert.Equal(2, diagnostics.Count);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Path == conventional);
+    }
+
+    [Fact]
+    public void Should_leave_a_folders_file_alone_when_its_sections_name_types()
+    {
+        // Arrange — the file named for the folder, inside it, with a section per type.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", "Components.he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+
+        // Act
+        var diagnostics = Lint(directory, Widget, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_leave_a_folders_file_alone_beside_the_folder_too()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write("Components.he.json", LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+
+        // Act
+        var diagnostics = Lint(directory, Widget, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_a_section_that_names_no_type()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", "Components.he.json"), LocalizationFileFakeData.WithSections(("Widget", "Today", "היום"), ("Gallery", "Today", "היום")));
+
+        // Act
+        var diagnostic = Assert.Single(Lint(directory, Widget, file));
+
+        // Assert
+        Assert.Contains("Section 'Gallery'", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_report_entries_outside_any_section_in_a_folders_file()
+    {
+        // Arrange — a folder's file is read for its sections; a stray entry at the top level belongs to no type.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", "Components.he.json"), LocalizationFileFakeData.WithSectionAndStray("Widget", "Today", "היום", "Stray", "תועה"));
+
+        // Act
+        var diagnostic = Assert.Single(Lint(directory, Widget, file));
+
+        // Assert
+        Assert.Contains("outside any section", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_reach_a_type_through_the_assemblys_file()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write("Scratch.he.json", LocalizationFileFakeData.WithSection("Components.Widget", "Today", "היום"));
+
+        // Act
+        var diagnostics = Lint(directory, Widget, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_reach_a_generic_type_whose_arity_the_file_drops()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write("GenericArity.he.json", LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostics = Lint(directory, "namespace Scratch; public sealed class GenericArity<TValue>;", file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_reach_a_type_in_the_global_namespace()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write("GlobalRoot.he.json", LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostics = Lint(directory, "public sealed class GlobalRoot;", file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_reach_a_type_under_a_root_namespace_apart_from_the_assembly_name()
+    {
+        // Arrange — an AddOn embeds under the namespace it borrows, not its own name.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Emojis", "TwemojiEmojiProvider.he.json"), LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Unreferenced("namespace Forma.Framework.Emojis; public sealed class TwemojiEmojiProvider;");
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false, "Forma.Framework");
+
+        // Act
+        var diagnostics = new ReachabilityLinter().Lint(TranslationFiles.Resolve(project, [file])!);
+
+        // Assert
+        Assert.Empty(diagnostics);
     }
 
     [Fact]
     public void Should_report_nothing_when_the_project_owns_no_translation_files()
     {
+        // Arrange
+        using var directory = new TempDirectory();
+
         // Act
-        var diagnostics = new ReachabilityLinter().Lint([]);
+        var diagnostics = Lint(directory, Widget);
 
         // Assert
         Assert.Empty(diagnostics);
     }
 
-    private static TranslationFile Unresolved(string path)
-        => new(path, CultureInfo.GetCultureInfo("he"), null, ExpectedName);
+    private static IReadOnlyList<LintDiagnostic> Lint(TempDirectory directory, string source, params string[] files)
+    {
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(source), false, false);
+
+        return new ReachabilityLinter().Lint(TranslationFiles.Resolve(project, files)!);
+    }
 }

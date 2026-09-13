@@ -93,15 +93,15 @@ public sealed class LintService(
 
         foreach (var project in await _loader.LoadAsync(target.Projects, cancellationToken).ConfigureAwait(false))
         {
-            // Both rules over a project's translation files read the same resolution, so it is made once.
-            var owned = TranslationFiles.Resolve(project, target.LocalizationFilesOf(project.Path));
             var sources = _sources.Lint(project, wanted, cancellationToken);
-
             diagnostics.AddRange(sources.Diagnostics);
-            diagnostics.AddRange(_reachability.Lint(owned));
-            diagnostics.AddRange(await _coverage
-                .LintAsync(owned, sources.CallSites, cancellationToken)
-                .ConfigureAwait(false));
+
+            // Both rules over a project's translation files read the same resolution, so it is made once.
+            if (TranslationFiles.Resolve(project, target.LocalizationFilesOf(project.Path)) is { } translations)
+            {
+                diagnostics.AddRange(_reachability.Lint(translations));
+                diagnostics.AddRange(_coverage.Lint(translations, sources.CallSites));
+            }
         }
 
         return diagnostics;

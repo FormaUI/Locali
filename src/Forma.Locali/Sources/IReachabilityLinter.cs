@@ -2,10 +2,10 @@ namespace Forma.Locali.Sources;
 
 using Forma.Locali.Diagnostics;
 
-/// <summary>Checks that a project's translation files can still be found by the type they were named for.</summary>
+/// <summary>Checks that every translation a project's files declare is one some type of the project reads.</summary>
 public interface IReachabilityLinter
 {
-    /// <summary>Every one of the project's translation files that no type answers to.</summary>
-    /// <param name="localizationFiles">The project's translation files, already resolved to their types.</param>
-    IReadOnlyList<LintDiagnostic> Lint(IReadOnlyList<TranslationFile> localizationFiles);
+    /// <summary>Every file, and every section of a file, that no type of the project reads.</summary>
+    /// <param name="translations">The project's translation files, resolved against its types.</param>
+    IReadOnlyList<LintDiagnostic> Lint(ProjectTranslations translations);
 }
