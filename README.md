@@ -168,8 +168,9 @@ inside a section or as something other than an object, a `locali` entry this lin
 define, an ignore list that is not a list of text, and a name that is no rule, so a misplaced
 entry or a misspelled identifier silences nothing. Another tool's entries are left to it.
 
-`$shared` is the runtime's: a section whose entries every type reached through the file gets, so
-a translation shared by every component in a category is written once. It holds translations
+`$shared` is the runtime's: a section, at any node, whose entries every type reached through that
+node gets, so a translation shared by every component in a category is written once and one
+shared by a folder's types alone sits in that folder's section. It holds translations
 alone: the runtime refuses a `$shared` that is not an object, and one nesting a section or
 another `$shared`, so LOC0117 reports both. The file rules read it as a section named `$shared`,
 so LOC0113 compares it with the sections beside it, and a section that words a shared key
