@@ -44,6 +44,32 @@ public sealed class LocaliConfigFileTests
     }
 
     [Fact]
+    public void Should_skip_a_comment_in_the_file()
+    {
+        // Arrange
+        var document = LocaliConfigFileTestFactory.Read(
+            """
+            {
+              // ignore the showcase page's missing translation on purpose
+              "ignore": { "Widget.he.json": ["LOC0113"] }
+            }
+            """);
+
+        // Assert
+        Assert.Single(document.IgnoreEntries);
+    }
+
+    [Fact]
+    public void Should_allow_a_trailing_comma()
+    {
+        // Arrange
+        var document = LocaliConfigFileTestFactory.Read("""{ "exclude": ["*/Fixtures/*"], }""");
+
+        // Assert
+        Assert.Single(document.ExcludeEntries);
+    }
+
+    [Fact]
     public void Should_report_a_top_level_that_is_not_an_object()
     {
         // Act

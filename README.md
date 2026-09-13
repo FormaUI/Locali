@@ -152,7 +152,8 @@ project both take effect, the nearer file adding to the root's rather than repla
 globs read exactly like `--exclude`'s: case-insensitive, forward slashes, and `*` or `**` —
 the two mean the same thing — spanning separators; each one is read relative to the folder
 its own `.locali.json` sits in, so the file stays correct wherever the tree that carries it
-is checked out.
+is checked out. Its JSON tolerates the same things a translation file's does: a `//` or `/*
+*/` comment and a trailing comma are both skipped rather than reported as invalid.
 
 ```json
 {
@@ -204,6 +205,9 @@ linting configuration cannot make a finding disappear without a trace.
 | LOC0115 | Warning | A reserved entry sits after an entry it has to precede |
 | LOC0116 | Error | A key or section is shaped like a reserved entry the runtime does not define |
 | LOC0117 | Error | The `$shared` entry is not an object holding translations alone |
+
+LOC0100 accepts what the runtime's own reader does: a `//` or `/* */` comment and a trailing
+comma are both skipped rather than reported as invalid JSON.
 
 LOC0111 counts a key once per section, because a key repeats across sections whenever two
 types share a string; LOC0113 reads those repeats and reports the ones that disagree.

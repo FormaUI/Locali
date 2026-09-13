@@ -54,6 +54,41 @@ public sealed class LocalizationDocumentTests
     }
 
     [Fact]
+    public void Should_skip_a_comment_in_the_file()
+    {
+        // Arrange
+        var content = Encoding.UTF8.GetBytes(
+            """
+            {
+              // metadata comes first
+              "$localization": "SchemaVersion: 1.0.0; Culture: he;",
+              "Today": "היום"
+            }
+            """);
+
+        // Act
+        var read = LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
+
+        // Assert
+        Assert.True(read);
+        Assert.Equal(["$localization", "Today"], document!.Entries.Select(entry => entry.Name));
+    }
+
+    [Fact]
+    public void Should_allow_a_trailing_comma()
+    {
+        // Arrange
+        var content = Encoding.UTF8.GetBytes("""{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "Today": "היום", }""");
+
+        // Act
+        var read = LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
+
+        // Assert
+        Assert.True(read);
+        Assert.Equal(["$localization", "Today"], document!.Entries.Select(entry => entry.Name));
+    }
+
+    [Fact]
     public void Should_keep_the_marker_at_the_top_level()
     {
         // Arrange
