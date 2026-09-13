@@ -310,6 +310,11 @@ Nothing at the call site decides these, so there is nothing to judge:
   translate other assemblies' types, which the runtime reads from that folder rather than
   from the assembly. LOC0112 and LOC0209 read a project's embedded files alone; the file
   rules still read every file.
+- **A name two files could be embedded under.** `Resources/Fixtures/Widget.he.json` and
+  `Fixtures/Widget.he.json` both answer to `Fixtures.Widget` once the folders `ResourcesPath`
+  may insert are allowed for, and which one the runtime reads depends on a setting no project
+  file records. LOC0112 leaves both alone rather than guess, and neither serves a key to
+  LOC0209.
 
 ## Contributing
 

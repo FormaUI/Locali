@@ -171,6 +171,21 @@ public sealed class ReachabilityLinterTests
     }
 
     [Fact]
+    public void Should_stay_silent_on_a_name_two_files_claim()
+    {
+        // Arrange — one of the two is unreachable, but which depends on a ResourcesPath the linter cannot see.
+        using var directory = new TempDirectory();
+        var scoped = directory.Write(Path.Combine("Resources", "Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var plain = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostics = Lint(directory, Widget, scoped, plain);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_report_nothing_when_the_project_owns_no_translation_files()
     {
         // Arrange

@@ -17,7 +17,7 @@ public sealed class ReachabilityLinter : IReachabilityLinter
         var reachable = GetReachable(translations);
         var diagnostics = new List<LintDiagnostic>();
 
-        foreach (var file in translations.Files)
+        foreach (var file in translations.Files.Where(file => !translations.Source.IsContested(file)))
         {
             var read = reachable.GetValueOrDefault(file.Path) ?? [];
             var unreachable = file.File.GetEntries()
