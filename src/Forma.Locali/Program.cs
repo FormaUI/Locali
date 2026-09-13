@@ -104,6 +104,7 @@ internal static class Program
         builder.Services.AddSingleton<ICallSiteRuleChecker, BareHoleKeyChecker>();
         builder.Services.AddSingleton<ICallSiteRuleChecker, BareExpressionKeyChecker>();
         builder.Services.AddSingleton<ICallSiteRuleChecker, ReservedLookupShapeChecker>();
+        builder.Services.AddSingleton<ICallSiteRuleChecker, ReformattedLookupChecker>();
 
         builder.Services.AddSingleton<ISchemaLinter, SchemaLinter>();
         builder.Services.AddSingleton<ISourceLinter, SourceLinter>();

@@ -214,4 +214,26 @@ public sealed class SyntacticCallSiteFinderTests
         // Assert
         Assert.Equal(["Today"], sites.Select(site => site.Key));
     }
+
+    [Fact]
+    public void Should_tell_a_lookup_passed_to_string_format_from_one_that_is_not()
+    {
+        // Arrange
+        var compilation = CompilationTestFactory.Unreferenced("""
+            namespace Scratch;
+
+            public sealed class Widget
+            {
+                private IStringLocale<Widget> keys;
+
+                public object Show(int count) => string.Format(keys["Stored {Count}."], count);
+            }
+            """);
+
+        // Act
+        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Sites;
+
+        // Assert
+        Assert.True(Assert.Single(sites).IsFormatArgument);
+    }
 }

@@ -338,4 +338,58 @@ public sealed class CallSiteRuleTests
         // Assert
         Assert.Empty(diagnostics);
     }
+
+    [Fact]
+    public void Should_report_a_lookup_passed_to_string_format()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Show() => string.Format(locale["Stored {Count} of {Total}."], 1, 2);""");
+
+        // Assert
+        Assert.Contains(LintCodes.ReformattedLookup, diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_report_a_lookup_passed_to_string_format_with_a_culture_provider()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Show() => string.Format(System.Globalization.CultureInfo.InvariantCulture, locale["Stored {Count} of {Total}."], 1, 2);""");
+
+        // Assert
+        Assert.Contains(LintCodes.ReformattedLookup, diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_report_a_lookup_carrying_its_own_values_when_still_passed_to_string_format()
+    {
+        // Act — the lookup already fills its own holes; string.Format still reformats the result.
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Show() => string.Format(locale["Stored {Count} of {Total}.", 1, 2]);""");
+
+        // Assert
+        Assert.Contains(LintCodes.ReformattedLookup, diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_leave_a_lookup_that_is_not_passed_to_string_format_alone()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Show() => locale["Stored {Count} of {Total}.", 1, 2];""");
+
+        // Assert
+        Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_leave_a_lookup_passed_to_an_unrelated_method_alone()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint("""public string Show() => string.Concat(locale["Saved."], "!");""");
+
+        // Assert
+        Assert.DoesNotContain(LintCodes.ReformattedLookup, diagnostics.Codes());
+    }
 }

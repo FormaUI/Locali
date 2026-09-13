@@ -19,15 +19,44 @@ internal static class CallSiteReader
     {
         var list = arguments.Arguments;
 
+        var formatArgument = IsFormatArgument(arguments, model);
+
         return list.FirstOrDefault()?.Expression switch
         {
             LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression)
-                => Literal(tree, literal, Supplies(symbol, model, list), list.Count - 1),
+                => Literal(tree, literal, Supplies(symbol, model, list), list.Count - 1, formatArgument),
             { } expression when Constant(expression, model) is { } text
-                => Constant(tree, expression, text, Supplies(symbol, model, list), list.Count - 1),
+                => Constant(tree, expression, text, Supplies(symbol, model, list), list.Count - 1, formatArgument),
             _ => null,
         };
     }
+
+    // The lookup's own expression is the argument list's parent, whether it opens with a bracket or a paren.
+    private static bool IsFormatArgument(BaseArgumentListSyntax arguments, SemanticModel? model)
+        => arguments.Parent?.Parent is ArgumentSyntax { Parent: ArgumentListSyntax { Parent: InvocationExpressionSyntax invocation } }
+            && IsStringFormat(invocation, model);
+
+    // A bound compilation names the real System.String; without one, matching the name is all this path has.
+    private static bool IsStringFormat(InvocationExpressionSyntax invocation, SemanticModel? model)
+    {
+        if (invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Format" } member)
+        {
+            return false;
+        }
+
+        return model?.GetSymbolInfo(invocation).Symbol is { } symbol
+            ? symbol is IMethodSymbol { ContainingType.SpecialType: SpecialType.System_String }
+            : IsStringType(member.Expression);
+    }
+
+    private static bool IsStringType(ExpressionSyntax expression)
+        => expression switch
+        {
+            PredefinedTypeSyntax { Keyword.ValueText: "string" } => true,
+            IdentifierNameSyntax { Identifier.ValueText: "String" } => true,
+            MemberAccessExpressionSyntax { Name.Identifier.ValueText: "String" } => true,
+            _ => false,
+        };
 
     /// <summary>Where a lookup writes its key as an interpolated string with holes, or null when it does not.</summary>
     /// <param name="tree">The tree the arguments were parsed from.</param>
@@ -54,13 +83,15 @@ internal static class CallSiteReader
         ExpressionSyntax expression,
         string key,
         LocalizerArguments supplies,
-        int values)
+        int values,
+        bool formatArgument)
         => new(
             key,
             tree.GetMappedLineSpan(expression.Span),
             0,
             supplies,
-            values);
+            values,
+            formatArgument);
 
     // Passing the collection itself rather than its items leaves nothing to count.
     private static bool Collection(ITypeSymbol argument, ITypeSymbol parameter, ITypeSymbol element)
@@ -79,13 +110,15 @@ internal static class CallSiteReader
         SyntaxTree tree,
         LiteralExpressionSyntax literal,
         LocalizerArguments supplies,
-        int values)
+        int values,
+        bool formatArgument)
         => new(
             literal.Token.ValueText,
             tree.GetMappedLineSpan(literal.Span),
             Offset(literal),
             supplies,
-            values);
+            values,
+            formatArgument);
 
     // The key's text starts after the opening quote, which a raw or verbatim literal makes more than one character.
     private static int Offset(LiteralExpressionSyntax literal)

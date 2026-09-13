@@ -22,6 +22,7 @@ public static class SourceLinterTestFactory
             new BareHoleKeyChecker(),
             new BareExpressionKeyChecker(),
             new ReservedLookupShapeChecker(),
+            new ReformattedLookupChecker(),
         ];
 
     /// <summary>What the call-site rules report over members of a class that holds a localizer.</summary>

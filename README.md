@@ -229,8 +229,19 @@ translation is legal. Reordering or dropping a name is legal.
 | LOC0212 | Warning | An expression key carries no words in any field | works, but names no translation |
 | LOC0213 | Error | A lookup writes its key as an interpolated string with holes | the formatted text becomes the key, silently |
 | LOC0214 | Error | A lookup writes a key shaped like a reserved entry | falls back to the key, which no file can answer |
+| LOC0215 | Error | A lookup is passed to string.Format | throws once a translation names a hole |
 
 LOC0200 and LOC0207 are retired, and neither number is reused.
+
+LOC0215 catches a lookup handed straight to `string.Format`: the runtime already substitutes
+a lookup's values into its holes, so wrapping the result in `string.Format` reads the
+translated text as a *second*, unrelated composite format string. A key shaped like
+`"Stored {0} of {1}."` survives that by accident, because a hole named `{0}` is also a valid
+.NET index; the same key written the way every other rule expects, `"Stored {stored} of
+{total}."`, throws `FormatException` the moment any culture is active, since `stored` is not
+a number `string.Format` can read. The rule reports the lookup itself, wherever it sits as an
+argument to `string.Format` or `String.Format`, and does not depend on whether the compilation
+bound the call, so it runs the same on the syntactic path.
 
 LOC0209 catches the drift a new string opens. Adding `L["Details columns"]` to a component
 whose `he` and `es` files already exist leaves both files behind, and nothing else notices:
@@ -356,6 +367,9 @@ Nothing at the call site decides these, so there is nothing to judge:
 - **An overload nothing resolved.** Only the syntactic path reaches this, and only when
   the compilation did not bind the call. Build with the references in place and the
   semantic path takes over.
+- **A result string.Format never sees directly.** LOC0215 reads the lookup's own syntax, so
+  a result stored in a variable and formatted later, or passed through a method, is beyond
+  it; only a lookup written straight into the argument list is certain.
 - **A translation file the run did not name.** LOC0112 and LOC0209 both read the files a
   project owns, so linting a lone `.razor` file checks its call sites and nothing else.
   Point `--path` at the project, the solution, or a folder to get them.
