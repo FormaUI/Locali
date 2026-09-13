@@ -147,9 +147,29 @@ A file rule reports in the 100s, a call-site rule in the 200s.
 | LOC0111 | Error | The file declares the same key more than once |
 | LOC0112 | Error | A translation file, or a section of one, names a type that does not exist |
 | LOC0113 | Warning | The file translates the same key differently across its sections |
+| LOC0114 | Error | The `$tools` entry is misplaced or malformed, or its `locali.ignore` list names something that is not a rule |
+| LOC0115 | Warning | A reserved entry sits after an entry it has to precede |
 
 LOC0111 counts a key once per section, because a key repeats across sections whenever two
 types share a string; LOC0113 reads those repeats and reports the ones that disagree.
+
+A file leads with its reserved entries, in this order: `$localization`, then `$tools` where the
+file carries one, then `$shared` where it carries one, then its translations and sections. LOC0115
+reports one out of that order.
+
+`$tools` holds what tools read from a file and the runtime does not, each tool's entries under
+keys naming it. This linter reads `locali.ignore`, a list of the rules the file is left out of:
+`"$tools": { "locali.ignore": ["LOC0113"] }` keeps a file that translates one key two ways on
+purpose out of LOC0113's report. It applies to the file's own report, LOC0112 included, and never
+to a call site's. The entry itself is always judged: LOC0114 reports a `$tools` entry written
+inside a section or as something other than an object, a `locali` entry this linter does not
+define, an ignore list that is not a list of text, and a name that is no rule, so a misplaced
+entry or a misspelled identifier silences nothing. Another tool's entries are left to it.
+
+`$shared` is the runtime's: a section whose entries every type reached through the file gets, so
+a translation shared by every component in a category is written once. The file rules read it as
+a section named `$shared`, so LOC0113 compares it with the sections beside it, and a section that
+words a shared key differently on purpose says so through `locali.ignore`.
 
 LOC0113 is a warning because both translations load: each type shows the one its own
 section declares, so the same English text reads two ways across the application. It

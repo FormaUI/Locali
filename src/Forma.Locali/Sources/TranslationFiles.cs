@@ -7,6 +7,7 @@ using Forma.Framework.Localization.Files;
 using Forma.Framework.Localization.Json;
 using Forma.Locali.Documents;
 using Forma.Locali.Projects;
+using Forma.Locali.Rules;
 
 /// <summary>Resolves a project's translation files against the types the runtime finds them by.</summary>
 public static class TranslationFiles
@@ -51,7 +52,7 @@ public static class TranslationFiles
             }
 
             // A file that will not read is the file rules' business, and the runtime reads nothing from it.
-            if (Read(format, fullPath, culture) is not { } read)
+            if (Read(format, fullPath, culture) is not var (read, ignored))
             {
                 continue;
             }
@@ -59,7 +60,7 @@ public static class TranslationFiles
             var baseName = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(fullPath));
             var names = GetNames(root, segments, baseName, culture, format.Extension);
 
-            files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), names[0][..^(culture.Length + format.Extension.Length + 1)], names, read));
+            files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), names[0][..^(culture.Length + format.Extension.Length + 1)], names, read, ignored));
         }
 
         return new ProjectTranslations(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, format);
@@ -75,13 +76,18 @@ public static class TranslationFiles
                 .Select(dropped => $"{string.Join('.', new[] { root }.Concat(segments[dropped..]).Append(baseName))}.{culture}{extension}"),
         ];
 
-    private static LocaleFile? Read(JsonLocaleFileFormat format, string path, string culture)
+    // The tools entry is the linter's own, which the runtime's format leaves out, so the same bytes are read as a document for it.
+    private static (LocaleFile File, IgnoredRules Ignored)? Read(JsonLocaleFileFormat format, string path, string culture)
     {
         try
         {
-            using var stream = File.OpenRead(path);
+            var content = File.ReadAllBytes(path);
+            using var stream = new MemoryStream(content, writable: false);
 
-            return format.Read(stream, path, culture);
+            var file = format.Read(stream, path, culture);
+            var ignored = LocalizationDocument.TryRead(path, content, out var document, out _) ? IgnoredRules.Read(document!) : IgnoredRules.None;
+
+            return (file, ignored);
         }
         catch (IOException)
         {

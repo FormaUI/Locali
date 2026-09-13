@@ -224,4 +224,19 @@ public sealed class InconsistentTranslationCheckerTests
         // Assert
         Assert.Empty(diagnostics);
     }
+
+    [Fact]
+    public void Should_leave_another_tools_entries_alone()
+    {
+        // Arrange — the runtime never reads what sits under the tools entry, so it is no translation.
+        var document = LocalizationDocumentTestFactory.Read(
+            LocalizationFileFakeData.HebrewName,
+            """{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "$tools": { "crowdin.label": "Bold" }, "Widget": { "crowdin.label": "מודגש" } }""");
+
+        // Act
+        var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
 }

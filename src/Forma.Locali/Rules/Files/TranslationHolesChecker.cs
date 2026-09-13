@@ -18,8 +18,8 @@ public sealed class TranslationHolesChecker : ILocalizationFileRuleChecker
 
         foreach (var entry in context.Document.Entries)
         {
-            // The metadata entry is not a translation, and a null value is the key left as written.
-            if (!entry.IsText || entry.Value is not { } translation || entry.Name == LocalizationSchema.Marker)
+            // The metadata entry and a tool's entries are not translations, and a null value is the key left as written.
+            if (!entry.IsText || entry.IsInsideToolsSection || entry.Value is not { } translation || entry.Name == LocalizationSchema.Marker)
             {
                 continue;
             }

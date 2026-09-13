@@ -23,6 +23,8 @@ public static class LintCodes
             DuplicateKey,
             UnreachableTranslation,
             InconsistentTranslation,
+            MalformedTools,
+            ReservedEntryOutOfOrder,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
@@ -174,6 +176,18 @@ public static class LintCodes
         "LOC0109",
         LintSeverity.Error,
         "A translation fills a hole its key does not name, so it renders as written.");
+
+    /// <summary>The tools entry is misplaced or malformed, or what it holds for this linter names something this linter does not define.</summary>
+    public static LintCode MalformedTools { get; } = new(
+        "LOC0114",
+        LintSeverity.Error,
+        "The tools entry is misplaced or malformed, or what it holds for this linter names something this linter does not define, so nothing is left out.");
+
+    /// <summary>A reserved entry sits after an entry it has to precede.</summary>
+    public static LintCode ReservedEntryOutOfOrder { get; } = new(
+        "LOC0115",
+        LintSeverity.Warning,
+        "A reserved entry sits after an entry it has to precede: the metadata entry, then the tools entry, then the shared section lead a file.");
 
     /// <summary>A translation file, or a section of one, names a type that does not exist.</summary>
     public static LintCode UnreachableTranslation { get; } = new(

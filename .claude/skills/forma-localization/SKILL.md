@@ -22,6 +22,7 @@ The runtime lives in the sibling Forma repository as `Forma.Framework.Localizati
 - Every other property maps English source text to its translation, or holds a section. A JSON `null` value declares that the key's right translation *is* the source text; the runtime reads it as found, which differs from absent wherever a caller can tell (`ResourceNotFound`, `RequireMatchingLocalization`, `GetAllStrings`).
 - A parent culture answers for its children: `Widget.es-419.json` may carry only what differs from `Widget.es.json`, and only a key neither declares is missing.
 - A `locales` folder beside a project is the host's, translating other assemblies' types; the file rules read it, the type-bound rules do not.
+- A file leads with its reserved entries in order: `$localization`, then `$tools`, an object holding each tool's entries under keys naming it, then `$shared`, the section whose entries every type the file reaches gets. The runtime reads `$shared` and nothing under `$tools`; the linter reads `locali.ignore` there, a list of the rule identifiers the file is left out of, judges the `$tools` entry itself under LOC0114 and the order under LOC0115, and leaves another tool's entries alone.
 
 ## Holes and expressions
 

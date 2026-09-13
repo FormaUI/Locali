@@ -94,14 +94,41 @@ public sealed class LocalizationDocument
             var valueOffset = (int)reader.TokenStartIndex;
             var isText = reader.TokenType is JsonTokenType.String or JsonTokenType.Null;
             var value = reader.TokenType == JsonTokenType.String ? reader.GetString() : null;
+            var items = default(IReadOnlyList<string>);
 
-            if (!isText)
+            if (reader.TokenType == JsonTokenType.StartArray)
+            {
+                items = ReadItems(ref reader);
+            }
+            else if (!isText)
             {
                 reader.Skip();
             }
 
-            entries.Add(new LocalizationEntry(section, name, value, isText, nameOffset, valueOffset, propertyIndex));
+            entries.Add(new LocalizationEntry(section, name, value, isText, items, nameOffset, valueOffset, propertyIndex));
         }
+    }
+
+    // An array is read through to its end either way; it is kept only when every item is a string.
+    private static List<string>? ReadItems(ref Utf8JsonReader reader)
+    {
+        var items = new List<string>();
+        var allText = true;
+
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+        {
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                items.Add(reader.GetString() ?? string.Empty);
+            }
+            else
+            {
+                allText = false;
+                reader.Skip();
+            }
+        }
+
+        return allText ? items : null;
     }
 
     /// <summary>Builds a diagnostic pointing at a byte offset in this file.</summary>

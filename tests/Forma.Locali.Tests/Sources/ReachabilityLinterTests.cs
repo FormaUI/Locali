@@ -99,6 +99,20 @@ public sealed class ReachabilityLinterTests
     }
 
     [Fact]
+    public void Should_leave_a_file_that_ignores_the_rule_alone()
+    {
+        // Arrange — a section names no type, which the file says is meant.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", "Components.he.json"), LocalizationFileFakeData.WithIgnore(["LOC0112"], ("Widget", "Today", "היום"), ("Gallery", "Today", "היום")));
+
+        // Act
+        var diagnostics = Lint(directory, Widget, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_report_entries_outside_any_section_in_a_folders_file()
     {
         // Arrange — a folder's file is read for its sections; a stray entry at the top level belongs to no type.

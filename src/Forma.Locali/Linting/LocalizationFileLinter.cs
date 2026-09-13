@@ -5,6 +5,7 @@ using System.Text;
 using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
+using Forma.Locali.Rules;
 
 /// <summary>Reads a file and runs the schema rules over it.</summary>
 /// <param name="schema">Runs the rules once the file is readable.</param>
@@ -43,9 +44,15 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
                 : [];
         }
 
-        return document!.Entries.Any(static entry => entry.IsTopLevel && entry.Name == LocalizationSchema.Marker) || culture is not null
-            ? _schema.Lint(document, culture)
-            : [];
+        if (!document!.Entries.Any(static entry => entry.IsTopLevel && entry.Name == LocalizationSchema.Marker) && culture is null)
+        {
+            return [];
+        }
+
+        // A file leaves the rules its tools entry lists out of its own report; the entry itself is still judged.
+        var ignored = IgnoredRules.Read(document);
+
+        return [.. _schema.Lint(document, culture).Where(diagnostic => !ignored.Ignores(diagnostic.Code))];
     }
 
     private static bool HasMarker(byte[] content)

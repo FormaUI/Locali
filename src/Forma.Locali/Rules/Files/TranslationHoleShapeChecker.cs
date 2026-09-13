@@ -17,7 +17,7 @@ public sealed class TranslationHoleShapeChecker : ILocalizationFileRuleChecker
 
         foreach (var entry in context.Document.Entries)
         {
-            if (!entry.IsText || entry.Value is not { } translation || entry.Name == LocalizationSchema.Marker)
+            if (!entry.IsText || entry.IsInsideToolsSection || entry.Value is not { } translation || entry.Name == LocalizationSchema.Marker)
             {
                 continue;
             }

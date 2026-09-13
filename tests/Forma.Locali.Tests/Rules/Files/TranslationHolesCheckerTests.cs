@@ -173,4 +173,19 @@ public sealed class TranslationHolesCheckerTests
         Assert.Equal(4, diagnostic.Line);
         Assert.Equal(34, diagnostic.Column);
     }
+
+    [Fact]
+    public void Should_leave_another_tools_entries_alone()
+    {
+        // Arrange — the runtime never reads what sits under the tools entry, so it is no translation.
+        var document = LocalizationDocumentTestFactory.Read(
+            LocalizationFileFakeData.HebrewName,
+            """{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "$tools": { "crowdin.note": "see {ticket}" }, "Widget": { "Today": "היום" } }""");
+
+        // Act
+        var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
 }
