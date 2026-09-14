@@ -549,3 +549,10 @@ nuget.org:
 3. Delete `Projects/SdkRoslyn.cs`, and register MSBuild in `MSBuildProjectLoader` again.
 
 Nothing else depends on it, and the startup failure above stays either way.
+
+## License
+
+Source-available under the [Locali Community License](LICENSE.md), free for an individual or
+a small, low-revenue organization; see [COMMERCIAL.md](COMMERCIAL.md) for eligibility and
+pricing beyond that, and the [Commercial License Agreement](COMMERCIAL-LICENSE.md) for the
+terms paid use is governed by.
