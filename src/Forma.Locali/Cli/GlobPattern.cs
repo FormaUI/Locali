@@ -22,6 +22,6 @@ public static class GlobPattern
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
 
-        return path.Replace(Path.DirectorySeparatorChar, '/');
+        return path.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
     }
 }

@@ -53,17 +53,23 @@ public sealed class ProjectLocaleSource : LocaleSource
     }
 
     /// <inheritdoc />
-    protected override bool ReadsDeclaredRoots => false;
+    protected override char FolderSeparator
+        => '.';
 
     /// <inheritdoc />
-    protected override IReadOnlyList<string> GetLeadingSegments(string assemblyName, bool rootedAtAssembly)
-        => rootedAtAssembly ? [assemblyName] : [];
+    protected override IEnumerable<string> EnumerateNames()
+        => _files.Keys;
 
     /// <inheritdoc />
-    protected override string GetFileName(IReadOnlyList<string> segments, string cultureName)
-        => $"{string.Join('.', segments)}.{cultureName}{Format.Extension}";
+    protected override string GetDefaultRootDir(string assemblyName)
+        => assemblyName;
+
+    // The build puts a namespace at the front of every name, so a type outside the root namespace is spelled from the start.
+    /// <inheritdoc />
+    protected override string GetRootDirOutsideRootNamespace(string rootDir)
+        => string.Empty;
 
     /// <inheritdoc />
-    protected override LocaleFile? ReadFile(IReadOnlyList<string> segments, string cultureName)
-        => _files.GetValueOrDefault(GetFileName(segments, cultureName))?.File;
+    protected override LocaleFile? ReadFile(string name, string cultureName)
+        => _files.GetValueOrDefault(name)?.File;
 }
