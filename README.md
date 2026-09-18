@@ -142,7 +142,7 @@ the 100s, and a call-site rule in the 200s.
 
 | Code | Severity | Reports |
 |------|----------|---------|
-| LOC0020 | Error | The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define |
+| LOC0020 | Error | The linting configuration is not readable JSON, does not follow its shape, names a rule this linter does not define, or gives a value the localization runtime would refuse |
 | LOC0021 | Warning | A glob in the linting configuration matched no file the run reached |
 
 A `.locali.json` beside or above a file is that file's linting configuration, discovered the
@@ -182,6 +182,23 @@ when its `.locali.json` entries go stale.
 Leaving a diagnostic out this way is never silent: it is still counted in `suppressedCount`
 and still named in the console brief, exactly as a diagnostic below `--severity` is, so the
 linting configuration cannot make a finding disappear without a trace.
+
+The same file carries the keys the localization runtime reads: `rootNamespace`, the
+namespace a type's name is completed from; `rootDir`, where a source's names begin;
+`localesDir`, the folder locale files are gathered in; and `paths`, the paths a source reads
+its files by, written in tokens.
+
+```json
+{
+  "rootNamespace": "Forma.Blazor.Components.Composer.Plugins",
+  "rootDir": "./Forma.AddOns.Composer.Plugins.Explorer.csproj",
+  "localesDir": ".locales",
+  "paths": ["$RootDir/$AnchorName/$LocalesDir/$CurrentName.$Culture$Extension"]
+}
+```
+
+Each value is held to the runtime's own rule, and LOC0020 reports one the runtime would
+refuse — a malformed path at the token that is wrong rather than at the line.
 
 ### Translation files (LOC0100–LOC0199)
 

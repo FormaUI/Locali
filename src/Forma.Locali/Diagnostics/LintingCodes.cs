@@ -45,11 +45,11 @@ public static class LintingCodes
             ReformattedLookup,
         ];
 
-    /// <summary>The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define.</summary>
+    /// <summary>The linting configuration is not readable JSON, does not follow its shape, names a rule this linter does not define, or gives a value the localization runtime would refuse.</summary>
     public static LintingCode MalformedConfiguration { get; } = new(
         "LOC0020",
         LintingSeverity.Error,
-        "The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define, so it leaves nothing out.");
+        "The linting configuration is not readable JSON, does not follow its shape, names a rule this linter does not define, or gives a value the localization runtime would refuse.");
 
     /// <summary>A glob in the linting configuration matched no file the run linted.</summary>
     public static LintingCode StaleConfigurationGlob { get; } = new(

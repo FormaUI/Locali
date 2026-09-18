@@ -176,6 +176,100 @@ public sealed class LocaliConfigFileTests
             () => Assert.Equal(["Widget.he.json"], document.IgnoreEntries.Select(entry => entry.Glob)));
     }
 
+    [Theory]
+    [InlineData("""{ "rootNamespace": "Contoso.Widgets" }""")]
+    [InlineData("""{ "rootDir": "./Contoso.csproj" }""")]
+    [InlineData("""{ "localesDir": ".locales" }""")]
+    [InlineData("""{ "paths": ["$RootDir/$AnchorName.$Culture$Extension"] }""")]
+    public void Should_read_a_key_the_runtime_owns_without_complaint(string json)
+        => Assert.Empty(LocaliConfigFileTestFactory.Read(json).Malformed);
+
+    [Theory]
+    [InlineData("""{ "rootNamespace": "Contoso..Widgets" }""", "not a namespace")]
+    [InlineData("""{ "rootNamespace": 5 }""", "'rootNamespace' is not text")]
+    [InlineData("""{ "rootDir": "/strings" }""", "not a relative path")]
+    [InlineData("""{ "localesDir": "../strings" }""", "not a relative folder")]
+    [InlineData("""{ "paths": "$RootDir/$AnchorName.$Culture$Extension" }""", "'paths' is not a list of text")]
+    [InlineData("""{ "paths": [5] }""", "a path is not text")]
+    [InlineData("""{ "paths": ["$RootDir/$AnchorName.json"] }""", "'$Culture' and '$Extension'")]
+    public void Should_flag_a_key_the_runtime_refuses(string json, string expected)
+    {
+        // Arrange
+        var document = LocaliConfigFileTestFactory.Read(json);
+
+        // Assert
+        var malformed = Assert.Single(document.Malformed);
+        Assert.Contains(expected, malformed.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_flag_a_malformed_path_where_its_token_is_written()
+    {
+        // Arrange
+        var document = LocaliConfigFileTestFactory.Read(
+            """
+            {
+              "paths": ["$RootDir/$Folder.$Culture$Extension"]
+            }
+            """);
+
+        var malformed = Assert.Single(document.Malformed);
+
+        // Act
+        var diagnostic = document.Diagnose(malformed.Offset, LintingCodes.MalformedConfiguration, malformed.Reason);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(2, diagnostic.Line),
+            () => Assert.Equal(23, diagnostic.Column),
+            () => Assert.Contains("'$Folder'", malformed.Reason, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Should_flag_a_malformed_path_where_its_token_is_written_after_text_beyond_ascii()
+    {
+        // Arrange
+        var document = LocaliConfigFileTestFactory.Read(
+            """
+            {
+              "paths": ["$RootDir/תרגום/$Folder.$Culture$Extension"]
+            }
+            """);
+
+        var malformed = Assert.Single(document.Malformed);
+
+        // Act
+        var diagnostic = document.Diagnose(malformed.Offset, LintingCodes.MalformedConfiguration, malformed.Reason);
+
+        // Assert
+        Assert.Equal(29, diagnostic.Column);
+    }
+
+    [Fact]
+    public void Should_flag_paths_that_list_nothing()
+    {
+        // Arrange
+        var document = LocaliConfigFileTestFactory.Read("""{ "paths": [] }""");
+
+        // Assert
+        var malformed = Assert.Single(document.Malformed);
+        Assert.Contains("'paths' lists no path", malformed.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_name_every_entry_the_file_defines_when_one_is_unknown()
+    {
+        // Arrange
+        var document = LocaliConfigFileTestFactory.Read("""{ "layout": [] }""");
+
+        // Assert
+        var malformed = Assert.Single(document.Malformed);
+
+        Assert.All(
+            ["'ignore'", "'exclude'", "'rootNamespace'", "'rootDir'", "'localesDir'", "'paths'"],
+            key => Assert.Contains(key, malformed.Reason, StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Should_locate_a_diagnostic_at_the_offset_given()
     {
