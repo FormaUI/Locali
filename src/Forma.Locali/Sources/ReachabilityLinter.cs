@@ -32,16 +32,23 @@ public sealed class ReachabilityLinter : IReachabilityLinter
                 continue;
             }
 
+            var anchorNames = translations.GetAnchorNames(file);
+            if (anchorNames.Count == 0)
+            {
+                diagnostics.Add(Diagnose(file, "No type reads this file: no locale path in force where it sits reads a file by its name."));
+                continue;
+            }
+
             if (read.Count == 0)
             {
-                diagnostics.Add(Diagnose(file, $"No type reads this file: the runtime resolves translations by a type's full name, and neither '{file.ExpectedName}' nor any section in the file names one."));
+                diagnostics.Add(Diagnose(file, $"No type reads this file: the runtime resolves translations by a type's full name, and neither {FormatNames(anchorNames, "nor")} nor any section in the file names one."));
                 continue;
             }
 
             foreach (var section in unreachable)
             {
                 diagnostics.Add(Diagnose(file, section.Length == 0
-                    ? $"No type named '{file.ExpectedName}' exists, so the entries outside any section are unreachable."
+                    ? $"No type named {FormatNames(anchorNames, "or")} exists, so the entries outside any section are unreachable."
                     : $"Section '{section}' names no type below this file's position, so its translations are unreachable."));
             }
         }
@@ -75,6 +82,9 @@ public sealed class ReachabilityLinter : IReachabilityLinter
 
         return reachable;
     }
+
+    private static string FormatNames(IReadOnlyList<string> names, string conjunction)
+        => string.Join($" {conjunction} ", names.Select(name => $"'{name}'"));
 
     private static LintingDiagnostic Diagnose(TranslationFile file, string message)
         => new(file.Path, 1, 1, LintingCodes.UnreachableTranslation.DefaultSeverity, LintingCodes.UnreachableTranslation, message);

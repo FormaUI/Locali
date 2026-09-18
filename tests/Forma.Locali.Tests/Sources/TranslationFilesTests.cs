@@ -13,15 +13,14 @@ public sealed class TranslationFilesTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        var file = directory.Write(Path.Combine("Components", "Explorer", "FormaExplorer.he.json"), LocalizationFileFakeData.Valid);
+        var file = directory.Write(Path.Combine("Components", "Explorer", ".locales", "he.json"), LocalizationFileFakeData.Valid);
 
         // Act
         var resolved = Assert.Single(Resolve(directory, Compile("namespace Scratch;"), file).Files);
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal("Scratch.Components.Explorer.FormaExplorer", resolved.ExpectedName),
-            () => Assert.Equal("Scratch.Components.Explorer.FormaExplorer.he.json", resolved.Name),
+            () => Assert.Equal("Scratch.Components.Explorer..locales.he.json", resolved.Name),
             () => Assert.Equal(CultureInfo.GetCultureInfo("he"), resolved.Culture));
     }
 
@@ -30,14 +29,14 @@ public sealed class TranslationFilesTests
     {
         // Arrange — an AddOn embeds under the namespace it borrows, not its own name.
         using var directory = new TempDirectory();
-        var file = directory.Write(Path.Combine("Emojis", "TwemojiEmojiProvider.he.json"), LocalizationFileFakeData.Valid);
+        var file = directory.Write(Path.Combine("Emojis", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, "Forma.Framework");
 
         // Act
         var resolved = Assert.Single(TranslationFiles.Resolve(project, [file])!.Files);
 
         // Assert
-        Assert.Equal("Forma.Framework.Emojis.TwemojiEmojiProvider", resolved.ExpectedName);
+        Assert.Equal("Forma.Framework.Emojis..locales.he.json", resolved.Name);
     }
 
     [Theory]
@@ -75,7 +74,7 @@ public sealed class TranslationFilesTests
     {
         // Arrange — an unreadable file is the file rules' business, and the runtime reads nothing from it.
         using var directory = new TempDirectory();
-        var file = directory.Write("Widget.he.json", LocalizationFileFakeData.Unmarked);
+        var file = directory.Write(Path.Combine(".locales", "he.json"), LocalizationFileFakeData.Unmarked);
 
         // Act
         var resolved = Resolve(directory, Compile("namespace Scratch;"), file);
@@ -89,7 +88,7 @@ public sealed class TranslationFilesTests
     {
         // Arrange — the host's own folder is copied beside the application and translates other assemblies' types.
         using var directory = new TempDirectory();
-        var file = directory.Write(Path.Combine(".locales", "Forma.Blazor.he.json"), LocalizationFileFakeData.Valid);
+        var file = directory.Write(Path.Combine(".locales", "Forma.Blazor", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedFiles: new HashSet<string>());
 
         // Act
@@ -143,7 +142,7 @@ public sealed class TranslationFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), null, false, false);
 
         // Act
-        var resolved = TranslationFiles.Resolve(project, [directory.Write("Widget.he.json", LocalizationFileFakeData.Valid)]);
+        var resolved = TranslationFiles.Resolve(project, [directory.Write(Path.Combine(".locales", "he.json"), LocalizationFileFakeData.Valid)]);
 
         // Assert
         Assert.Null(resolved);

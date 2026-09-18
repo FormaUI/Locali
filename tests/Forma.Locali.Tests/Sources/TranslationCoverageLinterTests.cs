@@ -4,14 +4,17 @@ using Forma.Locali.Projects;
 
 public sealed class TranslationCoverageLinterTests
 {
-    private const string FileName = "Widget.he.json";
+    private static readonly string HebrewFile = Path.Combine("Widget", ".locales", "he.json");
+    private static readonly string SpanishFile = Path.Combine("Widget", ".locales", "es.json");
+    private static readonly string RegionalFile = Path.Combine("Widget", ".locales", "es-419.json");
+    private static readonly string RootFile = Path.Combine(".locales", "he.json");
 
     [Fact]
     public async Task Should_report_a_key_the_translation_file_leaves_out()
     {
         // Arrange
         using var directory = new TempDirectory();
-        var file = directory.Write(FileName, LocalizationFileFakeData.Valid);
+        var file = directory.Write(HebrewFile, LocalizationFileFakeData.Valid);
 
         // Act
         var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", file);
@@ -23,7 +26,7 @@ public sealed class TranslationCoverageLinterTests
             () => Assert.Equal(LintingCodes.MissingTranslation, diagnostic.Code),
             () => Assert.Equal(LintingSeverity.Warning, diagnostic.Severity),
             () => Assert.Contains("'Tomorrow'", diagnostic.Message, StringComparison.Ordinal),
-            () => Assert.Contains(FileName, diagnostic.Message, StringComparison.Ordinal));
+            () => Assert.Contains(HebrewFile, diagnostic.Message, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -31,7 +34,7 @@ public sealed class TranslationCoverageLinterTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        var file = directory.Write(FileName, LocalizationFileFakeData.WithTranslation("Tomorrow", "מחר"));
+        var file = directory.Write(HebrewFile, LocalizationFileFakeData.WithTranslation("Tomorrow", "מחר"));
 
         // Act
         var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", file);
@@ -45,7 +48,7 @@ public sealed class TranslationCoverageLinterTests
     {
         // Arrange — the file and the call site both write the escape, and the runtime drops it on both sides.
         using var directory = new TempDirectory();
-        var file = directory.Write(FileName, LocalizationFileFakeData.WithTranslation("$$price", "מחיר"));
+        var file = directory.Write(HebrewFile, LocalizationFileFakeData.WithTranslation("$$price", "מחיר"));
 
         // Act
         var diagnostics = await LintAsync(directory, """public void Show() => _ = L["$$price"];""", file);
@@ -59,7 +62,7 @@ public sealed class TranslationCoverageLinterTests
     {
         // Arrange — null is how a file declares a key it leaves in the source language on purpose.
         using var directory = new TempDirectory();
-        var file = directory.Write(FileName, LocalizationFileFakeData.WithNullTranslation("Tomorrow"));
+        var file = directory.Write(HebrewFile, LocalizationFileFakeData.WithNullTranslation("Tomorrow"));
 
         // Act
         var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", file);
@@ -73,8 +76,8 @@ public sealed class TranslationCoverageLinterTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        var hebrew = directory.Write(FileName, LocalizationFileFakeData.Valid);
-        var spanish = directory.Write("Widget.es.json", LocalizationFileFakeData.ForCulture("es", "Today", "hoy"));
+        var hebrew = directory.Write(HebrewFile, LocalizationFileFakeData.Valid);
+        var spanish = directory.Write(SpanishFile, LocalizationFileFakeData.ForCulture("es", "Today", "hoy"));
 
         // Act
         var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", hebrew, spanish);
@@ -88,14 +91,14 @@ public sealed class TranslationCoverageLinterTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        var hebrew = directory.Write(FileName, LocalizationFileFakeData.Valid);
-        var spanish = directory.Write("Widget.es.json", LocalizationFileFakeData.ForCulture("es", "Tomorrow", "mañana"));
+        var hebrew = directory.Write(HebrewFile, LocalizationFileFakeData.Valid);
+        var spanish = directory.Write(SpanishFile, LocalizationFileFakeData.ForCulture("es", "Tomorrow", "mañana"));
 
         // Act
         var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", hebrew, spanish);
 
         // Assert
-        Assert.Contains(FileName, Assert.Single(diagnostics).Message, StringComparison.Ordinal);
+        Assert.Contains(HebrewFile, Assert.Single(diagnostics).Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -103,8 +106,8 @@ public sealed class TranslationCoverageLinterTests
     {
         // Arrange — JsonStringLocale walks es-419 up to es, so a regional file need only carry what differs.
         using var directory = new TempDirectory();
-        var regional = directory.Write("Widget.es-419.json", LocalizationFileFakeData.ForCulture("es-419", "Today", "hoy"));
-        var parent = directory.Write("Widget.es.json", LocalizationFileFakeData.ForCulture("es", "Tomorrow", "mañana"));
+        var regional = directory.Write(RegionalFile, LocalizationFileFakeData.ForCulture("es-419", "Today", "hoy"));
+        var parent = directory.Write(SpanishFile, LocalizationFileFakeData.ForCulture("es", "Tomorrow", "mañana"));
 
         // Act
         var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", regional, parent);
@@ -118,14 +121,14 @@ public sealed class TranslationCoverageLinterTests
     {
         // Arrange — the walk only ever goes up, so es cannot read what only es-419 carries.
         using var directory = new TempDirectory();
-        var regional = directory.Write("Widget.es-419.json", LocalizationFileFakeData.ForCulture("es-419", "Tomorrow", "mañana"));
-        var parent = directory.Write("Widget.es.json", LocalizationFileFakeData.ForCulture("es", "Today", "hoy"));
+        var regional = directory.Write(RegionalFile, LocalizationFileFakeData.ForCulture("es-419", "Tomorrow", "mañana"));
+        var parent = directory.Write(SpanishFile, LocalizationFileFakeData.ForCulture("es", "Today", "hoy"));
 
         // Act
         var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", regional, parent);
 
         // Assert
-        Assert.Contains("Widget.es.json", Assert.Single(diagnostics).Message, StringComparison.Ordinal);
+        Assert.Contains(SpanishFile, Assert.Single(diagnostics).Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -133,7 +136,7 @@ public sealed class TranslationCoverageLinterTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        var file = directory.Write(FileName, LocalizationFileFakeData.Valid);
+        var file = directory.Write(HebrewFile, LocalizationFileFakeData.Valid);
 
         const string Body = """
             public void First() => _ = L["Tomorrow"];
@@ -148,11 +151,11 @@ public sealed class TranslationCoverageLinterTests
     }
 
     [Fact]
-    public async Task Should_let_a_folders_file_answer_through_a_section()
+    public async Task Should_let_the_roots_file_answer_through_a_section()
     {
-        // Arrange — the type's translations sit in the file named for the folder, in a section of its own.
+        // Arrange — the type's translations sit in the root's file, in a section of its own.
         using var directory = new TempDirectory();
-        var file = directory.Write("Scratch.he.json", LocalizationFileFakeData.WithSection("Widget", "Tomorrow", "מחר"));
+        var file = directory.Write(RootFile, LocalizationFileFakeData.WithSection("Widget", "Tomorrow", "מחר"));
 
         // Act
         var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", file);
@@ -162,17 +165,17 @@ public sealed class TranslationCoverageLinterTests
     }
 
     [Fact]
-    public async Task Should_report_a_key_a_folders_file_leaves_out()
+    public async Task Should_report_a_key_the_roots_file_leaves_out()
     {
         // Arrange
         using var directory = new TempDirectory();
-        var file = directory.Write("Scratch.he.json", LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var file = directory.Write(RootFile, LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
 
         // Act
         var diagnostics = await LintAsync(directory, """public void Show() => _ = L["Tomorrow"];""", file);
 
         // Assert
-        Assert.Contains("Scratch.he.json", Assert.Single(diagnostics).Message, StringComparison.Ordinal);
+        Assert.Contains(RootFile, Assert.Single(diagnostics).Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -193,7 +196,7 @@ public sealed class TranslationCoverageLinterTests
     {
         // Arrange — the unbound contract says nothing about which file answers for the key.
         using var directory = new TempDirectory();
-        var file = directory.Write(FileName, LocalizationFileFakeData.Valid);
+        var file = directory.Write(HebrewFile, LocalizationFileFakeData.Valid);
 
         // Act
         var diagnostics = await LintAsync(

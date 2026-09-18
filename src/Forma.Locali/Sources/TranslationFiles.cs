@@ -47,27 +47,25 @@ public static class TranslationFiles
                 continue;
             }
 
-            var relative = Path.GetRelativePath(projectDirectory, Path.GetDirectoryName(fullPath)!);
-            string[] segments = relative is "." ? [] : relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
             // A file that will not read is the file rules' business, and the runtime reads nothing from it.
             if (Read(format, fullPath, culture) is not var (read, ignored))
             {
                 continue;
             }
 
-            var baseName = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(fullPath));
-            var expectedName = GetExpectedName(root, segments, baseName);
-
-            files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), expectedName, $"{expectedName}.{culture}{format.Extension}", read, ignored));
+            files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), GetDefaultResourceName(root, projectDirectory, fullPath), read, ignored));
         }
 
         return new ProjectTranslations(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, format);
     }
 
-    // The SDK embeds a file as {RootNamespace}.{RelativeFolderPath}.{Name}.
-    private static string GetExpectedName(string root, string[] segments, string baseName)
-        => string.Join('.', [root, .. segments, baseName]);
+    // The SDK embeds a file as {RootNamespace}.{RelativeFolderPath}.{FileName}.
+    private static string GetDefaultResourceName(string root, string projectDirectory, string fullPath)
+    {
+        var relative = Path.GetRelativePath(projectDirectory, fullPath);
+
+        return string.Join('.', [root, .. relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)]);
+    }
 
     // The tools entry is the linter's own, which the runtime's format leaves out, so the same bytes are read as a document for it.
     private static (LocaleFile File, IgnoredRules Ignored)? Read(JsonLocaleFileFormat format, string path, string culture)

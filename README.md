@@ -278,7 +278,8 @@ whatever no read reached: a whole file when nothing in it is reached, a section 
 no type, or the entries outside any section in a file read for its sections alone. It reads a
 file under the name the build embeds it by, and names generic and nested types as the runtime
 does. A file the project embeds under an explicit `LogicalName` is beyond it, because
-that decouples the file's position from its logical name entirely.
+that decouples the file's position from its logical name entirely. A file no path in force
+places is reported as well, and every report names the anchors the runtime places the file at.
 
 LOC0109 catches the silent case: `"Stored {stored}."` translated as `"…{stord}…"` renders
 `{stord}` literally. A name may be written as a brace hole or as a plural expression's
@@ -326,8 +327,8 @@ renders in English and every other rule stays green.
 The type is read from the receiver's `IStringLocale<T>`, so the rule needs the semantic
 path; a lookup through the unbound `IStringLocale` names no type to check against. The rule
 asks the runtime's own walk what the type reads in each culture the project's files carry,
-whether from the file named for the type, a section of its folder's file, or the assembly's
-file. Only cultures the type already has translations in are checked, because a component
+whether from the type's own folder's file or from a section of a file higher up, and names that
+file by its path from the call site's folder. Only cultures the type already has translations in are checked, because a component
 with no translations at all is unlocalized rather than under-translated. One diagnostic is
 reported per key per culture, at the first call site writing it, so a key used in ten places
 reports twice and not twenty.
@@ -359,8 +360,8 @@ A key that has to read as genuinely missing cannot use `null` for that reason �
 checks meant to catch it — and the warning is the honest answer there instead.
 
 A parent culture answers for its children, because `JsonStringLocale` walks a culture up to
-its parents when it looks a key up. A `Widget.es-419.json` carrying only what differs from
-`Widget.es.json` is complete, and only a key neither file declares is reported.
+its parents when it looks a key up. A `.locales/es-419.json` carrying only what differs from
+`.locales/es.json` is complete, and only a key neither file declares is reported.
 
 LOC0210 names what the other rules could not see. `L[column.ToString()]` reads a key only
 the run knows, so no rule can judge it and no coverage check can count it — leaving it

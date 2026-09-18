@@ -42,7 +42,12 @@ public sealed class ProjectTranslations
     /// <summary>The files as the runtime's walk reads them.</summary>
     public ProjectLocaleSource Source { get; }
 
-    /// <summary>What the runtime reads for a type in one culture, from the file named for the assembly down to the file named for the type.</summary>
+    /// <summary>The full name of every type or namespace the runtime reads a file for, none when no path in force reads it.</summary>
+    /// <param name="file">The file.</param>
+    public IReadOnlyList<string> GetAnchorNames(TranslationFile file)
+        => Source.GetAnchorNames(AssemblyName, file);
+
+    /// <summary>What the runtime reads for a type in one culture, anchor by anchor from the root down to the type.</summary>
     /// <param name="typeName">The type's name, as the runtime resolves it.</param>
     /// <param name="culture">The culture.</param>
     public IReadOnlyList<LocaleSourceEntry> Read(string typeName, CultureInfo culture)

@@ -30,6 +30,17 @@ public sealed class ProjectLocaleSource : LocaleSource
         return _files.GetValueOrDefault(name);
     }
 
+    /// <summary>The full name of every type or namespace the runtime reads a file for, none when no path in force reads it.</summary>
+    /// <param name="assemblyName">The name of the assembly the project builds.</param>
+    /// <param name="file">The file.</param>
+    public IReadOnlyList<string> GetAnchorNames(string assemblyName, TranslationFile file)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(assemblyName);
+        ArgumentNullException.ThrowIfNull(file);
+
+        return GetAnchorNames(assemblyName, file.Name, file.Culture.Name);
+    }
+
     /// <inheritdoc />
     protected override char FolderSeparator
         => '.';

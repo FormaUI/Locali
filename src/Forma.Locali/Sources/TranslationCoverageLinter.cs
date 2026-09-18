@@ -44,7 +44,9 @@ public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
                     continue;
                 }
 
-                var fileName = translations.Source.GetFile(entries[^1].FileName) is { } file ? Path.GetFileName(file.Path) : entries[^1].FileName;
+                var filePath = translations.Source.GetFile(entries[^1].FileName) is { } file
+                    ? FormatFilePath(site.Key.Location.Path, file.Path)
+                    : entries[^1].FileName;
 
                 diagnostics.Add(new LintingDiagnostic(
                     site.Key.Location.Path,
@@ -52,12 +54,18 @@ public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
                     site.Key.Location.StartLinePosition.Character + 1 + site.Key.TextOffset,
                     LintingCodes.MissingTranslation.DefaultSeverity,
                     LintingCodes.MissingTranslation,
-                    $"'{site.Key.Text}' has no entry in '{fileName}', which translates '{typeName}' for '{culture.Name}', so it renders in the source language there."));
+                    $"'{site.Key.Text}' has no entry in '{filePath}', which translates '{typeName}' for '{culture.Name}', so it renders in the source language there."));
             }
         }
 
         return diagnostics;
     }
+
+    // Every culture's file can carry the same name, so a file is named by where it sits from the call site's folder.
+    private static string FormatFilePath(string callSitePath, string filePath)
+        => Path.GetDirectoryName(callSitePath) is { Length: > 0 } callSiteFolder
+            ? Path.GetRelativePath(callSiteFolder, filePath)
+            : filePath;
 
     // The runtime walks the culture up to its parents, so a regional file need only carry what differs.
     private static bool IsAnswered(ProjectTranslations translations, string typeName, CultureInfo culture, string key)
