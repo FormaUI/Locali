@@ -70,17 +70,15 @@ public sealed class ReachabilityLinterTests
     }
 
     [Fact]
-    public void Should_read_a_file_by_the_paths_its_folders_settings_name()
+    public void Should_read_a_file_by_the_paths_the_assemblys_config_names()
     {
-        // Arrange — the root's settings file marks where the names begin, and the folder's own puts a form in force there that the defaults leave out.
+        // Arrange — the config file the project embeds puts a form in force that the defaults leave out.
         using var directory = new TempDirectory();
-        var rootSettings = directory.Write(".locali.json", "{}");
-        var folderSettings = directory.Write(Path.Combine("Components", ".locali.json"), """{ "paths": ["$RootDir/$AnchorName.$Culture$Extension"] }""");
+        var config = directory.Write(".locale.json", """{ "paths": ["$RootDir/$AnchorName.$Culture$Extension"] }""");
         var file = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
         var resourceNames = new Dictionary<string, string>
         {
-            [Path.GetFullPath(rootSettings)] = "Scratch..locali.json",
-            [Path.GetFullPath(folderSettings)] = "Scratch.Components..locali.json",
+            [Path.GetFullPath(config)] = "Scratch..locale.json",
             [Path.GetFullPath(file)] = "Scratch.Components.Widget.he.json",
         };
 
@@ -103,20 +101,6 @@ public sealed class ReachabilityLinterTests
 
         // Assert
         Assert.Contains("Section 'Gallery'", diagnostic.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Should_report_even_a_file_that_ignores_the_rule()
-    {
-        // Arrange — a section names no type, which the file says is meant; leaving it out is a caller's decision.
-        using var directory = new TempDirectory();
-        var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.WithIgnore(["LOC0112"], ("Widget", "Today", "היום"), ("Gallery", "Today", "היום")));
-
-        // Act
-        var diagnostics = Lint(directory, Widget, file);
-
-        // Assert
-        Assert.Equal([LintingCodes.UnreachableTranslation], diagnostics.Codes());
     }
 
     [Fact]

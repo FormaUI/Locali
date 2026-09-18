@@ -21,7 +21,7 @@ public sealed class InconsistentTranslationChecker : ILocalizationFileRuleChecke
 
         foreach (var entry in context.Document.Entries)
         {
-            if (!entry.IsText || entry.IsInsideToolsSection || entry.Name == LocalizationSchema.Marker)
+            if (!entry.IsText || entry.Name == LocalizationSchema.Marker)
             {
                 continue;
             }

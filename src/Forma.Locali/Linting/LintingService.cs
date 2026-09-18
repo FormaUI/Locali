@@ -7,7 +7,6 @@ using Forma.Locali.Cli;
 using Forma.Locali.Configuration;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Projects;
-using Forma.Locali.Rules;
 using Forma.Locali.Sources;
 
 using Microsoft.Extensions.Options;
@@ -47,7 +46,6 @@ public sealed class LintingService(
     {
         var target = _resolver.Resolve(_options.Path, _options.Excludes);
         var diagnostics = new ConcurrentBag<LintingDiagnostic>();
-        var fileIgnores = new ConcurrentDictionary<string, IgnoredRules>(StringComparer.OrdinalIgnoreCase);
 
         // Each file is read independently, so they overlap rather than queueing behind one another.
         await Parallel.ForEachAsync(
@@ -55,10 +53,7 @@ public sealed class LintingService(
             cancellationToken,
             async (file, token) =>
             {
-                var result = await _linter.LintAsync(file, token).ConfigureAwait(false);
-                fileIgnores[Path.GetFullPath(file)] = result.Ignored;
-
-                foreach (var diagnostic in result.Diagnostics)
+                foreach (var diagnostic in await _linter.LintAsync(file, token).ConfigureAwait(false))
                 {
                     diagnostics.Add(diagnostic);
                 }
@@ -84,13 +79,10 @@ public sealed class LintingService(
 
         bool IsIgnored(LintingDiagnostic diagnostic)
         {
-            var path = Path.GetFullPath(diagnostic.Path);
-
-            return fileIgnores.GetValueOrDefault(path, IgnoredRules.None).Ignores(diagnostic.Code)
-                || configIgnores.GetValueOrDefault(path, NoConfigIgnores).Contains(diagnostic.Code);
+            return configIgnores.GetValueOrDefault(Path.GetFullPath(diagnostic.Path), NoConfigIgnores).Contains(diagnostic.Code);
         }
 
-        // What a file's own configuration leaves out never reaches the result, whatever the severity.
+        // What the linting configuration leaves out never reaches the result, whatever the severity.
         LintingDiagnostic[] reported =
         [
             .. all
@@ -100,7 +92,7 @@ public sealed class LintingService(
                 .ThenBy(diagnostic => diagnostic.Column),
         ];
 
-        // What was left out is still counted per rule, whether the severity or a file's own configuration is why.
+        // What was left out is still counted per rule, whether the severity or the linting configuration is why.
         var leftOut = all.Where(diagnostic => IsIgnored(diagnostic) || diagnostic.Severity < _options.MinimumSeverity).ToArray();
 
         SuppressedRule[] suppressed =
@@ -138,10 +130,10 @@ public sealed class LintingService(
                     diagnostics.AddRange(_reachability.Lint(translations));
                     diagnostics.AddRange(_coverage.Lint(translations, sources.CallSites));
                 }
-                catch (LocaliSettingsException exception)
+                catch (LocaleConfigException exception)
                 {
-                    // The runtime refuses every lookup in an assembly whose embedded settings it cannot place, so none of its translations can be judged.
-                    diagnostics.Add(new LintingDiagnostic(project.Path, 1, 1, LintingCodes.MalformedConfiguration.DefaultSeverity, LintingCodes.MalformedConfiguration, exception.Message));
+                    // The runtime refuses every lookup in an assembly whose embedded config it cannot place, so none of its translations can be judged.
+                    diagnostics.Add(new LintingDiagnostic(project.Path, 1, 1, LintingCodes.MalformedLocaleConfig.DefaultSeverity, LintingCodes.MalformedLocaleConfig, exception.Message));
                 }
             }
         }

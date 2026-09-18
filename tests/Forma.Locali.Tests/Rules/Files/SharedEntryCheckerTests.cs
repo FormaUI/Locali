@@ -136,23 +136,4 @@ public sealed class SharedEntryCheckerTests
         // Assert
         Assert.Empty(diagnostics);
     }
-
-    [Fact]
-    public void Should_leave_a_tools_entry_inside_a_shared_section_to_the_tools_rule()
-    {
-        // Arrange — the runtime skips a tools entry wherever it sits, so the shared section still loads.
-        var content = """
-            {
-              "$localization": "SchemaVersion: 1.0.0; Culture: he;",
-              "$shared": { "$tools": { "crowdin.status": "reviewed" }, "Save": "שמור" }
-            }
-            """;
-        var document = LocalizationDocumentTestFactory.Read(LocalizationFileFakeData.HebrewName, content);
-
-        // Act
-        var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
-
-        // Assert
-        Assert.DoesNotContain(LintingCodes.MalformedShared, diagnostics.Codes());
-    }
 }

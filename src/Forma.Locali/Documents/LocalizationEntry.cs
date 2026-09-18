@@ -1,7 +1,5 @@
 namespace Forma.Locali.Documents;
 
-using Forma.Framework.Localization.Files;
-
 /// <summary>One entry of a localization file, with the section it sits in and where it sits in the text.</summary>
 /// <param name="Section">The sections above the entry joined by dots, or empty for an entry at the file's top level.</param>
 /// <param name="Name">The key the entry is written under.</param>
@@ -16,8 +14,4 @@ public readonly record struct LocalizationEntry(string Section, string Name, str
     /// <summary>Whether the entry sits at the file's top level rather than inside a section.</summary>
     public bool IsTopLevel
         => Section.Length == 0;
-
-    /// <summary>Whether the entry is inside a tools section, which the runtime ignores.</summary>
-    public bool IsInsideToolsSection
-        => Section.Split('.').Contains(LocalizationSchema.ToolsKey);
 }

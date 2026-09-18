@@ -21,12 +21,6 @@ public sealed class ReservedKeyShapeChecker : ILocalizationFileRuleChecker
 
         foreach (var entry in context.Document.Entries)
         {
-            // Another tool's entries are its own, whatever they are named.
-            if (entry.IsInsideToolsSection)
-            {
-                continue;
-            }
-
             CheckSections(context, entry, reportedSections);
 
             if (ReservedNames.IsShaped(entry.Name) && !ReservedNames.IsDefined(entry.Name))

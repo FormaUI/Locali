@@ -20,12 +20,6 @@ public sealed class SharedEntryChecker : ILocalizationFileRuleChecker
 
         foreach (var entry in context.Document.Entries)
         {
-            // Another tool's entries are its own, and the runtime skips them wherever they sit.
-            if (entry.IsInsideToolsSection)
-            {
-                continue;
-            }
-
             // An entry is a leaf, so a shared entry that reaches here was given something other than an object.
             if (entry.Name == LocalizationSchema.SharedKey)
             {

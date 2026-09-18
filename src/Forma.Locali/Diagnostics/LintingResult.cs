@@ -4,7 +4,7 @@ namespace Forma.Locali.Diagnostics;
 /// <param name="Diagnostics">Every diagnostic the run reports, ordered by file and then by position.</param>
 /// <param name="FileCount">How many files the run read.</param>
 /// <param name="Suppressed">What each rule contributed below the severity the run reports at, or that a file's own configuration left out, ordered by code.</param>
-/// <param name="IgnoredCount">How many of the suppressed diagnostics a file's own configuration left out, rather than the severity.</param>
+/// <param name="IgnoredCount">How many of the suppressed diagnostics the linting configuration left out, rather than the severity.</param>
 public sealed record LintingResult(
     IReadOnlyList<LintingDiagnostic> Diagnostics,
     int FileCount,

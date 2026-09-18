@@ -1,8 +1,6 @@
 namespace Forma.Locali.Tests.Support.Documents;
 
 using Forma.Framework.Localization.Files;
-using Forma.Locali.Rules;
-
 /// <summary>Localization file contents a test can lint.</summary>
 public static class LocalizationFileFakeData
 {
@@ -114,20 +112,6 @@ public static class LocalizationFileFakeData
             }
             """;
 
-    /// <summary>A schema-following file whose tools entry, after the metadata, lists the rules given under this linter's ignore entry, then the sections given.</summary>
-    /// <param name="rules">The rule identifiers the ignore entry lists.</param>
-    /// <param name="sections">The sections, each with the key and translation it holds.</param>
-    public static string WithIgnore(IReadOnlyList<string> rules, params (string Section, string Key, string Translation)[] sections)
-        => $$"""
-            {
-              "{{LocalizationSchema.Marker}}": "SchemaVersion: {{LocalizationSchema.CurrentVersion}}; Culture: he;",
-              {{FormatTools(rules)}},
-              {{string.Join(",\n  ", sections.Select(static section => $$"""
-                "{{section.Section}}": { "{{section.Key}}": "{{section.Translation}}" }
-                """))}}
-            }
-            """;
-
     /// <summary>A schema-following file whose reserved entries sit in the order given, each named by its key, around one section.</summary>
     /// <param name="order">The top-level keys in the order to write them, the metadata entry among them.</param>
     public static string WithReservedOrder(params string[] order)
@@ -135,17 +119,12 @@ public static class LocalizationFileFakeData
         var entries = order.Select(key => key switch
         {
             "$localization" => $"\"{LocalizationSchema.Marker}\": \"SchemaVersion: {LocalizationSchema.CurrentVersion}; Culture: he;\"",
-            "$tools" => FormatTools(["LOC0113"]),
             "$shared" => $"\"{LocalizationSchema.SharedKey}\": {{ \"Bold\": \"מודגש\" }}",
             _ => $"\"{key}\": {{ \"Save\": \"שמור\" }}",
         });
 
         return "{\n  " + string.Join(",\n  ", entries) + "\n}";
     }
-
-    // The tools entry holding this linter's ignore list, written as one property.
-    private static string FormatTools(IReadOnlyList<string> rules)
-        => $"\"{LocalizationSchema.ToolsKey}\": {{ \"{ToolEntries.Ignore}\": [{string.Join(", ", rules.Select(rule => $"\"{rule}\""))}] }}";
 
     /// <summary>A schema-following file declaring the same key twice, with different translations.</summary>
     /// <param name="key">The key the file declares more than once.</param>

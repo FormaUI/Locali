@@ -1,10 +1,6 @@
 namespace Forma.Locali.Configuration;
 
-using System.Text;
 using System.Text.Json;
-
-using Forma.Framework.Localization.Files;
-using Forma.Framework.Localization.Parser;
 
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
@@ -129,14 +125,6 @@ public sealed class LocaliConfigFile
                 case ExcludeKey:
                     ReadExclude(ref reader, exclude, malformed);
                     break;
-                case LocaliSettings.PathsKey:
-                    ReadPaths(ref reader, malformed);
-                    break;
-                case LocaliSettings.RootNamespaceKey:
-                case LocaliSettings.RootDirKey:
-                case LocaliSettings.LocalesDirKey:
-                    ReadSetting(ref reader, name, malformed);
-                    break;
                 default:
                     malformed.Add(new LocaliMalformedEntry(nameOffset, $"'{name}' is not an entry this file defines; it reads {FormatKeys()}."));
                     reader.Skip();
@@ -145,71 +133,8 @@ public sealed class LocaliConfigFile
         }
     }
 
-    // The runtime owns these keys and holds a value to one rule, so a file both read never means two things.
-    private static void ReadSetting(ref Utf8JsonReader reader, string key, List<LocaliMalformedEntry> malformed)
-    {
-        var offset = (int)reader.TokenStartIndex;
-        if (reader.TokenType != JsonTokenType.String)
-        {
-            malformed.Add(new LocaliMalformedEntry(offset, $"'{key}' is not text."));
-            reader.Skip();
-
-            return;
-        }
-
-        if (!LocaliSettings.Accepts(key, reader.GetString() ?? string.Empty, out var problem))
-        {
-            malformed.Add(new LocaliMalformedEntry(offset, problem));
-        }
-    }
-
-    // A path's diagnostic counts characters into the path, which become bytes past the value's opening quote; a value
-    // carrying a JSON escape has no such correspondence, so its diagnostic points at the value.
-    private static void ReadPaths(ref Utf8JsonReader reader, List<LocaliMalformedEntry> malformed)
-    {
-        var listOffset = (int)reader.TokenStartIndex;
-        if (reader.TokenType != JsonTokenType.StartArray)
-        {
-            malformed.Add(new LocaliMalformedEntry(
-                listOffset,
-                $"'{LocaliSettings.PathsKey}' is not a list of text; it lists the paths a locale file sits at."));
-            reader.Skip();
-
-            return;
-        }
-
-        var count = 0;
-        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
-        {
-            count++;
-            var offset = (int)reader.TokenStartIndex;
-            if (reader.TokenType != JsonTokenType.String)
-            {
-                malformed.Add(new LocaliMalformedEntry(offset, "a path is not text."));
-                reader.Skip();
-
-                continue;
-            }
-
-            var text = reader.GetString() ?? string.Empty;
-            if (LocalePathParser.Parse(text).Diagnostics is [var diagnostic, ..])
-            {
-                var place = reader.ValueIsEscaped
-                    ? offset
-                    : offset + 1 + Encoding.UTF8.GetByteCount(text.AsSpan(0, diagnostic.Span.Start));
-
-                malformed.Add(new LocaliMalformedEntry(place, LocalePath.FormatProblem(text, diagnostic)));
-            }
-        }
-
-        if (count == 0)
-        {
-            malformed.Add(new LocaliMalformedEntry(listOffset, $"'{LocaliSettings.PathsKey}' lists no path, which the runtime refuses."));
-        }
-    }
-
     private static string FormatKeys()
-        => string.Join(", ", new[] { IgnoreKey, ExcludeKey }.Concat(LocaliSettings.Keys).Select(key => $"'{key}'"));
+        => string.Join(", ", new[] { IgnoreKey, ExcludeKey }.Select(key => $"'{key}'"));
 
     private static void ReadIgnore(ref Utf8JsonReader reader, List<LocaliIgnoreEntry> ignore, List<LocaliMalformedEntry> malformed)
     {

@@ -5,46 +5,48 @@ using Forma.Locali.Linting;
 public sealed class LocalizationFileLinterTests
 {
     [Fact]
-    public async Task Should_report_a_rule_the_file_ignores_and_say_so_separately()
+    public async Task Should_hold_the_runtimes_config_file_to_its_rule()
     {
-        // Arrange — two sections translate one key two ways, which the file says is meant.
+        // Arrange — a key the runtime does not read steers nothing, so it is reported where it is written.
         using var directory = new TempDirectory();
-        var file = directory.Write("Widgets.he.json", LocalizationFileFakeData.WithIgnore(["LOC0113"], ("Widget", "Today", "היום"), ("Gallery", "Today", "עכשיו")));
+        var file = directory.Write(".locale.json", "{\n  \"paths\": [\"$RootDir/$AnchorName.$Culture$Extension\"],\n  \"rootNamespce\": \"Contoso.Widgets\"\n}");
 
         // Act
-        var result = await new LocalizationFileLinter(SchemaLinterTestFactory.Create()).LintAsync(file, TestContext.Current.CancellationToken);
+        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create()).LintAsync(file, TestContext.Current.CancellationToken);
 
-        // Assert — the file's own report still carries the diagnostic; a caller decides whether to show it.
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
         Assert.Multiple(
-            () => Assert.Contains(LintingCodes.InconsistentTranslation, result.Diagnostics.Codes()),
-            () => Assert.True(result.Ignored.Ignores(LintingCodes.InconsistentTranslation)));
+            () => Assert.Equal(LintingCodes.MalformedLocaleConfig, diagnostic.Code),
+            () => Assert.Equal(3, diagnostic.Line),
+            () => Assert.Contains("'rootNamespce'", diagnostic.Message, StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task Should_leave_a_rule_the_file_never_names_unignored()
+    public async Task Should_report_a_config_file_that_is_not_readable_json()
     {
         // Arrange
         using var directory = new TempDirectory();
-        var file = directory.Write("Widgets.he.json", LocalizationFileFakeData.Valid);
+        var file = directory.Write(".locale.json", "not json");
 
         // Act
-        var result = await new LocalizationFileLinter(SchemaLinterTestFactory.Create()).LintAsync(file, TestContext.Current.CancellationToken);
+        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create()).LintAsync(file, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.False(result.Ignored.Ignores(LintingCodes.InconsistentTranslation));
+        Assert.Equal([LintingCodes.MalformedLocaleConfig], diagnostics.Codes());
     }
 
     [Fact]
-    public async Task Should_still_judge_the_tools_entry_itself()
+    public async Task Should_read_a_config_file_with_the_translation_rules_left_out()
     {
-        // Arrange — a file cannot ignore the rule over its own tools entry.
+        // Arrange — the config file carries no metadata entry and no translation, which is no fault of its own.
         using var directory = new TempDirectory();
-        var file = directory.Write("Widgets.he.json", LocalizationFileFakeData.WithIgnore(["LOC0114", "nonsense"], ("Widget", "Today", "היום")));
+        var file = directory.Write(".locale.json", """{ "rootNamespace": "Contoso.Widgets" }""");
 
         // Act
-        var result = await new LocalizationFileLinter(SchemaLinterTestFactory.Create()).LintAsync(file, TestContext.Current.CancellationToken);
+        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create()).LintAsync(file, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Contains(LintingCodes.MalformedTools, result.Diagnostics.Codes());
+        Assert.Empty(diagnostics);
     }
 }

@@ -41,12 +41,12 @@ public sealed class ConsoleDiagnosticReporter(TextWriter writer) : IDiagnosticRe
             await _writer.WriteLineAsync($"  - {codes}".AsMemory(), cancellationToken).ConfigureAwait(false);
         }
 
-        // Raising the severity only ever reveals a warning; an ignored diagnostic needs its own configuration read instead.
+        // Raising the severity only ever reveals a warning; an ignored diagnostic needs the linting configuration read instead.
         var hint = result.IgnoredCount == 0
             ? "Pass --severity warning to read them."
             : result.IgnoredCount == result.SuppressedCount
-                ? "A file's own tools entry or .locali.json accounts for all of them."
-                : "Pass --severity warning to read the rest; a file's own tools entry or .locali.json accounts for the others.";
+                ? "The linting configuration accounts for all of them."
+                : "Pass --severity warning to read the rest; the linting configuration accounts for the others.";
 
         await _writer.WriteLineAsync(hint.AsMemory(), cancellationToken).ConfigureAwait(false);
     }

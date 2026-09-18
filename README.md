@@ -79,10 +79,9 @@ Console output is MSBuild-formatted, so an editor can navigate it:
 path(line,col): severity CODE: message
 ```
 
-A diagnostic below `--severity`, or one a file's own configuration leaves out — its
-`$tools.locali.ignore` entry, or a `.locali.json` above it — is left out of the console, the
-JSON report, and the exit code alike, but a default run still briefs what it left out, so
-nothing disappears without a trace:
+A diagnostic below `--severity`, or one the linting configuration leaves out — a `.locali.json`
+above the file — is left out of the console, the JSON report, and the exit code alike, but a
+default run still briefs what it left out, so nothing disappears without a trace:
 
 ```text
 Linted 658 file(s); 6 diagnostic(s).
@@ -142,8 +141,14 @@ the 100s, and a call-site rule in the 200s.
 
 | Code | Severity | Reports |
 |------|----------|---------|
-| LOC0020 | Error | The linting configuration is not readable JSON, does not follow its shape, names a rule this linter does not define, or gives a value the localization runtime would refuse |
+| LOC0020 | Error | The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define |
 | LOC0021 | Warning | A glob in the linting configuration matched no file the run reached |
+| LOC0022 | Error | The runtime's `.locale.json` is not readable JSON, names a key the runtime does not read, gives a value it would refuse, or is one of two for an assembly |
+
+Two files configure two things. `.locali.json` is the linter's own, cascading like an
+`.editorconfig` and never read by the runtime; `.locale.json` is the runtime's, one optional file
+per assembly that cascades nowhere, which the linter reads through the runtime's own reader
+and never writes a key of its own into.
 
 A `.locali.json` beside or above a file is that file's linting configuration, discovered the
 way an `.editorconfig` would: every one found walking up from the file, root to the file's
@@ -164,29 +169,27 @@ is checked out. Its JSON tolerates the same things a translation file's does: a 
 }
 ```
 
-`ignore` pairs a glob with the rules a file it matches is left out of, the same rules a
-translation file's own `$tools.locali.ignore` can name; the two are a union, so either can
-excuse a finding and neither has to know about the other. `.locali.json` is what reaches a
-file that cannot carry `$tools` itself, a `.razor` file among them, or when a maintainer
-would rather keep the exception out of the translation files entirely. `exclude` mirrors the
-command line's own flag, so a fixture folder a whole team excludes needs writing once rather
-than on every invocation; the two lists combine there as well.
+`ignore` pairs a glob with the rules a file it matches is left out of. It is the one place a
+per-file exception is written: a translation file holds translations and nothing a tool reads,
+so a file that translates one key two ways on purpose is excused here, by its path, rather than
+in the file. `exclude` mirrors the command line's own flag, so a fixture folder a whole team
+excludes needs writing once rather than on every invocation; the two lists combine there as well.
 
-Both entries are judged the same way `$tools` is: LOC0020 reports a rule identifier neither
-list names, so a typo silences nothing, and the rule over `.locali.json` itself can never be
-named in its own `ignore` list, the same loophole `$tools` closes for LOC0114. LOC0021
-reports a glob that never matched a file the run actually reached, so an exception a rename
-left behind does not sit unnoticed; a file moved out of the tree the run reads is exactly
-when its `.locali.json` entries go stale.
+LOC0020 reports a rule identifier neither list names, so a typo silences nothing, and the rule
+over `.locali.json` itself can never be named in its own `ignore` list. LOC0021 reports a glob
+that never matched a file the run actually reached, so an exception a rename left behind does not
+sit unnoticed; a file moved out of the tree the run reads is exactly when its `.locali.json`
+entries go stale.
 
 Leaving a diagnostic out this way is never silent: it is still counted in `suppressedCount`
 and still named in the console brief, exactly as a diagnostic below `--severity` is, so the
 linting configuration cannot make a finding disappear without a trace.
 
-The same file carries the keys the localization runtime reads: `rootNamespace`, the
-namespace a type's name is completed from; `rootDir`, where a source's names begin;
-`localesDir`, the folder locale files are gathered in; and `paths`, the paths a source reads
-its files by, written in tokens.
+`.locale.json` carries the keys the localization runtime reads and no other: `rootNamespace`, the
+namespace a type's name is completed from; `rootDir`, where the assembly's names begin;
+`localesDir`, the folder locale files are gathered in; and `paths`, the paths the assembly's
+files are read by, written in tokens. It is the assembly's file, embedded with its locale files
+or laid in its folder inside a host's `.locales`, and it applies to every file of the assembly.
 
 ```json
 {
@@ -197,10 +200,12 @@ its files by, written in tokens.
 }
 ```
 
-Each value is held to the runtime's own rule, and LOC0020 reports one the runtime would
-refuse — a malformed path at the token that is wrong rather than at the line. A `.locali.json`
-a project embeds shapes the type-bound rules too: they read the project's files through the
-settings it embeds, as the runtime does, so a folder's own paths decide what is read there.
+Each value is held to the runtime's own rule, and LOC0022 reports one the runtime would refuse —
+a malformed path at the token that is wrong rather than at the line — and a key the runtime does
+not read, which it passes over and which therefore steers nothing. A `.locale.json` a project
+embeds shapes the type-bound rules too: they read the project's files through the config it
+embeds, as the runtime does, so the paths it states decide what is read. Two such files for one
+assembly are reported at the project, since the runtime refuses every lookup in that assembly.
 
 ### Translation files (LOC0100–LOC0199)
 
@@ -220,10 +225,11 @@ settings it embeds, as the runtime does, so a folder's own paths decide what is 
 | LOC0111 | Error | The file declares the same key more than once |
 | LOC0112 | Error | A translation file, or a section of one, names a type that does not exist |
 | LOC0113 | Warning | The file translates the same key differently across its sections |
-| LOC0114 | Error | The `$tools` entry is misplaced or malformed, or its `locali.ignore` list names something that is not a rule |
 | LOC0115 | Warning | A reserved entry sits after an entry it has to precede |
 | LOC0116 | Error | A key or section is shaped like a reserved entry the runtime does not define |
 | LOC0117 | Error | The `$shared` entry is not an object holding translations alone |
+
+LOC0114 is retired with the `$tools` entry it judged, and the number is not reused.
 
 LOC0100 accepts what the runtime's own reader does: a `//` or `/* */` comment and a trailing
 comma are both skipped rather than reported as invalid JSON.
@@ -231,18 +237,8 @@ comma are both skipped rather than reported as invalid JSON.
 LOC0111 counts a key once per section, because a key repeats across sections whenever two
 types share a string; LOC0113 reads those repeats and reports the ones that disagree.
 
-A file leads with its reserved entries, in this order: `$localization`, then `$tools` where the
-file carries one, then `$shared` where it carries one, then its translations and sections. LOC0115
-reports one out of that order.
-
-`$tools` holds what tools read from a file and the runtime does not, each tool's entries under
-keys naming it. This linter reads `locali.ignore`, a list of the rules the file is left out of:
-`"$tools": { "locali.ignore": ["LOC0113"] }` keeps a file that translates one key two ways on
-purpose out of LOC0113's report. It applies to the file's own report, LOC0112 included, and never
-to a call site's. The entry itself is always judged: LOC0114 reports a `$tools` entry written
-inside a section or as something other than an object, a `locali` entry this linter does not
-define, an ignore list that is not a list of text, and a name that is no rule, so a misplaced
-entry or a misspelled identifier silences nothing. Another tool's entries are left to it.
+A file leads with its reserved entries, in this order: `$localization`, then `$shared` where it
+carries one, then its translations and sections. LOC0115 reports one out of that order.
 
 `$shared` is the runtime's: a section, at any node, whose entries every type reached through that
 node gets, so a translation shared by every component in a category is written once and one
@@ -250,7 +246,7 @@ shared by a folder's types alone sits in that folder's section. It holds transla
 alone: the runtime refuses a `$shared` that is not an object, and one nesting a section or
 another `$shared`, so LOC0117 reports both. The file rules read it as a section named `$shared`,
 so LOC0113 compares it with the sections beside it, and a section that words a shared key
-differently on purpose says so through `locali.ignore`.
+differently on purpose says so in `.locali.json`.
 
 A name shaped like a reserved entry is the runtime's: `$` followed by one lowercase word
 and nothing else, so `$import` and `$shraed` are reserved. The runtime refuses a file naming
@@ -279,7 +275,7 @@ type, for every type the project declares and every culture its files carry, and
 whatever no read reached: a whole file when nothing in it is reached, a section when it names
 no type, or the entries outside any section in a file read for its sections alone. It reads each
 file under the name the build's own naming gives it, an explicit `LogicalName` included, together
-with the `.locali.json` files the project embeds, and names generic and nested types as the
+with the `.locale.json` the project embeds, and names generic and nested types as the
 runtime does. A file no path in force places is reported as well, and every report names the
 anchors the runtime places the file at.
 
@@ -467,7 +463,7 @@ Nothing at the call site decides these, so there is nothing to judge:
 | Folder | Holds |
 |--------|-------|
 | `Cli/` | Argument parsing, options, exit codes, target resolution, the shared glob matcher |
-| `Configuration/` | Reading `.locali.json` into the linting configuration a run applies |
+| `Configuration/` | Reading `.locali.json` into the linting configuration a run applies, and `.locale.json` for the runtime's rule |
 | `Diagnostics/` | `LintingCode`, the `LintingCodes` catalogue, `LintingDiagnostic` |
 | `Documents/` | Reading a translation file into ordered entries with offsets |
 | `Linting/` | The services that drive file and schema linting |

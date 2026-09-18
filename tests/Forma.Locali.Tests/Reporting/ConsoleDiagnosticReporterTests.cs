@@ -84,7 +84,7 @@ public sealed class ConsoleDiagnosticReporterTests
                 string.Empty,
                 "2 diagnostic(s) not shown:",
                 "  - LOC0113 (2)",
-                "A file's own tools entry or .locali.json accounts for all of them.",
+                "The linting configuration accounts for all of them.",
             ],
             lines);
     }
@@ -110,7 +110,7 @@ public sealed class ConsoleDiagnosticReporterTests
                 "2 diagnostic(s) not shown:",
                 "  - LOC0102 (1)",
                 "  - LOC0209 (1)",
-                "Pass --severity warning to read the rest; a file's own tools entry or .locali.json accounts for the others.",
+                "Pass --severity warning to read the rest; the linting configuration accounts for the others.",
             ],
             lines);
     }

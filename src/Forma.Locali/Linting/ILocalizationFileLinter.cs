@@ -1,10 +1,12 @@
 namespace Forma.Locali.Linting;
 
+using Forma.Locali.Diagnostics;
+
 /// <summary>Checks one file.</summary>
 public interface ILocalizationFileLinter
 {
-    /// <summary>What a file produces, which is empty for JSON that is not a localization file.</summary>
+    /// <summary>What a file reports, which is nothing for JSON that is neither a localization file nor the runtime's config file.</summary>
     /// <param name="filePath">The file to read.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
-    ValueTask<LocalizationFileLintResult> LintAsync(string filePath, CancellationToken cancellationToken = default);
+    ValueTask<IReadOnlyList<LintingDiagnostic>> LintAsync(string filePath, CancellationToken cancellationToken = default);
 }

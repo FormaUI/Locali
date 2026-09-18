@@ -6,7 +6,7 @@ using Forma.Framework.Localization.Files;
 internal static class ReservedNames
 {
     private static readonly HashSet<string> Defined = new(
-        [LocalizationSchema.Marker, LocalizationSchema.SharedKey, LocalizationSchema.ToolsKey],
+        [LocalizationSchema.Marker, LocalizationSchema.SharedKey],
         StringComparer.Ordinal);
 
     /// <summary>Whether the runtime defines the name as one of its reserved entries.</summary>

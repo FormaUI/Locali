@@ -120,27 +120,12 @@ public sealed class ReservedKeyShapeCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithReservedOrder("$localization", "$tools", "$shared", "Widget"));
+            LocalizationFileFakeData.WithReservedOrder("$localization", "$shared", "Widget"));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
         Assert.DoesNotContain(LintingCodes.ReservedShapedKey, diagnostics.Codes());
-    }
-
-    [Fact]
-    public void Should_leave_another_tools_entries_alone()
-    {
-        // Arrange — what sits under the tools entry is named by the tool, not by the runtime.
-        var document = LocalizationDocumentTestFactory.Read(
-            LocalizationFileFakeData.HebrewName,
-            """{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "$tools": { "$crowdin": "reviewed" }, "Widget": { "Today": "היום" } }""");
-
-        // Act
-        var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
-
-        // Assert
-        Assert.Empty(diagnostics);
     }
 }

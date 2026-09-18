@@ -11,6 +11,7 @@ public static class LintingCodes
         [
             MalformedConfiguration,
             StaleConfigurationGlob,
+            MalformedLocaleConfig,
             InvalidJson,
             MissingMarker,
             MarkerNotFirst,
@@ -25,7 +26,6 @@ public static class LintingCodes
             DuplicateKey,
             UnreachableTranslation,
             InconsistentTranslation,
-            MalformedTools,
             ReservedEntryOutOfOrder,
             ReservedShapedKey,
             MalformedShared,
@@ -45,17 +45,23 @@ public static class LintingCodes
             ReformattedLookup,
         ];
 
-    /// <summary>The linting configuration is not readable JSON, does not follow its shape, names a rule this linter does not define, or gives a value the localization runtime would refuse.</summary>
+    /// <summary>The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define.</summary>
     public static LintingCode MalformedConfiguration { get; } = new(
         "LOC0020",
         LintingSeverity.Error,
-        "The linting configuration is not readable JSON, does not follow its shape, names a rule this linter does not define, or gives a value the localization runtime would refuse.");
+        "The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define.");
 
     /// <summary>A glob in the linting configuration matched no file the run linted.</summary>
     public static LintingCode StaleConfigurationGlob { get; } = new(
         "LOC0021",
         LintingSeverity.Warning,
         "A glob in the linting configuration matched no file the run linted, so it no longer excludes or leaves anything out.");
+
+    /// <summary>The runtime's config file is not readable JSON, names a key the runtime does not read, gives a value the runtime would refuse, or is one of two for an assembly.</summary>
+    public static LintingCode MalformedLocaleConfig { get; } = new(
+        "LOC0022",
+        LintingSeverity.Error,
+        "The runtime's config file is not readable JSON, names a key the runtime does not read, gives a value the runtime would refuse, or is one of two for an assembly, so it does not place the files beneath it as written.");
 
     /// <summary>The file is not readable JSON.</summary>
     public static LintingCode InvalidJson { get; } = new(
@@ -141,17 +147,11 @@ public static class LintingCodes
         LintingSeverity.Warning,
         "A file translates the same key differently across its sections, so the same English text reads two ways at run time.");
 
-    /// <summary>The tools entry is misplaced or malformed, or what it holds for this linter names something this linter does not define.</summary>
-    public static LintingCode MalformedTools { get; } = new(
-        "LOC0114",
-        LintingSeverity.Error,
-        "The tools entry is misplaced or malformed, or what it holds for this linter names something this linter does not define, so nothing is left out.");
-
     /// <summary>A reserved entry sits after an entry it has to precede.</summary>
     public static LintingCode ReservedEntryOutOfOrder { get; } = new(
         "LOC0115",
         LintingSeverity.Warning,
-        "A reserved entry sits after an entry it has to precede: the metadata entry, then the tools entry, then the shared section lead a file.");
+        "A reserved entry sits after an entry it has to precede: the metadata entry, then the shared section lead a file.");
 
     /// <summary>A key or section is shaped like a reserved entry the runtime does not define.</summary>
     public static LintingCode ReservedShapedKey { get; } = new(

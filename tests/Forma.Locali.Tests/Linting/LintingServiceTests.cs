@@ -222,18 +222,18 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
-    public async Task Should_report_embedded_settings_marking_two_roots_and_finish_the_run()
+    public async Task Should_report_an_embedded_config_marking_two_roots_and_finish_the_run()
     {
-        // Arrange — two settings files with none above them each mark a root, which the runtime refuses for the whole assembly.
+        // Arrange — two config files with none above them each mark a root, which the runtime refuses for the whole assembly.
         using var directory = new TempDirectory();
         var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
-        var first = directory.Write(Path.Combine("Components", ".locali.json"), "{}");
-        var second = directory.Write(Path.Combine("Pages", ".locali.json"), "{}");
+        var first = directory.Write(Path.Combine("Components", ".locale.json"), "{}");
+        var second = directory.Write(Path.Combine("Pages", ".locale.json"), "{}");
         var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var resourceNames = new Dictionary<string, string>
         {
-            [Path.GetFullPath(first)] = "Scratch.Components..locali.json",
-            [Path.GetFullPath(second)] = "Scratch.Pages..locali.json",
+            [Path.GetFullPath(first)] = "Scratch.Components..locale.json",
+            [Path.GetFullPath(second)] = "Scratch.Pages..locale.json",
             [Path.GetFullPath(file)] = "Scratch.Components..locales.he.json",
         };
         var compilation = CompilationTestFactory.Unreferenced("namespace Scratch.Components; public sealed class Widget;");
@@ -245,9 +245,44 @@ public sealed class LintingServiceTests
         // Assert
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Multiple(
-            () => Assert.Equal(LintingCodes.MalformedConfiguration, diagnostic.Code),
+            () => Assert.Equal(LintingCodes.MalformedLocaleConfig, diagnostic.Code),
             () => Assert.Equal(project, diagnostic.Path),
             () => Assert.Contains(Path.GetFullPath(first), diagnostic.Message, StringComparison.Ordinal),
             () => Assert.Contains(Path.GetFullPath(second), diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_report_a_locale_config_the_runtime_would_refuse()
+    {
+        // Arrange — the runtime's own config file sits among the locale files and is held to the runtime's rule.
+        using var directory = new TempDirectory();
+        var config = directory.Write(".locale.json", """{ "rootDir": "/strings" }""");
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MalformedLocaleConfig, diagnostic.Code),
+            () => Assert.Equal(config, diagnostic.Path),
+            () => Assert.Equal(1, diagnostic.Line),
+            () => Assert.Contains("not a relative path", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_leave_a_locale_config_the_runtime_reads_alone()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(".locale.json", """{ "rootNamespace": "Contoso.Widgets", "paths": ["$RootDir/$AnchorName.$Culture$Extension"] }""");
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(result.Diagnostics),
+            () => Assert.Equal(1, result.FileCount));
     }
 }

@@ -105,33 +105,18 @@ public sealed class LocalizationDocumentTests
     public void Should_read_the_strings_of_an_array_value()
     {
         // Arrange
-        var content = Encoding.UTF8.GetBytes("""{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "$tools": { "locali.ignore": ["LOC0113", "LOC0111"], "mixed": ["LOC0113", 1], "next": "x" } }""");
+        var content = Encoding.UTF8.GetBytes("""{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "Widget": { "list": ["first", "second"], "mixed": ["first", 1], "next": "x" } }""");
 
         // Act
         LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
 
         // Assert
-        var entries = document!.Entries.Where(entry => entry.Section == "$tools").ToList();
+        var entries = document!.Entries.Where(entry => entry.Section == "Widget").ToList();
 
         Assert.Multiple(
-            () => Assert.Equal(["LOC0113", "LOC0111"], entries[0].Items),
+            () => Assert.Equal(["first", "second"], entries[0].Items),
             () => Assert.False(entries[0].IsText),
             () => Assert.Null(entries[1].Items),
             () => Assert.Equal(("next", "x"), (entries[2].Name, entries[2].Value)));
-    }
-
-    [Fact]
-    public void Should_tell_an_entry_under_a_tools_entry_from_a_translation()
-    {
-        // Arrange — the runtime skips a tools entry wherever it sits.
-        var content = Encoding.UTF8.GetBytes("""{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "$tools": { "crowdin.id": "1" }, "Widget": { "$tools": { "crowdin.id": "2" }, "Today": "היום" } }""");
-
-        // Act
-        LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
-
-        // Assert
-        var entries = document!.Entries.Where(entry => entry.Name != "$localization").ToList();
-
-        Assert.Equal([true, true, false], entries.Select(entry => entry.IsInsideToolsSection));
     }
 }
