@@ -17,8 +17,8 @@ using Microsoft.Extensions.Options;
 /// <param name="loader">Loads the projects the source files belong to.</param>
 /// <param name="localizationFileLinter">Checks one localization file.</param>
 /// <param name="sourcesLinter">Checks the keys written at call sites.</param>
-/// <param name="reachabilityLinter">Checks that a project's translation files can still be found by type.</param>
-/// <param name="coverageLinter">Checks that a project's keys are answered by the translation files it owns.</param>
+/// <param name="reachabilityLinter">Checks that a project's locale files can still be found by type.</param>
+/// <param name="coverageLinter">Checks that a project's keys are answered by the locale files it owns.</param>
 /// <param name="lintingConfiguration">What the linting configuration's <c>.locali.json</c> files leave out.</param>
 public sealed class LintingService(
     IOptions<LinterOptions> options,
@@ -27,7 +27,7 @@ public sealed class LintingService(
     ILocalizationFileLinter localizationFileLinter,
     ISourceLinter sourcesLinter,
     IReachabilityLinter reachabilityLinter,
-    ITranslationCoverageLinter coverageLinter,
+    ILocalizationCoverageLinter coverageLinter,
     ILintingConfiguration lintingConfiguration) : ILintingService
 {
     private static readonly IReadOnlySet<LintingCode> NoConfigIgnores = new HashSet<LintingCode>();
@@ -38,7 +38,7 @@ public sealed class LintingService(
     private readonly ILocalizationFileLinter _linter = localizationFileLinter ?? throw new ArgumentNullException(nameof(localizationFileLinter));
     private readonly ISourceLinter _sources = sourcesLinter ?? throw new ArgumentNullException(nameof(sourcesLinter));
     private readonly IReachabilityLinter _reachability = reachabilityLinter ?? throw new ArgumentNullException(nameof(reachabilityLinter));
-    private readonly ITranslationCoverageLinter _coverage = coverageLinter ?? throw new ArgumentNullException(nameof(coverageLinter));
+    private readonly ILocalizationCoverageLinter _coverage = coverageLinter ?? throw new ArgumentNullException(nameof(coverageLinter));
     private readonly ILintingConfiguration _lintingConfiguration = lintingConfiguration ?? throw new ArgumentNullException(nameof(lintingConfiguration));
 
     /// <inheritdoc />
@@ -122,13 +122,13 @@ public sealed class LintingService(
             var sources = _sources.Lint(project, wanted, cancellationToken);
             diagnostics.AddRange(sources.Diagnostics);
 
-            // Both rules over a project's translation files read the same resolution, so it is made once.
-            if (TranslationFiles.Resolve(project, target.LocalizationFilesOf(project.Path)) is { } translations)
+            // Both rules over a project's locale files read the same resolution, so it is made once.
+            if (ProjectLocaleFiles.Resolve(project, target.LocalizationFilesOf(project.Path)) is { } localization)
             {
                 try
                 {
-                    diagnostics.AddRange(_reachability.Lint(translations));
-                    diagnostics.AddRange(_coverage.Lint(translations, sources.CallSites));
+                    diagnostics.AddRange(_reachability.Lint(localization));
+                    diagnostics.AddRange(_coverage.Lint(localization, sources.CallSites));
                 }
                 catch (LocaleConfigException exception)
                 {

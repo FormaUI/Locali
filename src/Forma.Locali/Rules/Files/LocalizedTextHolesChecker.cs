@@ -5,11 +5,11 @@ using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 
 /// <summary>Checks that a translation fills only the holes its key names.</summary>
-public sealed class TranslationHolesChecker : ILocalizationFileRuleChecker
+public sealed class LocalizedTextHolesChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
-        => LintingCodes.UnknownTranslationHole;
+        => LintingCodes.UnknownLocalizedTextHole;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

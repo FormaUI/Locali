@@ -21,11 +21,11 @@ public static class LintingCodes
             SchemaVersionMismatch,
             UnknownMetadataField,
             CultureMismatch,
-            UnknownTranslationHole,
-            TranslationHoleShapedText,
+            UnknownLocalizedTextHole,
+            LocalizedTextHoleShapedText,
             DuplicateKey,
-            UnreachableTranslation,
-            InconsistentTranslation,
+            UnreachableLocalization,
+            InconsistentLocalization,
             ReservedEntryOutOfOrder,
             ReservedShapedKey,
             MalformedShared,
@@ -36,7 +36,7 @@ public static class LintingCodes
             MissingPluralOther,
             RazorNotAnalysed,
             HoleShapedText,
-            MissingTranslation,
+            MissingLocalization,
             KeyNotAnalysed,
             BareHoleKey,
             BareExpressionKey,
@@ -118,13 +118,13 @@ public static class LintingCodes
         "A file declares a culture its own name does not give it.");
 
     /// <summary>A translation fills a hole its key does not name.</summary>
-    public static LintingCode UnknownTranslationHole { get; } = new(
+    public static LintingCode UnknownLocalizedTextHole { get; } = new(
         "LOC0109",
         LintingSeverity.Error,
         "A translation fills a hole its key does not name, so it renders as written.");
 
     /// <summary>A translation writes text shaped like a hole whose name the runtime cannot read.</summary>
-    public static LintingCode TranslationHoleShapedText { get; } = new(
+    public static LintingCode LocalizedTextHoleShapedText { get; } = new(
         "LOC0110",
         LintingSeverity.Error,
         "A translation writes text shaped like a hole that names nothing a value can be read by, so it renders as written.");
@@ -135,14 +135,14 @@ public static class LintingCodes
         LintingSeverity.Error,
         "A file declares the same key more than once, so every translation but the last is dropped.");
 
-    /// <summary>A translation file, or a section of one, names a type that does not exist.</summary>
-    public static LintingCode UnreachableTranslation { get; } = new(
+    /// <summary>A locale file, or a section of one, names a type that does not exist.</summary>
+    public static LintingCode UnreachableLocalization { get; } = new(
         "LOC0112",
         LintingSeverity.Error,
         "No type reads this file, or a section of it, by the full name its position implies, so the runtime never finds those translations.");
 
     /// <summary>A file translates the same key differently across its sections.</summary>
-    public static LintingCode InconsistentTranslation { get; } = new(
+    public static LintingCode InconsistentLocalization { get; } = new(
         "LOC0113",
         LintingSeverity.Warning,
         "A file translates the same key differently across its sections, so the same English text reads two ways at run time.");
@@ -208,7 +208,7 @@ public static class LintingCodes
         "A key writes text shaped like a hole that names nothing a value can be read by, so it renders as written.");
 
     /// <summary>A key written in source is not answered in a culture its type is already translated for.</summary>
-    public static LintingCode MissingTranslation { get; } = new(
+    public static LintingCode MissingLocalization { get; } = new(
         "LOC0209",
         LintingSeverity.Warning,
         "A key written at a call site has no entry in a culture its type is already translated for, so it renders untranslated.");

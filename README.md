@@ -11,7 +11,7 @@ Two things go wrong quietly in a localized codebase, and a build catches neither
   and `es` files already exist leaves both files behind — and falling back to the key is exactly
   what the runtime is defined to do, so nothing anywhere complains.
 
-The linter reads translation files against the schema, and reads every `IStringLocale` call site in
+The linter reads locale files against the schema, and reads every `IStringLocale` call site in
 C# and Razor against what the runtime will do with it. [Rules](#rules) lists what it reports.
 
 ## Quick start
@@ -157,7 +157,7 @@ project both take effect, the nearer file adding to the root's rather than repla
 globs read exactly like `--exclude`'s: case-insensitive, forward slashes, and `*` or `**` —
 the two mean the same thing — spanning separators; each one is read relative to the folder
 its own `.locali.json` sits in, so the file stays correct wherever the tree that carries it
-is checked out. Its JSON tolerates the same things a translation file's does: a `//` or `/*
+is checked out. Its JSON tolerates the same things a locale file's does: a `//` or `/*
 */` comment and a trailing comma are both skipped rather than reported as invalid.
 
 ```json
@@ -170,7 +170,7 @@ is checked out. Its JSON tolerates the same things a translation file's does: a 
 ```
 
 `ignoreDiagnostics` pairs a glob with the rules a file it matches is left out of. It is the one
-place a per-file exception is written: a translation file holds translations and nothing a tool
+place a per-file exception is written: a locale file holds translations and nothing a tool
 reads, so a file that translates one key two ways on purpose is excused here, by its path,
 rather than in the file. `excludeFiles` mirrors the command line's own flag, so a fixture folder
 a whole team excludes needs writing once rather than on every invocation; the two lists combine
@@ -208,7 +208,7 @@ embeds shapes the type-bound rules too: they read the project's files through th
 embeds, as the runtime does, so the paths it states decide what is read. Two such files for one
 assembly are reported at the project, since the runtime refuses every lookup in that assembly.
 
-### Translation files (LOC0100–LOC0199)
+### Locale files (LOC0100–LOC0199)
 
 | Code | Severity | Reports |
 |------|----------|---------|
@@ -224,7 +224,7 @@ assembly are reported at the project, since the runtime refuses every lookup in 
 | LOC0109 | Error | A translation fills a hole its key does not name |
 | LOC0110 | Error | A translation writes text shaped like a hole the runtime cannot read |
 | LOC0111 | Error | The file declares the same key more than once |
-| LOC0112 | Error | A translation file, or a section of one, names a type that does not exist |
+| LOC0112 | Error | A locale file, or a section of one, names a type that does not exist |
 | LOC0113 | Warning | The file translates the same key differently across its sections |
 | LOC0115 | Warning | A reserved entry sits after an entry it has to precede |
 | LOC0116 | Error | A key or section is shaped like a reserved entry the runtime does not define |
@@ -388,7 +388,7 @@ LOC0211 and LOC0212 catch a key with nothing for a translator to read. A key mad
 holes and punctuation, such as `"{count} / {total}"`, and a plural expression whose fields
 carry only `#`, such as `"[$ plural; other: #; $]"`, both format a value rather than say
 anything, so `$"{count} / {total}"` or `count.ToString("N0", culture)` replaces the lookup
-outright — there is no translation file entry for either rule to expect, because there is no
+outright — there is no locale file entry for either rule to expect, because there is no
 prose to translate. A field or a literal run carrying a single letter is enough to clear
 either rule, so `"{count} files"` and `"[$ plural; one: # file; other: # files; $]"` are left
 alone. A localization file cannot rescue such a key either: `null` marks a key whose
@@ -448,7 +448,7 @@ Nothing at the call site decides these, so there is nothing to judge:
 - **A value passed alongside the format text.** `string.Format("Found {0}.", L[key])` and
   `string.Format(arg0: L[key], format: "Found {0}.")` both use the lookup as an ordinary
   value, not as the format text a translation could collide with, so LOC0215 leaves them be.
-- **A translation file the run did not name.** LOC0112 and LOC0209 both read the files a
+- **A locale file the run did not name.** LOC0112 and LOC0209 both read the files a
   project owns, so linting a lone `.razor` file checks its call sites and nothing else.
   Point `--path` at the project, the solution, or a folder to get them.
 - **A file the project does not embed.** A host's own `.locales` folder, copied beside the
@@ -466,14 +466,14 @@ Nothing at the call site decides these, so there is nothing to judge:
 | `Cli/` | Argument parsing, options, exit codes, target resolution, the shared glob matcher |
 | `Configuration/` | Reading `.locali.json` into the linting configuration a run applies, and `.locale.json` for the runtime's rule |
 | `Diagnostics/` | `LintingCode`, the `LintingCodes` catalogue, `LintingDiagnostic` |
-| `Documents/` | Reading a translation file into ordered entries with offsets |
+| `Documents/` | Reading a locale file into ordered entries with offsets |
 | `Linting/` | The services that drive file and schema linting |
 | `Projects/` | MSBuild loading, and binding Roslyn to the SDK's copy |
 | `Reporting/` | Console and JSON reporters |
 | `Rules/` | Rule contracts, rule contexts, shared hole-name reading |
-| `Rules/Files/` | Rules over a translation file |
+| `Rules/Files/` | Rules over a locale file |
 | `Rules/Sources/` | Rules over a call site |
-| `Sources/` | Finding call sites, and the rules that read a project's translation files whole |
+| `Sources/` | Finding call sites, and the rules that read a project's locale files whole |
 
 ### Adding a rule
 
@@ -490,7 +490,7 @@ Nothing at the call site decides these, so there is nothing to judge:
 codes share an id, if two rules in the same family report under the same code, or if a
 rule reports outside its family's range. The range rule means the same idea checked on
 both sides of a call — a key and a translation, say — needs two codes, one per family, as
-`TranslationHoleShapedText` (LOC0110) and `HoleShapedText` (LOC0208) show. A rule that
+`LocalizedTextHoleShapedText` (LOC0110) and `HoleShapedText` (LOC0208) show. A rule that
 needs to report two different things is two rules regardless of family.
 
 `HoleNames` reads the names a format refers to its values by, and matches the runtime's

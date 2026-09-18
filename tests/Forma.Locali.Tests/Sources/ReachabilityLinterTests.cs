@@ -22,7 +22,7 @@ public sealed class ReachabilityLinterTests
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal(LintingCodes.UnreachableTranslation, diagnostic.Code),
+            () => Assert.Equal(LintingCodes.UnreachableLocalization, diagnostic.Code),
             () => Assert.Equal(file, diagnostic.Path),
             () => Assert.Contains("'Scratch.Components.Gallery'", diagnostic.Message, StringComparison.Ordinal));
     }
@@ -171,7 +171,7 @@ public sealed class ReachabilityLinterTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false, "Forma.Framework");
 
         // Act
-        var diagnostics = new ReachabilityLinter().Lint(TranslationFiles.Resolve(project, [file])!);
+        var diagnostics = new ReachabilityLinter().Lint(ProjectLocaleFiles.Resolve(project, [file])!);
 
         // Assert
         Assert.Empty(diagnostics);
@@ -190,12 +190,12 @@ public sealed class ReachabilityLinterTests
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal(LintingCodes.UnreachableTranslation, diagnostic.Code),
+            () => Assert.Equal(LintingCodes.UnreachableLocalization, diagnostic.Code),
             () => Assert.Equal(scoped, diagnostic.Path));
     }
 
     [Fact]
-    public void Should_report_nothing_when_the_project_owns_no_translation_files()
+    public void Should_report_nothing_when_the_project_owns_no_locale_files()
     {
         // Arrange
         using var directory = new TempDirectory();
@@ -214,6 +214,6 @@ public sealed class ReachabilityLinterTests
     {
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(source), false, false, EmbeddedResourceNames: resourceNames);
 
-        return new ReachabilityLinter().Lint(TranslationFiles.Resolve(project, files)!);
+        return new ReachabilityLinter().Lint(ProjectLocaleFiles.Resolve(project, files)!);
     }
 }

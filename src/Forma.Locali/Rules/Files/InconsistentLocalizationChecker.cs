@@ -5,11 +5,11 @@ using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 
 /// <summary>Checks that a file translates a key the same way in every section that declares it, since each section's type shows its own.</summary>
-public sealed class InconsistentTranslationChecker : ILocalizationFileRuleChecker
+public sealed class InconsistentLocalizationChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
-        => LintingCodes.InconsistentTranslation;
+        => LintingCodes.InconsistentLocalization;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)
@@ -17,7 +17,7 @@ public sealed class InconsistentTranslationChecker : ILocalizationFileRuleChecke
         ArgumentNullException.ThrowIfNull(context);
 
         // A section's last declaration is the one the runtime keeps, so it is the one compared.
-        var translationsByKey = new Dictionary<string, Dictionary<string, LocalizationEntry>>(StringComparer.Ordinal);
+        var entriesByKey = new Dictionary<string, Dictionary<string, LocalizationEntry>>(StringComparer.Ordinal);
 
         foreach (var entry in context.Document.Entries)
         {
@@ -26,18 +26,18 @@ public sealed class InconsistentTranslationChecker : ILocalizationFileRuleChecke
                 continue;
             }
 
-            if (!translationsByKey.TryGetValue(entry.Name, out var translationsBySection))
+            if (!entriesByKey.TryGetValue(entry.Name, out var entriesBySection))
             {
-                translationsBySection = new Dictionary<string, LocalizationEntry>(StringComparer.Ordinal);
-                translationsByKey[entry.Name] = translationsBySection;
+                entriesBySection = new Dictionary<string, LocalizationEntry>(StringComparer.Ordinal);
+                entriesByKey[entry.Name] = entriesBySection;
             }
 
-            translationsBySection[entry.Section] = entry;
+            entriesBySection[entry.Section] = entry;
         }
 
-        foreach (var translationsBySection in translationsByKey.Values)
+        foreach (var entriesBySection in entriesByKey.Values)
         {
-            Compare(context, translationsBySection.Values);
+            Compare(context, entriesBySection.Values);
         }
     }
 
@@ -54,10 +54,10 @@ public sealed class InconsistentTranslationChecker : ILocalizationFileRuleChecke
                 continue;
             }
 
-            var translation = Translation(entry);
-            var referenceTranslation = Translation(reference);
+            var text = GetLocalizedText(entry);
+            var referenceText = GetLocalizedText(reference);
 
-            if (translation == referenceTranslation)
+            if (text == referenceText)
             {
                 continue;
             }
@@ -65,12 +65,12 @@ public sealed class InconsistentTranslationChecker : ILocalizationFileRuleChecke
             context.Report(
                 Code,
                 entry.NameOffset,
-                $"The key '{entry.Name}' is translated as '{translation}' here and as '{referenceTranslation}' {Place(reference)}, so the same English text reads two ways at run time.");
+                $"The key '{entry.Name}' is translated as '{text}' here and as '{referenceText}' {Place(reference)}, so the same English text reads two ways at run time.");
         }
     }
 
     // A null value declares that the translation is the key text itself.
-    private static string Translation(LocalizationEntry entry)
+    private static string GetLocalizedText(LocalizationEntry entry)
         => entry.Value ?? entry.Name;
 
     private static string Place(LocalizationEntry entry)

@@ -22,12 +22,12 @@ public static class LocalizationFileFakeData
     /// <summary>A schema-following file for the culture named, carrying one translation.</summary>
     /// <param name="culture">The culture the file declares and is named for.</param>
     /// <param name="key">The key the translation is written under.</param>
-    /// <param name="translation">The translation itself.</param>
-    public static string ForCulture(string culture, string key, string translation)
+    /// <param name="text">The translation itself.</param>
+    public static string ForCulture(string culture, string key, string text)
         => $$"""
             {
               "{{LocalizationSchema.Marker}}": "SchemaVersion: {{LocalizationSchema.CurrentVersion}}; Culture: {{culture}};",
-              "{{key}}": "{{translation}}"
+              "{{key}}": "{{text}}"
             }
             """;
 
@@ -57,19 +57,19 @@ public static class LocalizationFileFakeData
 
     /// <summary>A schema-following file carrying one translation.</summary>
     /// <param name="key">The key the translation is written under.</param>
-    /// <param name="translation">The translation itself.</param>
-    public static string WithTranslation(string key, string translation)
+    /// <param name="text">The translation itself.</param>
+    public static string WithLocalizationEntry(string key, string text)
         => $$"""
             {
               "{{LocalizationSchema.Marker}}": "SchemaVersion: {{LocalizationSchema.CurrentVersion}}; Culture: he;",
               "Today": "היום",
-              "{{key}}": "{{translation}}"
+              "{{key}}": "{{text}}"
             }
             """;
 
     /// <summary>A schema-following file whose one translation is deliberately the key itself.</summary>
     /// <param name="key">The key left untranslated.</param>
-    public static string WithNullTranslation(string key)
+    public static string WithNullLocalizationEntry(string key)
         => $$"""
             {
               "{{LocalizationSchema.Marker}}": "SchemaVersion: {{LocalizationSchema.CurrentVersion}}; Culture: he;",
@@ -81,18 +81,18 @@ public static class LocalizationFileFakeData
     /// <summary>A schema-following file holding one section, for the type named, with one translation.</summary>
     /// <param name="section">The section, which completes a type's name.</param>
     /// <param name="key">The key the translation is written under.</param>
-    /// <param name="translation">The translation itself.</param>
-    public static string WithSection(string section, string key, string translation)
-        => WithSections((section, key, translation));
+    /// <param name="text">The translation itself.</param>
+    public static string WithSection(string section, string key, string text)
+        => WithSections((section, key, text));
 
     /// <summary>A schema-following file holding one section per type named, each with one translation.</summary>
     /// <param name="sections">The sections, each with the key and translation it holds.</param>
-    public static string WithSections(params (string Section, string Key, string Translation)[] sections)
+    public static string WithSections(params (string Section, string Key, string Text)[] sections)
         => $$"""
             {
               "{{LocalizationSchema.Marker}}": "SchemaVersion: {{LocalizationSchema.CurrentVersion}}; Culture: he;",
               {{string.Join(",\n  ", sections.Select(static section => $$"""
-                "{{section.Section}}": { "{{section.Key}}": "{{section.Translation}}" }
+                "{{section.Section}}": { "{{section.Key}}": "{{section.Text}}" }
                 """))}}
             }
             """;
@@ -100,15 +100,15 @@ public static class LocalizationFileFakeData
     /// <summary>A schema-following file holding one section and one entry outside it.</summary>
     /// <param name="section">The section, which completes a type's name.</param>
     /// <param name="key">The key the section translates.</param>
-    /// <param name="translation">The section's translation.</param>
+    /// <param name="text">The section's translation.</param>
     /// <param name="strayKey">The key written outside the section.</param>
-    /// <param name="strayTranslation">The translation written outside the section.</param>
-    public static string WithSectionAndStray(string section, string key, string translation, string strayKey, string strayTranslation)
+    /// <param name="strayText">The translation written outside the section.</param>
+    public static string WithSectionAndStray(string section, string key, string text, string strayKey, string strayText)
         => $$"""
             {
               "{{LocalizationSchema.Marker}}": "SchemaVersion: {{LocalizationSchema.CurrentVersion}}; Culture: he;",
-              "{{section}}": { "{{key}}": "{{translation}}" },
-              "{{strayKey}}": "{{strayTranslation}}"
+              "{{section}}": { "{{key}}": "{{text}}" },
+              "{{strayKey}}": "{{strayText}}"
             }
             """;
 

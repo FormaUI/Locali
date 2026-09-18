@@ -6,6 +6,6 @@ using Forma.Locali.Diagnostics;
 public interface IReachabilityLinter
 {
     /// <summary>Every file, and every section of a file, that no type of the project reads.</summary>
-    /// <param name="translations">The project's translation files, resolved against its types.</param>
-    IReadOnlyList<LintingDiagnostic> Lint(ProjectTranslations translations);
+    /// <param name="localization">The project's locale files, resolved against its types.</param>
+    IReadOnlyList<LintingDiagnostic> Lint(ProjectLocalization localization);
 }

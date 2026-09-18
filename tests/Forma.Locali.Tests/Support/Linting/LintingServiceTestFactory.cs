@@ -30,7 +30,7 @@ public static class LintingServiceTestFactory
             new LocalizationFileLinter(SchemaLinterTestFactory.Create()),
             new SourceLinter(new SemanticCallSiteFinder(), new SyntacticCallSiteFinder(), SourceLinterTestFactory.Checkers()),
             new ReachabilityLinter(),
-            new TranslationCoverageLinter(),
+            new LocalizationCoverageLinter(),
             lintingConfiguration);
     }
 }

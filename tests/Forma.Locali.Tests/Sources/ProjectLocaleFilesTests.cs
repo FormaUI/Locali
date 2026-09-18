@@ -6,7 +6,7 @@ using Forma.Locali.Projects;
 
 using Microsoft.CodeAnalysis;
 
-public sealed class TranslationFilesTests
+public sealed class ProjectLocaleFilesTests
 {
     [Fact]
     public void Should_name_a_file_for_its_folder_position_under_the_root()
@@ -33,7 +33,7 @@ public sealed class TranslationFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, "Forma.Framework");
 
         // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(project, [file])!.Files);
+        var resolved = Assert.Single(ProjectLocaleFiles.Resolve(project, [file])!.Files);
 
         // Assert
         Assert.Equal("Forma.Framework.Emojis..locales.he.json", resolved.Name);
@@ -49,7 +49,7 @@ public sealed class TranslationFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedResourceNames: resourceNames);
 
         // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(project, [file])!.Files);
+        var resolved = Assert.Single(ProjectLocaleFiles.Resolve(project, [file])!.Files);
 
         // Assert
         Assert.Equal("Contoso.Widgets..locales.he.json", resolved.Name);
@@ -108,7 +108,7 @@ public sealed class TranslationFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>());
 
         // Act
-        var resolved = TranslationFiles.Resolve(project, [file])!;
+        var resolved = ProjectLocaleFiles.Resolve(project, [file])!;
 
         // Assert
         Assert.Empty(resolved.Files);
@@ -143,7 +143,7 @@ public sealed class TranslationFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), null, false, false);
 
         // Act
-        var resolved = TranslationFiles.Resolve(project, [directory.Write(Path.Combine(".locales", "he.json"), LocalizationFileFakeData.Valid)]);
+        var resolved = ProjectLocaleFiles.Resolve(project, [directory.Write(Path.Combine(".locales", "he.json"), LocalizationFileFakeData.Valid)]);
 
         // Assert
         Assert.Null(resolved);
@@ -152,6 +152,6 @@ public sealed class TranslationFilesTests
     private static Compilation Compile(string source)
         => CompilationTestFactory.Unreferenced(source);
 
-    private static ProjectTranslations Resolve(TempDirectory directory, Compilation compilation, params string[] files)
-        => TranslationFiles.Resolve(new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false), files)!;
+    private static ProjectLocalization Resolve(TempDirectory directory, Compilation compilation, params string[] files)
+        => ProjectLocaleFiles.Resolve(new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false), files)!;
 }

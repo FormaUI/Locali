@@ -4,11 +4,11 @@ using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 
 /// <summary>Checks that a translation writes nothing shaped like a hole the runtime cannot read.</summary>
-public sealed class TranslationHoleShapeChecker : ILocalizationFileRuleChecker
+public sealed class LocalizedTextHoleShapeChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
-        => LintingCodes.TranslationHoleShapedText;
+        => LintingCodes.LocalizedTextHoleShapedText;
 
     /// <inheritdoc />
     public void Check(LocalizationFileContext context)

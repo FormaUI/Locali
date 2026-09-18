@@ -37,7 +37,7 @@ public sealed class LocalizationFileLinterTests
     }
 
     [Fact]
-    public async Task Should_read_a_config_file_with_the_translation_rules_left_out()
+    public async Task Should_read_a_config_file_with_the_locale_file_rules_left_out()
     {
         // Arrange — the config file carries no metadata entry and no translation, which is no fault of its own.
         using var directory = new TempDirectory();

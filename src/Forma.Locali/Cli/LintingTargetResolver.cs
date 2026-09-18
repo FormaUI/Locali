@@ -63,7 +63,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
             .Where(static file => !IsBuildOutput(file))
             .Where(static file => IsLocalizationFile(file) || IsSourceFile(file));
 
-    // The linting configuration file ends in .json like a translation file, but it is never one.
+    // The linting configuration file ends in .json like a locale file, but it is never one.
     private static bool IsLocalizationFile(string file)
         => Path.GetExtension(file).Equals(".json", StringComparison.OrdinalIgnoreCase)
             && !Path.GetFileName(file).Equals(LintingConfiguration.FileName, StringComparison.OrdinalIgnoreCase);

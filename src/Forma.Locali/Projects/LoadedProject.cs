@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis;
 /// <param name="HasGeneratedSources">Whether generated C# for Razor markup was found on disk.</param>
 /// <param name="HasRazorMarkup">Whether the project carries any Razor markup at all.</param>
 /// <param name="RootNamespace">The root the project embeds its resources under, or null when it declares none.</param>
-/// <param name="EmbeddedResourceNames">The name the build embeds each file under, keyed by the file's full path, or null when its items were not read, in which case every translation file beneath it is taken as embedded under the name the SDK would give it.</param>
+/// <param name="EmbeddedResourceNames">The name the build embeds each file under, keyed by the file's full path, or null when its items were not read, in which case every locale file beneath it is taken as embedded under the name the SDK would give it.</param>
 public sealed record LoadedProject(
     string Path,
     Compilation? Compilation,

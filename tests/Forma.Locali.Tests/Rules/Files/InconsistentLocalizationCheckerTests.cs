@@ -1,6 +1,6 @@
 namespace Forma.Locali.Tests.Rules.Files;
 
-public sealed class InconsistentTranslationCheckerTests
+public sealed class InconsistentLocalizationCheckerTests
 {
     [Fact]
     public void Should_report_a_key_two_sections_translate_differently()
@@ -14,7 +14,7 @@ public sealed class InconsistentTranslationCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintingCodes.InconsistentTranslation], diagnostics.Codes());
+        Assert.Equal([LintingCodes.InconsistentLocalization], diagnostics.Codes());
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public sealed class InconsistentTranslationCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintingCodes.InconsistentTranslation, LintingCodes.InconsistentTranslation], diagnostics.Codes());
+        Assert.Equal([LintingCodes.InconsistentLocalization, LintingCodes.InconsistentLocalization], diagnostics.Codes());
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public sealed class InconsistentTranslationCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintingCodes.InconsistentTranslation], diagnostics.Codes());
+        Assert.Equal([LintingCodes.InconsistentLocalization], diagnostics.Codes());
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public sealed class InconsistentTranslationCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintingCodes.InconsistentTranslation], diagnostics.Codes());
+        Assert.Equal([LintingCodes.InconsistentLocalization], diagnostics.Codes());
     }
 
     [Fact]

@@ -11,7 +11,7 @@ public sealed class ReservedKeyShapeCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation(key, "משהו"));
+            LocalizationFileFakeData.WithLocalizationEntry(key, "משהו"));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
@@ -37,7 +37,7 @@ public sealed class ReservedKeyShapeCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation(key, "משהו"));
+            LocalizationFileFakeData.WithLocalizationEntry(key, "משהו"));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
@@ -54,7 +54,7 @@ public sealed class ReservedKeyShapeCheckerTests
         // Arrange — a doubled sign keeps the rest as text.
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation(key, "משהו"));
+            LocalizationFileFakeData.WithLocalizationEntry(key, "משהו"));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");

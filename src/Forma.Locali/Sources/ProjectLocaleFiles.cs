@@ -8,13 +8,13 @@ using Forma.Framework.Localization.Json;
 using Forma.Locali.Documents;
 using Forma.Locali.Projects;
 
-/// <summary>Resolves a project's translation files against the types the runtime finds them by.</summary>
-public static class TranslationFiles
+/// <summary>Resolves a project's locale files against the types the runtime finds them by.</summary>
+public static class ProjectLocaleFiles
 {
     /// <summary>Every readable culture-named file the project embeds, resolved against the compilation, or null when the project would not load.</summary>
     /// <param name="project">The project the files belong to.</param>
-    /// <param name="localizationFiles">The translation files this project owns, which the target attributed.</param>
-    public static ProjectTranslations? Resolve(LoadedProject project, IReadOnlyCollection<string> localizationFiles)
+    /// <param name="localizationFiles">The locale files this project owns, which the target attributed.</param>
+    public static ProjectLocalization? Resolve(LoadedProject project, IReadOnlyCollection<string> localizationFiles)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
@@ -29,7 +29,7 @@ public static class TranslationFiles
         // The SDK embeds under RootNamespace, which a project may declare apart from its assembly name.
         var root = project.RootNamespace ?? compilation.AssemblyName!;
         var format = new JsonLocaleFileFormat();
-        var files = new List<TranslationFile>();
+        var files = new List<ProjectLocaleFile>();
 
         foreach (var file in localizationFiles)
         {
@@ -62,10 +62,10 @@ public static class TranslationFiles
                 continue;
             }
 
-            files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), name, read));
+            files.Add(new ProjectLocaleFile(fullPath, CultureInfo.GetCultureInfo(culture), name, read));
         }
 
-        return new ProjectTranslations(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, GetConfigPaths(project), format);
+        return new ProjectLocalization(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, GetConfigPaths(project), format);
     }
 
     // The runtime reads the config files an assembly embeds beside its translations, so a folder's own settings decide what is read there.

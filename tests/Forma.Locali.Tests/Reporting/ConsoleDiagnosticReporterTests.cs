@@ -42,7 +42,7 @@ public sealed class ConsoleDiagnosticReporterTests
         SuppressedRule[] suppressed =
         [
             new(LintingCodes.MarkerNotFirst, 2),
-            new(LintingCodes.MissingTranslation, 4),
+            new(LintingCodes.MissingLocalization, 4),
             new(LintingCodes.KeyNotAnalysed, 1),
         ];
 
@@ -70,7 +70,7 @@ public sealed class ConsoleDiagnosticReporterTests
         // Arrange — every one of them was ignored, none by severity, so raising it would reveal nothing.
         await using var writer = new StringWriter();
         var reporter = new ConsoleDiagnosticReporter(writer);
-        SuppressedRule[] suppressed = [new(LintingCodes.InconsistentTranslation, 2)];
+        SuppressedRule[] suppressed = [new(LintingCodes.InconsistentLocalization, 2)];
 
         // Act
         await reporter.ReportAsync(new LintingResult([], 1, suppressed, 2), TestContext.Current.CancellationToken);
@@ -95,7 +95,7 @@ public sealed class ConsoleDiagnosticReporterTests
         // Arrange — a file rule for the severity-suppressed one, a call-site rule for the ignored one.
         await using var writer = new StringWriter();
         var reporter = new ConsoleDiagnosticReporter(writer);
-        SuppressedRule[] suppressed = [new(LintingCodes.MarkerNotFirst, 1), new(LintingCodes.MissingTranslation, 1)];
+        SuppressedRule[] suppressed = [new(LintingCodes.MarkerNotFirst, 1), new(LintingCodes.MissingLocalization, 1)];
 
         // Act
         await reporter.ReportAsync(new LintingResult([], 1, suppressed, 1), TestContext.Current.CancellationToken);

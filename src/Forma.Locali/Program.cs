@@ -90,10 +90,10 @@ internal static class Program
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, UnknownFieldChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, SchemaVersionChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, CultureMatchesChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, TranslationHolesChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, TranslationHoleShapeChecker>();
+        builder.Services.AddSingleton<ILocalizationFileRuleChecker, LocalizedTextHolesChecker>();
+        builder.Services.AddSingleton<ILocalizationFileRuleChecker, LocalizedTextHoleShapeChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, DuplicateKeyChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, InconsistentTranslationChecker>();
+        builder.Services.AddSingleton<ILocalizationFileRuleChecker, InconsistentLocalizationChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, ReservedEntryOrderChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, ReservedKeyShapeChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, SharedEntryChecker>();
@@ -112,7 +112,7 @@ internal static class Program
         builder.Services.AddSingleton<ISchemaLinter, SchemaLinter>();
         builder.Services.AddSingleton<ISourceLinter, SourceLinter>();
         builder.Services.AddSingleton<IReachabilityLinter, ReachabilityLinter>();
-        builder.Services.AddSingleton<ITranslationCoverageLinter, TranslationCoverageLinter>();
+        builder.Services.AddSingleton<ILocalizationCoverageLinter, LocalizationCoverageLinter>();
         builder.Services.AddSingleton<ILintingService, LintingService>();
 
         builder.Services.AddSingleton<IDiagnosticReporter>(_ => new ConsoleDiagnosticReporter(Console.Out));

@@ -10,15 +10,15 @@ using Forma.Locali.Diagnostics;
 public sealed class ReachabilityLinter : IReachabilityLinter
 {
     /// <inheritdoc />
-    public IReadOnlyList<LintingDiagnostic> Lint(ProjectTranslations translations)
+    public IReadOnlyList<LintingDiagnostic> Lint(ProjectLocalization localization)
     {
-        ArgumentNullException.ThrowIfNull(translations);
+        ArgumentNullException.ThrowIfNull(localization);
 
-        var reachable = GetReachable(translations);
+        var reachable = GetReachable(localization);
         var diagnostics = new List<LintingDiagnostic>();
 
         // What the linting configuration leaves out is left to the caller to apply, so a run can still count and brief it.
-        foreach (var file in translations.Files)
+        foreach (var file in localization.Files)
         {
             var read = reachable.GetValueOrDefault(file.Path) ?? [];
             var unreachable = file.File.GetEntries()
@@ -32,7 +32,7 @@ public sealed class ReachabilityLinter : IReachabilityLinter
                 continue;
             }
 
-            var anchorNames = translations.GetAnchorNames(file);
+            var anchorNames = localization.GetAnchorNames(file);
             if (anchorNames.Count == 0)
             {
                 diagnostics.Add(Diagnose(file, "No type reads this file: no locale path in force where it sits reads a file by its name."));
@@ -57,17 +57,17 @@ public sealed class ReachabilityLinter : IReachabilityLinter
     }
 
     // Every type's walk, in every culture the files carry, names each entry it read together with the file and section it came from.
-    private static Dictionary<string, HashSet<(string TypeName, string Key)>> GetReachable(ProjectTranslations translations)
+    private static Dictionary<string, HashSet<(string TypeName, string Key)>> GetReachable(ProjectLocalization localization)
     {
         var reachable = new Dictionary<string, HashSet<(string TypeName, string Key)>>(StringComparer.Ordinal);
 
-        foreach (var typeName in translations.TypeNames)
+        foreach (var typeName in localization.TypeNames)
         {
-            foreach (var culture in translations.Cultures)
+            foreach (var culture in localization.Cultures)
             {
-                foreach (var entry in translations.Read(typeName, culture))
+                foreach (var entry in localization.Read(typeName, culture))
                 {
-                    if (translations.Source.GetFile(entry.FileName) is { } file)
+                    if (localization.Source.GetFile(entry.FileName) is { } file)
                     {
                         if (!reachable.TryGetValue(file.Path, out var entries))
                         {
@@ -86,6 +86,6 @@ public sealed class ReachabilityLinter : IReachabilityLinter
     private static string FormatNames(IReadOnlyList<string> names, string conjunction)
         => string.Join($" {conjunction} ", names.Select(name => $"'{name}'"));
 
-    private static LintingDiagnostic Diagnose(TranslationFile file, string message)
-        => new(file.Path, 1, 1, LintingCodes.UnreachableTranslation.DefaultSeverity, LintingCodes.UnreachableTranslation, message);
+    private static LintingDiagnostic Diagnose(ProjectLocaleFile file, string message)
+        => new(file.Path, 1, 1, LintingCodes.UnreachableLocalization.DefaultSeverity, LintingCodes.UnreachableLocalization, message);
 }

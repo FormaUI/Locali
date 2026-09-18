@@ -16,21 +16,21 @@ public sealed class ReservedEntryOrderChecker : ILocalizationFileRuleChecker
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var sawTranslation = false;
+        var sawTopLevelItem = false;
 
         // The top-level items in order, a section's entries standing for the section once.
         foreach (var (name, offset) in GetTopLevelItems(context.Document))
         {
             if (name == LocalizationSchema.SharedKey)
             {
-                if (sawTranslation)
+                if (sawTopLevelItem)
                 {
                     context.Report(Code, offset, $"'{LocalizationSchema.SharedKey}' has to come before every translation and section, directly after '{LocalizationSchema.Marker}'.");
                 }
             }
             else if (name != LocalizationSchema.Marker)
             {
-                sawTranslation = true;
+                sawTopLevelItem = true;
             }
         }
     }

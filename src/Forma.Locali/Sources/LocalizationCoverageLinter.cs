@@ -10,12 +10,12 @@ using Forma.Locali.Diagnostics;
 /// added to a component whose translations exist otherwise passes every check while rendering in the source
 /// language, because falling back to the key is what an absent entry is supposed to do.
 /// </summary>
-public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
+public sealed class LocalizationCoverageLinter : ILocalizationCoverageLinter
 {
     /// <inheritdoc />
-    public IReadOnlyList<LintingDiagnostic> Lint(ProjectTranslations translations, IReadOnlyList<LocalizerLookup> callSites)
+    public IReadOnlyList<LintingDiagnostic> Lint(ProjectLocalization localization, IReadOnlyList<LocalizerLookup> callSites)
     {
-        ArgumentNullException.ThrowIfNull(translations);
+        ArgumentNullException.ThrowIfNull(localization);
         ArgumentNullException.ThrowIfNull(callSites);
 
         var diagnostics = new List<LintingDiagnostic>();
@@ -35,16 +35,16 @@ public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
             // The runtime matches the key behind its escape, and so do the entries it read from the file.
             var key = LocalizationSchema.Unescape(site.Key.Text);
 
-            foreach (var culture in translations.Cultures)
+            foreach (var culture in localization.Cultures)
             {
                 // A type with no translations in a culture is unlocalized there rather than under-translated.
-                var entries = translations.Read(typeName, culture);
-                if (entries.Count == 0 || IsAnswered(translations, typeName, culture, key) || !seen.Add((key, typeName, culture.Name)))
+                var entries = localization.Read(typeName, culture);
+                if (entries.Count == 0 || IsAnswered(localization, typeName, culture, key) || !seen.Add((key, typeName, culture.Name)))
                 {
                     continue;
                 }
 
-                var filePath = translations.Source.GetFile(entries[^1].FileName) is { } file
+                var filePath = localization.Source.GetFile(entries[^1].FileName) is { } file
                     ? FormatFilePath(site.Key.Location.Path, file.Path)
                     : entries[^1].FileName;
 
@@ -52,8 +52,8 @@ public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
                     site.Key.Location.Path,
                     site.Key.Location.StartLinePosition.Line + 1,
                     site.Key.Location.StartLinePosition.Character + 1 + site.Key.TextOffset,
-                    LintingCodes.MissingTranslation.DefaultSeverity,
-                    LintingCodes.MissingTranslation,
+                    LintingCodes.MissingLocalization.DefaultSeverity,
+                    LintingCodes.MissingLocalization,
                     $"'{site.Key.Text}' has no entry in '{filePath}', which translates '{typeName}' for '{culture.Name}', so it renders in the source language there."));
             }
         }
@@ -68,11 +68,11 @@ public sealed class TranslationCoverageLinter : ITranslationCoverageLinter
             : filePath;
 
     // The runtime walks the culture up to its parents, so a regional file need only carry what differs.
-    private static bool IsAnswered(ProjectTranslations translations, string typeName, CultureInfo culture, string key)
+    private static bool IsAnswered(ProjectLocalization localization, string typeName, CultureInfo culture, string key)
     {
         for (var candidate = culture; candidate.Name.Length != 0; candidate = candidate.Parent)
         {
-            if (translations.Read(typeName, candidate).Any(entry => entry.Key == key))
+            if (localization.Read(typeName, candidate).Any(entry => entry.Key == key))
             {
                 return true;
             }

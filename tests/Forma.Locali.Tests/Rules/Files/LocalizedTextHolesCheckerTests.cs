@@ -1,6 +1,6 @@
 namespace Forma.Locali.Tests.Rules.Files;
 
-public sealed class TranslationHolesCheckerTests
+public sealed class LocalizedTextHolesCheckerTests
 {
     [Fact]
     public void Should_report_a_translation_filling_a_hole_the_key_does_not_name()
@@ -8,13 +8,13 @@ public sealed class TranslationHolesCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation("Stored {stored} of {total}.", "מתוך {total} נשמרו {totl}."));
+            LocalizationFileFakeData.WithLocalizationEntry("Stored {stored} of {total}.", "מתוך {total} נשמרו {totl}."));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintingCodes.UnknownTranslationHole], diagnostics.Codes());
+        Assert.Equal([LintingCodes.UnknownLocalizedTextHole], diagnostics.Codes());
     }
 
     [Fact]
@@ -23,7 +23,7 @@ public sealed class TranslationHolesCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation("Stored {stored} of {total}.", "מתוך {total} נשמרו {stored}."));
+            LocalizationFileFakeData.WithLocalizationEntry("Stored {stored} of {total}.", "מתוך {total} נשמרו {stored}."));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
@@ -38,7 +38,7 @@ public sealed class TranslationHolesCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation("Stored {stored} of {total}.", "נשמרו {stored}."));
+            LocalizationFileFakeData.WithLocalizationEntry("Stored {stored} of {total}.", "נשמרו {stored}."));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
@@ -53,7 +53,7 @@ public sealed class TranslationHolesCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithNullTranslation("Stored {stored} of {total}."));
+            LocalizationFileFakeData.WithNullLocalizationEntry("Stored {stored} of {total}."));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
@@ -83,7 +83,7 @@ public sealed class TranslationHolesCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation(
+            LocalizationFileFakeData.WithLocalizationEntry(
                 "{selected} selected",
                 "[$ [selected] plural; one: נבחר אחד; other: # נבחרו; $]"));
 
@@ -100,7 +100,7 @@ public sealed class TranslationHolesCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation(
+            LocalizationFileFakeData.WithLocalizationEntry(
                 "{selected} selected",
                 "[$ [selectd] plural; one: נבחר אחד; other: # נבחרו; $]"));
 
@@ -108,7 +108,7 @@ public sealed class TranslationHolesCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintingCodes.UnknownTranslationHole], diagnostics.Codes());
+        Assert.Equal([LintingCodes.UnknownLocalizedTextHole], diagnostics.Codes());
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public sealed class TranslationHolesCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation(
+            LocalizationFileFakeData.WithLocalizationEntry(
                 "[$ [count] plural; one: # file; other: # files; $]",
                 "{count} קבצים"));
 
@@ -134,13 +134,13 @@ public sealed class TranslationHolesCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation("Stored {stored}.", "{totl} נשמרו {totl}."));
+            LocalizationFileFakeData.WithLocalizationEntry("Stored {stored}.", "{totl} נשמרו {totl}."));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintingCodes.UnknownTranslationHole], diagnostics.Codes());
+        Assert.Equal([LintingCodes.UnknownLocalizedTextHole], diagnostics.Codes());
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public sealed class TranslationHolesCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation("Use {{curly}} braces.", "השתמשו בסוגריים {{מסולסלים}}."));
+            LocalizationFileFakeData.WithLocalizationEntry("Use {{curly}} braces.", "השתמשו בסוגריים {{מסולסלים}}."));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
@@ -164,7 +164,7 @@ public sealed class TranslationHolesCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation("Stored {stored} of {total}.", "נשמרו {totl}."));
+            LocalizationFileFakeData.WithLocalizationEntry("Stored {stored} of {total}.", "נשמרו {totl}."));
 
         // Act
         var diagnostic = SchemaLinterTestFactory.Create().Lint(document, "he").Single();

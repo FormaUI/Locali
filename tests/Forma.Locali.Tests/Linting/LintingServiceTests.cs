@@ -165,7 +165,7 @@ public sealed class LintingServiceTests
 
         // Assert
         Assert.Multiple(
-            () => Assert.DoesNotContain(LintingCodes.InconsistentTranslation, result.Diagnostics.Codes()),
+            () => Assert.DoesNotContain(LintingCodes.InconsistentLocalization, result.Diagnostics.Codes()),
             () => Assert.Equal(1, result.SuppressedCount),
             () => Assert.Equal(1, result.IgnoredCount));
     }

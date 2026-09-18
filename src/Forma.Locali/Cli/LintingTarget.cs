@@ -4,7 +4,7 @@ namespace Forma.Locali.Cli;
 /// <param name="LocalizationFiles">The JSON files to check against the schema.</param>
 /// <param name="SourceFiles">The C# and Razor files whose call sites are checked.</param>
 /// <param name="Projects">The projects the source files belong to.</param>
-/// <param name="LocalizationFilesByProject">The translation files each project owns, keyed by its full path.</param>
+/// <param name="LocalizationFilesByProject">The locale files each project owns, keyed by its full path.</param>
 public sealed record LintingTarget(
     IReadOnlyList<string> LocalizationFiles,
     IReadOnlyList<string> SourceFiles,
@@ -14,7 +14,7 @@ public sealed record LintingTarget(
     /// <summary>A target that names nothing.</summary>
     public static LintingTarget Empty { get; } = new([], [], [], new Dictionary<string, IReadOnlyList<string>>());
 
-    /// <summary>The translation files the project owns, empty when it owns none.</summary>
+    /// <summary>The locale files the project owns, empty when it owns none.</summary>
     /// <param name="projectPath">The project to read, as the loader reports its path.</param>
     public IReadOnlyList<string> LocalizationFilesOf(string projectPath)
     {

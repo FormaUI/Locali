@@ -1,6 +1,6 @@
 namespace Forma.Locali.Tests.Rules.Files;
 
-public sealed class TranslationHoleShapeCheckerTests
+public sealed class LocalizedTextHoleShapeCheckerTests
 {
     [Theory]
     [InlineData("נשמרו {0}")]
@@ -10,13 +10,13 @@ public sealed class TranslationHoleShapeCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation("Stored {stored}.", translation));
+            LocalizationFileFakeData.WithLocalizationEntry("Stored {stored}.", translation));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintingCodes.TranslationHoleShapedText], diagnostics.Codes());
+        Assert.Equal([LintingCodes.LocalizedTextHoleShapedText], diagnostics.Codes());
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public sealed class TranslationHoleShapeCheckerTests
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");
 
         // Assert
-        Assert.Equal([LintingCodes.TranslationHoleShapedText], diagnostics.Codes());
+        Assert.Equal([LintingCodes.LocalizedTextHoleShapedText], diagnostics.Codes());
     }
 
     [Theory]
@@ -43,7 +43,7 @@ public sealed class TranslationHoleShapeCheckerTests
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
-            LocalizationFileFakeData.WithTranslation("Stored {stored}.", translation));
+            LocalizationFileFakeData.WithLocalizationEntry("Stored {stored}.", translation));
 
         // Act
         var diagnostics = SchemaLinterTestFactory.Create().Lint(document, "he");

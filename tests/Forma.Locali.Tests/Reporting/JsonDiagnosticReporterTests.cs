@@ -34,7 +34,7 @@ public sealed class JsonDiagnosticReporterTests
 
         // Act
         await new JsonDiagnosticReporter(report).ReportAsync(
-            new LintingResult([], 4, [new SuppressedRule(LintingCodes.MissingTranslation, 2)], 0),
+            new LintingResult([], 4, [new SuppressedRule(LintingCodes.MissingLocalization, 2)], 0),
             TestContext.Current.CancellationToken);
 
         // Assert
@@ -52,7 +52,7 @@ public sealed class JsonDiagnosticReporterTests
 
         // Act
         await new JsonDiagnosticReporter(report).ReportAsync(
-            new LintingResult([], 4, [new SuppressedRule(LintingCodes.InconsistentTranslation, 3)], 3),
+            new LintingResult([], 4, [new SuppressedRule(LintingCodes.InconsistentLocalization, 3)], 3),
             TestContext.Current.CancellationToken);
 
         // Assert

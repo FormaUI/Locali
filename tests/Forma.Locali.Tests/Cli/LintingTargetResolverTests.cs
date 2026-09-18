@@ -135,7 +135,7 @@ public sealed class LintingTargetResolverTests
     }
 
     [Fact]
-    public void Should_attribute_a_translation_file_to_the_project_above_it()
+    public void Should_attribute_a_locale_file_to_the_project_above_it()
     {
         // Arrange
         using var directory = new TempDirectory();
@@ -150,7 +150,7 @@ public sealed class LintingTargetResolverTests
     }
 
     [Fact]
-    public void Should_attribute_a_translation_file_to_the_nearest_project_rather_than_its_parent()
+    public void Should_attribute_a_locale_file_to_the_nearest_project_rather_than_its_parent()
     {
         // Arrange
         using var directory = new TempDirectory();
@@ -197,7 +197,7 @@ public sealed class LintingTargetResolverTests
     }
 
     [Fact]
-    public void Should_exclude_source_files_as_well_as_translations()
+    public void Should_exclude_source_files_as_well_as_locale_files()
     {
         // Arrange
         using var directory = new TempDirectory();
@@ -257,7 +257,7 @@ public sealed class LintingTargetResolverTests
     }
 
     [Fact]
-    public void Should_own_no_translation_files_when_none_sit_under_the_project()
+    public void Should_own_no_locale_files_when_none_sit_under_the_project()
     {
         // Arrange
         using var directory = new TempDirectory();
@@ -289,7 +289,7 @@ public sealed class LintingTargetResolverTests
     [Fact]
     public void Should_never_read_the_runs_own_configuration_as_a_localization_file()
     {
-        // Arrange — the file ends in .json like a translation file, but it is never one.
+        // Arrange — the file ends in .json like a locale file, but it is never one.
         using var directory = new TempDirectory();
         directory.Write(".locali.json", """{ "ignoreDiagnostics": {} }""");
         directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Valid);

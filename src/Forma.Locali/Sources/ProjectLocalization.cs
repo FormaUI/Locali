@@ -4,18 +4,18 @@ using System.Globalization;
 
 using Forma.Framework.Localization.Files;
 
-/// <summary>A project's translation files and the types that could read them, with what the runtime's walk answers for each type and culture.</summary>
-public sealed class ProjectTranslations
+/// <summary>A project's locale files and the types that could read them, with what the runtime's walk answers for each type and culture.</summary>
+public sealed class ProjectLocalization
 {
     private readonly Dictionary<(string TypeName, string CultureName), IReadOnlyList<LocaleSourceEntry>> _answers = [];
 
     /// <summary>Resolves the files against the types.</summary>
     /// <param name="assemblyName">The name of the assembly the project builds.</param>
     /// <param name="typeNames">The name of every type the project declares.</param>
-    /// <param name="files">The project's translation files.</param>
+    /// <param name="files">The project's locale files.</param>
     /// <param name="configPaths">The full path of each config file the project embeds, keyed by the name the build embeds it under.</param>
     /// <param name="format">The format the files are written in.</param>
-    public ProjectTranslations(string assemblyName, IReadOnlyList<string> typeNames, IReadOnlyList<TranslationFile> files, IReadOnlyDictionary<string, string> configPaths, ILocaleFileFormat format)
+    public ProjectLocalization(string assemblyName, IReadOnlyList<string> typeNames, IReadOnlyList<ProjectLocaleFile> files, IReadOnlyDictionary<string, string> configPaths, ILocaleFileFormat format)
     {
         ArgumentException.ThrowIfNullOrEmpty(assemblyName);
         ArgumentNullException.ThrowIfNull(typeNames);
@@ -35,8 +35,8 @@ public sealed class ProjectTranslations
     /// <summary>The name of every type the project declares.</summary>
     public IReadOnlyList<string> TypeNames { get; }
 
-    /// <summary>The project's translation files.</summary>
-    public IReadOnlyList<TranslationFile> Files { get; }
+    /// <summary>The project's locale files.</summary>
+    public IReadOnlyList<ProjectLocaleFile> Files { get; }
 
     /// <summary>Every culture the files are named for.</summary>
     public IReadOnlyList<CultureInfo> Cultures { get; }
@@ -46,7 +46,7 @@ public sealed class ProjectTranslations
 
     /// <summary>The full name of every type or namespace the runtime reads a file for, none when no path in force reads it.</summary>
     /// <param name="file">The file.</param>
-    public IReadOnlyList<string> GetAnchorNames(TranslationFile file)
+    public IReadOnlyList<string> GetAnchorNames(ProjectLocaleFile file)
         => Source.GetAnchorNames(AssemblyName, file);
 
     /// <summary>What the runtime reads for a type in one culture, anchor by anchor from the root down to the type.</summary>

@@ -16,7 +16,7 @@ public sealed class LintingConfigurationTests
         var ignored = new LintingConfiguration().GetIgnoredCodes(file);
 
         // Assert
-        Assert.Equal([LintingCodes.InconsistentTranslation], ignored);
+        Assert.Equal([LintingCodes.InconsistentLocalization], ignored);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class LintingConfigurationTests
 
         // Assert
         Assert.Equal(
-            new[] { LintingCodes.MissingTranslation, LintingCodes.InconsistentTranslation }.OrderBy(code => code.Id, StringComparer.Ordinal),
+            new[] { LintingCodes.MissingLocalization, LintingCodes.InconsistentLocalization }.OrderBy(code => code.Id, StringComparer.Ordinal),
             ignored.OrderBy(code => code.Id, StringComparer.Ordinal));
     }
 
@@ -65,7 +65,7 @@ public sealed class LintingConfigurationTests
         var ignored = new LintingConfiguration().GetIgnoredCodes(file);
 
         // Assert
-        Assert.Equal([LintingCodes.InconsistentTranslation], ignored);
+        Assert.Equal([LintingCodes.InconsistentLocalization], ignored);
     }
 
     [Fact]
