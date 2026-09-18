@@ -13,18 +13,20 @@ public sealed class ProjectTranslations
     /// <param name="assemblyName">The name of the assembly the project builds.</param>
     /// <param name="typeNames">The name of every type the project declares.</param>
     /// <param name="files">The project's translation files.</param>
+    /// <param name="settingsPaths">The full path of each settings file the project embeds, keyed by the name the build embeds it under.</param>
     /// <param name="format">The format the files are written in.</param>
-    public ProjectTranslations(string assemblyName, IReadOnlyList<string> typeNames, IReadOnlyList<TranslationFile> files, ILocaleFileFormat format)
+    public ProjectTranslations(string assemblyName, IReadOnlyList<string> typeNames, IReadOnlyList<TranslationFile> files, IReadOnlyDictionary<string, string> settingsPaths, ILocaleFileFormat format)
     {
         ArgumentException.ThrowIfNullOrEmpty(assemblyName);
         ArgumentNullException.ThrowIfNull(typeNames);
         ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(settingsPaths);
 
         AssemblyName = assemblyName;
         TypeNames = typeNames;
         Files = files;
         Cultures = [.. files.Select(file => file.Culture).DistinctBy(culture => culture.Name)];
-        Source = new ProjectLocaleSource(files, format);
+        Source = new ProjectLocaleSource(files, settingsPaths, format);
     }
 
     /// <summary>The name of the assembly the project builds.</summary>

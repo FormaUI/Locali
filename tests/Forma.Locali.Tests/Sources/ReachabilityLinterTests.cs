@@ -70,6 +70,28 @@ public sealed class ReachabilityLinterTests
     }
 
     [Fact]
+    public void Should_read_a_file_by_the_paths_its_folders_settings_name()
+    {
+        // Arrange — the root's settings file marks where the names begin, and the folder's own puts a form in force there that the defaults leave out.
+        using var directory = new TempDirectory();
+        var rootSettings = directory.Write(".locali.json", "{}");
+        var folderSettings = directory.Write(Path.Combine("Components", ".locali.json"), """{ "paths": ["$RootDir/$AnchorName.$Culture$Extension"] }""");
+        var file = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string>
+        {
+            [Path.GetFullPath(rootSettings)] = "Scratch..locali.json",
+            [Path.GetFullPath(folderSettings)] = "Scratch.Components..locali.json",
+            [Path.GetFullPath(file)] = "Scratch.Components.Widget.he.json",
+        };
+
+        // Act
+        var diagnostics = Lint(directory, Widget, resourceNames, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_report_a_section_that_names_no_type()
     {
         // Arrange
@@ -202,8 +224,11 @@ public sealed class ReachabilityLinterTests
     }
 
     private static IReadOnlyList<LintingDiagnostic> Lint(TempDirectory directory, string source, params string[] files)
+        => Lint(directory, source, null, files);
+
+    private static IReadOnlyList<LintingDiagnostic> Lint(TempDirectory directory, string source, IReadOnlyDictionary<string, string>? resourceNames, params string[] files)
     {
-        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(source), false, false);
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(source), false, false, EmbeddedResourceNames: resourceNames);
 
         return new ReachabilityLinter().Lint(TranslationFiles.Resolve(project, files)!);
     }

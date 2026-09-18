@@ -66,7 +66,23 @@ public static class TranslationFiles
             files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), name, read, ignored));
         }
 
-        return new ProjectTranslations(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, format);
+        return new ProjectTranslations(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, GetSettingsPaths(project), format);
+    }
+
+    // The runtime reads the settings files an assembly embeds beside its translations, so a folder's own settings decide what is read there.
+    private static Dictionary<string, string> GetSettingsPaths(LoadedProject project)
+    {
+        var settingsPaths = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var (path, name) in project.EmbeddedResourceNames ?? new Dictionary<string, string>())
+        {
+            if (Path.GetFileName(path).Equals(LocaliSettings.FileName, StringComparison.OrdinalIgnoreCase))
+            {
+                settingsPaths[name] = path;
+            }
+        }
+
+        return settingsPaths;
     }
 
     // The SDK embeds a file as {RootNamespace}.{RelativeFolderPath}.{FileName}, and the runtime reads a satellite's file back under the same name.
