@@ -16,31 +16,31 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
     private readonly ISchemaLinter _schema = schema ?? throw new ArgumentNullException(nameof(schema));
 
     /// <inheritdoc />
-    public async ValueTask<LocalizationFileLintResult> LintAsync(string file, CancellationToken cancellationToken = default)
+    public async ValueTask<LocalizationFileLintResult> LintAsync(string filePath, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrEmpty(file);
+        ArgumentException.ThrowIfNullOrEmpty(filePath);
 
         byte[] content;
         try
         {
-            content = await File.ReadAllBytesAsync(file, cancellationToken).ConfigureAwait(false);
+            content = await File.ReadAllBytesAsync(filePath, cancellationToken).ConfigureAwait(false);
         }
         catch (IOException exception)
         {
-            return new LocalizationFileLintResult([Unreadable(file, exception.Message)], IgnoredRules.None);
+            return new LocalizationFileLintResult([Unreadable(filePath, exception.Message)], IgnoredRules.None);
         }
         catch (UnauthorizedAccessException exception)
         {
-            return new LocalizationFileLintResult([Unreadable(file, exception.Message)], IgnoredRules.None);
+            return new LocalizationFileLintResult([Unreadable(filePath, exception.Message)], IgnoredRules.None);
         }
 
-        var culture = LocalizationFileName.CultureOf(file);
+        var culture = LocalizationFileName.CultureOf(filePath);
 
-        if (!LocalizationDocument.TryRead(file, content, out var document, out var error))
+        if (!LocalizationDocument.TryRead(filePath, content, out var document, out var error))
         {
             // Unreadable JSON is only this linter's business when the file claims to be a localization file.
             return HasMarker(content) || culture is not null
-                ? new LocalizationFileLintResult([Unreadable(file, error ?? "the file is not readable JSON")], IgnoredRules.None)
+                ? new LocalizationFileLintResult([Unreadable(filePath, error ?? "the file is not readable JSON")], IgnoredRules.None)
                 : LocalizationFileLintResult.Empty;
         }
 
@@ -56,6 +56,6 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
     private static bool HasMarker(byte[] content)
         => content.AsSpan().IndexOf(MarkerUtf8) >= 0;
 
-    private static LintingDiagnostic Unreadable(string file, string message)
-        => new(file, 1, 1, LintingCodes.InvalidJson.DefaultSeverity, LintingCodes.InvalidJson, message);
+    private static LintingDiagnostic Unreadable(string filePath, string message)
+        => new(filePath, 1, 1, LintingCodes.InvalidJson.DefaultSeverity, LintingCodes.InvalidJson, message);
 }
