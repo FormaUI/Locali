@@ -28,7 +28,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
                 continue;
             }
 
-            foreach (var entry in config.ExcludeEntries)
+            foreach (var entry in config.ExcludeFiles)
             {
                 if (!GlobPattern.Matches(entry.Glob, relative))
                 {
@@ -57,7 +57,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
                 continue;
             }
 
-            foreach (var entry in config.IgnoreEntries)
+            foreach (var entry in config.IgnoreDiagnostics)
             {
                 if (!GlobPattern.Matches(entry.Glob, relative))
                 {
@@ -113,7 +113,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
             diagnostics.Add(config.Diagnose(malformed.Offset, LintingCodes.MalformedConfiguration, malformed.Reason));
         }
 
-        foreach (var entry in config.IgnoreEntries)
+        foreach (var entry in config.IgnoreDiagnostics)
         {
             foreach (var code in entry.Codes)
             {
@@ -135,7 +135,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
             }
         }
 
-        foreach (var entry in config.ExcludeEntries)
+        foreach (var entry in config.ExcludeFiles)
         {
             if (!tracked.UsedExclude.ContainsKey(entry.Offset))
             {

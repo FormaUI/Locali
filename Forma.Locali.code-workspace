@@ -2,6 +2,14 @@
 	"folders": [
         {
             "path": "."
+        },
+        {
+            "name": "Forma.Framework.Localization",
+            "path": "../Forma/src/Forma.Framework/Forma.Framework.Localization"
+        },
+        {
+            "name": "Forma.Framework.Localization.Json",
+            "path": "../Forma/src/Forma.Framework/Forma.Framework.Localization.Json"
         }
     ],
     "settings": {}

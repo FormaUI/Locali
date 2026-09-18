@@ -9,7 +9,7 @@ public sealed class LintingConfigurationTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignore": { "Widget.he.json": ["LOC0113"] } }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
         var file = directory.Write("Widget.he.json", "{}");
 
         // Act
@@ -36,12 +36,12 @@ public sealed class LintingConfigurationTests
     }
 
     [Fact]
-    public void Should_merge_an_ancestors_ignore_with_a_nearer_ones()
+    public void Should_merge_an_ancestors_ignore_diagnostics_with_a_nearer_ones()
     {
         // Arrange — the root leaves out a call-site rule everywhere; the nearer file adds a file rule for its own name.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignore": { "**/*.he.json": ["LOC0209"] } }""");
-        directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "ignore": { "Widget.he.json": ["LOC0113"] } }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "**/*.he.json": ["LOC0209"] } }""");
+        directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
         var file = directory.Write(Path.Combine("Widgets", "Widget.he.json"), "{}");
 
         // Act
@@ -58,7 +58,7 @@ public sealed class LintingConfigurationTests
     {
         // Arrange — the glob is written as it would read from where the file sits beside the config.
         using var directory = new TempDirectory();
-        directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "ignore": { "Widget.he.json": ["LOC0113"] } }""");
+        directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
         var file = directory.Write(Path.Combine("Widgets", "Widget.he.json"), "{}");
 
         // Act
@@ -73,7 +73,7 @@ public sealed class LintingConfigurationTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "exclude": ["Fixtures/*"] }""");
+        directory.Write(".locali.json", """{ "excludeFiles": ["Fixtures/*"] }""");
         var file = directory.Write(Path.Combine("Fixtures", "Widget.he.json"), "{}");
 
         // Act & Assert
@@ -85,7 +85,7 @@ public sealed class LintingConfigurationTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignore": { "Widget.he.json": ["LOC0020", "LOC0021"] } }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0020", "LOC0021"] } }""");
         var file = directory.Write("Widget.he.json", "{}");
 
         // Act & Assert
@@ -97,7 +97,7 @@ public sealed class LintingConfigurationTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignore": { "Nowhere.he.json": ["LOC0113"] }, "exclude": ["Nowhere/*"] }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Nowhere.he.json": ["LOC0113"] }, "excludeFiles": ["Nowhere/*"] }""");
         var file = directory.Write("Widget.he.json", "{}");
         var configuration = new LintingConfiguration();
         configuration.GetIgnoredCodes(file);
@@ -115,7 +115,7 @@ public sealed class LintingConfigurationTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignore": { "Widget.he.json": ["LOC0113"] }, "exclude": ["Widget.he.json"] }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] }, "excludeFiles": ["Widget.he.json"] }""");
         var file = directory.Write("Widget.he.json", "{}");
         var configuration = new LintingConfiguration();
         configuration.GetIgnoredCodes(file);
@@ -133,7 +133,7 @@ public sealed class LintingConfigurationTests
     {
         // Arrange — discovery is lazy, so a file has to be consulted before its configuration is read at all.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignore": { "Widget.he.json": ["LOC9999"] } }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC9999"] } }""");
         var file = directory.Write("Widget.he.json", "{}");
         var configuration = new LintingConfiguration();
         configuration.GetIgnoredCodes(file);
@@ -170,7 +170,7 @@ public sealed class LintingConfigurationTests
     {
         // Arrange — two sibling files both walk past the same parent configuration.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignore": { "**/Widget.he.json": ["LOC0113"] } }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "**/Widget.he.json": ["LOC0113"] } }""");
         var first = directory.Write(Path.Combine("A", "Widget.he.json"), "{}");
         var second = directory.Write(Path.Combine("B", "Widget.he.json"), "{}");
         var configuration = new LintingConfiguration();

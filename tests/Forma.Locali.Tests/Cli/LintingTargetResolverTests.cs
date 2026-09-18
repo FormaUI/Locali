@@ -276,7 +276,7 @@ public sealed class LintingTargetResolverTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "exclude": ["Fixtures/*"] }""");
+        directory.Write(".locali.json", """{ "excludeFiles": ["Fixtures/*"] }""");
         directory.Write(Path.Combine("Fixtures", "Widget.he.json"), LocalizationFileFakeData.Valid);
 
         // Act
@@ -291,7 +291,7 @@ public sealed class LintingTargetResolverTests
     {
         // Arrange — the file ends in .json like a translation file, but it is never one.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignore": {} }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": {} }""");
         directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Valid);
 
         // Act

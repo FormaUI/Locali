@@ -157,7 +157,7 @@ public sealed class LintingServiceTests
     {
         // Arrange — two sections translate one key two ways, which the linting configuration says is meant.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignore": { "Widget.he.json": ["LOC0113"] } }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
         directory.Write("Widget.he.json", LocalizationFileFakeData.WithSections(("A", "Today", "היום"), ("B", "Today", "עכשיו")));
 
         // Act
@@ -190,7 +190,7 @@ public sealed class LintingServiceTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignore": { "Nowhere.he.json": ["LOC0113"] } }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Nowhere.he.json": ["LOC0113"] } }""");
         directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Valid);
 
         // Act
@@ -209,7 +209,7 @@ public sealed class LintingServiceTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "exclude": ["*.he.json"] }""");
+        directory.Write(".locali.json", """{ "excludeFiles": ["*.he.json"] }""");
         directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Unmarked);
 
         // Act

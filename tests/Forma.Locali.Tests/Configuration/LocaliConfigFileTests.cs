@@ -10,10 +10,10 @@ public sealed class LocaliConfigFileTests
     public void Should_read_a_globs_codes_with_their_offsets()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "ignore": { "**/LocalizationPage.razor": ["LOC0209", "LOC0113"] } }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "**/LocalizationPage.razor": ["LOC0209", "LOC0113"] } }""");
 
         // Assert
-        var entry = Assert.Single(document.IgnoreEntries);
+        var entry = Assert.Single(document.IgnoreDiagnostics);
 
         Assert.Multiple(
             () => Assert.Equal("**/LocalizationPage.razor", entry.Glob),
@@ -21,26 +21,26 @@ public sealed class LocaliConfigFileTests
     }
 
     [Fact]
-    public void Should_read_an_exclude_globs_with_their_offsets()
+    public void Should_read_the_exclude_files_globs_with_their_offsets()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "exclude": ["*/Fixtures/*"] }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*"] }""");
 
         // Assert
-        var entry = Assert.Single(document.ExcludeEntries);
+        var entry = Assert.Single(document.ExcludeFiles);
 
         Assert.Equal("*/Fixtures/*", entry.Glob);
     }
 
     [Fact]
-    public void Should_read_more_than_one_glob_under_ignore()
+    public void Should_read_more_than_one_glob_under_ignore_diagnostics()
     {
         // Arrange
         var document = LocaliConfigFileTestFactory.Read(
-            """{ "ignore": { "One.he.json": ["LOC0113"], "Two.he.json": ["LOC0209"] } }""");
+            """{ "ignoreDiagnostics": { "One.he.json": ["LOC0113"], "Two.he.json": ["LOC0209"] } }""");
 
         // Assert
-        Assert.Equal(["One.he.json", "Two.he.json"], document.IgnoreEntries.Select(entry => entry.Glob));
+        Assert.Equal(["One.he.json", "Two.he.json"], document.IgnoreDiagnostics.Select(entry => entry.Glob));
     }
 
     [Fact]
@@ -51,22 +51,22 @@ public sealed class LocaliConfigFileTests
             """
             {
               // ignore the showcase page's missing translation on purpose
-              "ignore": { "Widget.he.json": ["LOC0113"] }
+              "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] }
             }
             """);
 
         // Assert
-        Assert.Single(document.IgnoreEntries);
+        Assert.Single(document.IgnoreDiagnostics);
     }
 
     [Fact]
     public void Should_allow_a_trailing_comma()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "exclude": ["*/Fixtures/*"], }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*"], }""");
 
         // Assert
-        Assert.Single(document.ExcludeEntries);
+        Assert.Single(document.ExcludeFiles);
     }
 
     [Fact]
@@ -107,35 +107,35 @@ public sealed class LocaliConfigFileTests
     }
 
     [Fact]
-    public void Should_flag_an_ignore_entry_that_is_not_an_object()
+    public void Should_flag_an_ignore_diagnostics_entry_that_is_not_an_object()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "ignore": ["LOC0113"] }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": ["LOC0113"] }""");
 
         // Assert
         var malformed = Assert.Single(document.Malformed);
-        Assert.Contains("'ignore'", malformed.Reason, StringComparison.Ordinal);
+        Assert.Contains("'ignoreDiagnostics'", malformed.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Should_flag_an_exclude_entry_that_is_not_an_array()
+    public void Should_flag_an_exclude_files_entry_that_is_not_an_array()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "exclude": "*/Fixtures/*" }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": "*/Fixtures/*" }""");
 
         // Assert
         var malformed = Assert.Single(document.Malformed);
-        Assert.Contains("'exclude'", malformed.Reason, StringComparison.Ordinal);
+        Assert.Contains("'excludeFiles'", malformed.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Should_flag_a_glob_whose_rules_are_not_a_list()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "ignore": { "Widget.he.json": "LOC0113" } }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "Widget.he.json": "LOC0113" } }""");
 
         // Assert
-        Assert.Empty(document.IgnoreEntries);
+        Assert.Empty(document.IgnoreDiagnostics);
         var malformed = Assert.Single(document.Malformed);
         Assert.Contains("'Widget.he.json'", malformed.Reason, StringComparison.Ordinal);
     }
@@ -144,10 +144,10 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_a_rule_identifier_that_is_not_text()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "ignore": { "Widget.he.json": ["LOC0113", 5] } }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113", 5] } }""");
 
         // Assert
-        var entry = Assert.Single(document.IgnoreEntries);
+        var entry = Assert.Single(document.IgnoreDiagnostics);
         Assert.Equal(["LOC0113"], entry.Codes.Select(code => code.Id));
         Assert.Single(document.Malformed);
     }
@@ -156,10 +156,10 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_a_glob_that_is_not_text()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "exclude": ["*/Fixtures/*", 5] }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*", 5] }""");
 
         // Assert
-        Assert.Equal(["*/Fixtures/*"], document.ExcludeEntries.Select(entry => entry.Glob));
+        Assert.Equal(["*/Fixtures/*"], document.ExcludeFiles.Select(entry => entry.Glob));
         Assert.Single(document.Malformed);
     }
 
@@ -168,12 +168,12 @@ public sealed class LocaliConfigFileTests
     {
         // Arrange — a stray key in the middle should not stop the ignore entry after it from being read.
         var document = LocaliConfigFileTestFactory.Read(
-            """{ "stray": 1, "ignore": { "Widget.he.json": ["LOC0113"] } }""");
+            """{ "stray": 1, "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
 
         // Assert
         Assert.Multiple(
             () => Assert.Single(document.Malformed),
-            () => Assert.Equal(["Widget.he.json"], document.IgnoreEntries.Select(entry => entry.Glob)));
+            () => Assert.Equal(["Widget.he.json"], document.IgnoreDiagnostics.Select(entry => entry.Glob)));
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public sealed class LocaliConfigFileTests
         var malformed = Assert.Single(document.Malformed);
 
         Assert.All(
-            ["'ignore'", "'exclude'"],
+            ["'ignoreDiagnostics'", "'excludeFiles'"],
             key => Assert.Contains(key, malformed.Reason, StringComparison.Ordinal));
     }
 
@@ -197,11 +197,11 @@ public sealed class LocaliConfigFileTests
         var document = LocaliConfigFileTestFactory.Read(
             """
             {
-              "ignore": { "Widget.he.json": ["LOC0113"] }
+              "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] }
             }
             """);
 
-        var entry = Assert.Single(document.IgnoreEntries);
+        var entry = Assert.Single(document.IgnoreDiagnostics);
 
         // Act
         var diagnostic = document.Diagnose(entry.Offset, LintingCodes.StaleConfigurationGlob, "test");

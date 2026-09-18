@@ -64,7 +64,7 @@ up to the nearest `.csproj`.
 malformed on purpose — a file with no `$localization` entry, a culture that disagrees with
 its own name — so linting them reports what the fixture exists to prove. Excluding the
 folder they live in leaves the rest of the tree checked. A `.locali.json` file's own
-`exclude` entry does the same thing without a flag on every invocation; see
+`excludeFiles` entry does the same thing without a flag on every invocation; see
 [Linting configuration](#linting-configuration).
 
 `--severity` decides what counts as a finding. An error is something the runtime will get
@@ -162,24 +162,25 @@ is checked out. Its JSON tolerates the same things a translation file's does: a 
 
 ```json
 {
-  "ignore": {
+  "ignoreDiagnostics": {
     "**/Forma.Blazor.Showcase/**/LocalizationPage.razor": ["LOC0209"]
   },
-  "exclude": ["*/Fixtures/*"]
+  "excludeFiles": ["*/Fixtures/*"]
 }
 ```
 
-`ignore` pairs a glob with the rules a file it matches is left out of. It is the one place a
-per-file exception is written: a translation file holds translations and nothing a tool reads,
-so a file that translates one key two ways on purpose is excused here, by its path, rather than
-in the file. `exclude` mirrors the command line's own flag, so a fixture folder a whole team
-excludes needs writing once rather than on every invocation; the two lists combine there as well.
+`ignoreDiagnostics` pairs a glob with the rules a file it matches is left out of. It is the one
+place a per-file exception is written: a translation file holds translations and nothing a tool
+reads, so a file that translates one key two ways on purpose is excused here, by its path,
+rather than in the file. `excludeFiles` mirrors the command line's own flag, so a fixture folder
+a whole team excludes needs writing once rather than on every invocation; the two lists combine
+there as well.
 
 LOC0020 reports a rule identifier neither list names, so a typo silences nothing, and the rule
-over `.locali.json` itself can never be named in its own `ignore` list. LOC0021 reports a glob
-that never matched a file the run actually reached, so an exception a rename left behind does not
-sit unnoticed; a file moved out of the tree the run reads is exactly when its `.locali.json`
-entries go stale.
+over `.locali.json` itself can never be named in its own `ignoreDiagnostics` list. LOC0021
+reports a glob that never matched a file the run actually reached, so an exception a rename left
+behind does not sit unnoticed; a file moved out of the tree the run reads is exactly when its
+`.locali.json` entries go stale.
 
 Leaving a diagnostic out this way is never silent: it is still counted in `suppressedCount`
 and still named in the console brief, exactly as a diagnostic below `--severity` is, so the
