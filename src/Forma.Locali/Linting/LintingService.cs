@@ -2,6 +2,7 @@ namespace Forma.Locali.Linting;
 
 using System.Collections.Concurrent;
 
+using Forma.Framework.Localization.Files;
 using Forma.Locali.Cli;
 using Forma.Locali.Configuration;
 using Forma.Locali.Diagnostics;
@@ -132,8 +133,16 @@ public sealed class LintingService(
             // Both rules over a project's translation files read the same resolution, so it is made once.
             if (TranslationFiles.Resolve(project, target.LocalizationFilesOf(project.Path)) is { } translations)
             {
-                diagnostics.AddRange(_reachability.Lint(translations));
-                diagnostics.AddRange(_coverage.Lint(translations, sources.CallSites));
+                try
+                {
+                    diagnostics.AddRange(_reachability.Lint(translations));
+                    diagnostics.AddRange(_coverage.Lint(translations, sources.CallSites));
+                }
+                catch (LocaliSettingsException exception)
+                {
+                    // The runtime refuses every lookup in an assembly whose embedded settings it cannot place, so none of its translations can be judged.
+                    diagnostics.Add(new LintingDiagnostic(project.Path, 1, 1, LintingCodes.MalformedConfiguration.DefaultSeverity, LintingCodes.MalformedConfiguration, exception.Message));
+                }
             }
         }
 

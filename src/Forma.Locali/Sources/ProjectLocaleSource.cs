@@ -71,6 +71,11 @@ public sealed class ProjectLocaleSource : LocaleSource
     protected override string GetRootDirPastStart(string settingsName, string rootDir, string rootNamespace)
         => rootNamespace;
 
+    // A settings file is named by its path in anything the walk throws; a locale file keeps the name the walk's entries report it by.
+    /// <inheritdoc />
+    protected override string GetDisplayName(string name)
+        => _settingsPaths.GetValueOrDefault(name) ?? name;
+
     /// <inheritdoc />
     protected override LocaleFile? ReadFile(string name, string cultureName)
         => _files.GetValueOrDefault(name)?.File;

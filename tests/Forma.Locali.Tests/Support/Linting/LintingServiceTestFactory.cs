@@ -4,6 +4,7 @@ using Forma.Locali.Cli;
 using Forma.Locali.Configuration;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Linting;
+using Forma.Locali.Projects;
 using Forma.Locali.Sources;
 
 using Microsoft.Extensions.Options;
@@ -11,10 +12,11 @@ using Microsoft.Extensions.Options;
 /// <summary>Builds a lint service over the real file system.</summary>
 public static class LintingServiceTestFactory
 {
-    /// <summary>A service that lints the file or directory named, without loading any project.</summary>
+    /// <summary>A service that lints the file or directory named, loading no project unless handed a loader.</summary>
     /// <param name="path">What to lint.</param>
     /// <param name="minimumSeverity">The lowest severity the run reports.</param>
-    public static LintingService Create(string path, LintingSeverity minimumSeverity = LintingSeverity.Error)
+    /// <param name="projectLoader">Loads the projects the run finds, or null to load none.</param>
+    public static LintingService Create(string path, LintingSeverity minimumSeverity = LintingSeverity.Error, IProjectLoader? projectLoader = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
 
@@ -24,7 +26,7 @@ public static class LintingServiceTestFactory
         return new LintingService(
             Options.Create(new LinterOptions { Path = path, MinimumSeverity = minimumSeverity }),
             new LintingTargetResolver(lintingConfiguration),
-            new StubProjectLoader(),
+            projectLoader ?? new StubProjectLoader(),
             new LocalizationFileLinter(SchemaLinterTestFactory.Create()),
             new SourceLinter(new SemanticCallSiteFinder(), new SyntacticCallSiteFinder(), SourceLinterTestFactory.Checkers()),
             new ReachabilityLinter(),

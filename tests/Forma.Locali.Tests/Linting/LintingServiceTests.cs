@@ -1,5 +1,7 @@
 namespace Forma.Locali.Tests.Linting;
 
+using Forma.Locali.Projects;
+
 public sealed class LintingServiceTests
 {
     [Fact]
@@ -217,5 +219,35 @@ public sealed class LintingServiceTests
         Assert.Multiple(
             () => Assert.Empty(result.Diagnostics),
             () => Assert.Equal(0, result.FileCount));
+    }
+
+    [Fact]
+    public async Task Should_report_embedded_settings_marking_two_roots_and_finish_the_run()
+    {
+        // Arrange — two settings files with none above them each mark a root, which the runtime refuses for the whole assembly.
+        using var directory = new TempDirectory();
+        var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var first = directory.Write(Path.Combine("Components", ".locali.json"), "{}");
+        var second = directory.Write(Path.Combine("Pages", ".locali.json"), "{}");
+        var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string>
+        {
+            [Path.GetFullPath(first)] = "Scratch.Components..locali.json",
+            [Path.GetFullPath(second)] = "Scratch.Pages..locali.json",
+            [Path.GetFullPath(file)] = "Scratch.Components..locales.he.json",
+        };
+        var compilation = CompilationTestFactory.Unreferenced("namespace Scratch.Components; public sealed class Widget;");
+        var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: resourceNames));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MalformedConfiguration, diagnostic.Code),
+            () => Assert.Equal(project, diagnostic.Path),
+            () => Assert.Contains(Path.GetFullPath(first), diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains(Path.GetFullPath(second), diagnostic.Message, StringComparison.Ordinal));
     }
 }
