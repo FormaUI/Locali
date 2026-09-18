@@ -12,9 +12,6 @@ using Forma.Locali.Rules;
 /// <summary>Resolves a project's translation files against the types the runtime finds them by.</summary>
 public static class TranslationFiles
 {
-    // A folder of this name beside the project holds a host's own files, which translate other assemblies' types.
-    private const string HostFolder = "locales";
-
     /// <summary>Every readable culture-named file the project embeds, resolved against the compilation, or null when the project would not load.</summary>
     /// <param name="project">The project the files belong to.</param>
     /// <param name="localizationFiles">The translation files this project owns, which the target attributed.</param>
@@ -43,13 +40,15 @@ public static class TranslationFiles
             }
 
             var fullPath = Path.GetFullPath(file);
-            var relative = Path.GetRelativePath(projectDirectory, Path.GetDirectoryName(fullPath)!);
-            string[] segments = relative is "." ? [] : relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-            if (segments.Length > 0 && string.Equals(segments[0], HostFolder, StringComparison.OrdinalIgnoreCase))
+            // A file the project does not embed is the host's own, copied beside the application, and translates other assemblies' types.
+            if (project.EmbeddedFiles is { } embeddedFiles && !embeddedFiles.Contains(fullPath))
             {
                 continue;
             }
+
+            var relative = Path.GetRelativePath(projectDirectory, Path.GetDirectoryName(fullPath)!);
+            string[] segments = relative is "." ? [] : relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
             // A file that will not read is the file rules' business, and the runtime reads nothing from it.
             if (Read(format, fullPath, culture) is not var (read, ignored))
@@ -58,23 +57,17 @@ public static class TranslationFiles
             }
 
             var baseName = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(fullPath));
-            var names = GetNames(root, segments, baseName, culture, format.Extension);
+            var expectedName = GetExpectedName(root, segments, baseName);
 
-            files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), names[0][..^(culture.Length + format.Extension.Length + 1)], names, read, ignored));
+            files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), expectedName, $"{expectedName}.{culture}{format.Extension}", read, ignored));
         }
 
         return new ProjectTranslations(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, format);
     }
 
-    // The SDK embeds a file as {RootNamespace}.{RelativeFolderPath}.{Name}; ResourcesPath then inserts leading folder
-    // segments that no project file records, so each may be shed in turn.
-    private static IReadOnlyList<string> GetNames(string root, string[] segments, string baseName, string culture, string extension)
-        =>
-        [
-            .. Enumerable
-                .Range(0, segments.Length + 1)
-                .Select(dropped => $"{string.Join('.', new[] { root }.Concat(segments[dropped..]).Append(baseName))}.{culture}{extension}"),
-        ];
+    // The SDK embeds a file as {RootNamespace}.{RelativeFolderPath}.{Name}.
+    private static string GetExpectedName(string root, string[] segments, string baseName)
+        => string.Join('.', [root, .. segments, baseName]);
 
     // The tools entry is the linter's own, which the runtime's format leaves out, so the same bytes are read as a document for it.
     private static (LocaleFile File, IgnoredRules Ignored)? Read(JsonLocaleFileFormat format, string path, string culture)

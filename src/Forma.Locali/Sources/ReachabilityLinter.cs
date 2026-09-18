@@ -18,7 +18,7 @@ public sealed class ReachabilityLinter : IReachabilityLinter
         var diagnostics = new List<LintingDiagnostic>();
 
         // What a file's tools entry leaves out is left to the caller to apply, so a run can still count and brief it.
-        foreach (var file in translations.Files.Where(file => !translations.Source.IsContested(file)))
+        foreach (var file in translations.Files)
         {
             var read = reachable.GetValueOrDefault(file.Path) ?? [];
             var unreachable = file.File.GetEntries()

@@ -272,13 +272,12 @@ severity.
 LOC0112 covers the drift a rename opens: the runtime resolves translations by the owning
 type's full name, from a file's position and the sections inside it, so moving a folder,
 renaming a type, or misspelling a section leaves the translations stranded while every other
-check stays green. The rule runs the runtime's own walk, from the file named for the assembly
-down to the file named for the type, for every type the project declares and every culture
-its files carry, and reports whatever no walk read: a whole file when nothing in it is
-reached, a section when it names no type, or the entries outside any section in a file read
-for its sections alone. It reads a file under every name the build could give it, allowing
-for the leading segments `ResourcesPath` inserts, and names generic and nested types as the
-runtime does. A file the project embeds under an explicit `LogicalName` is beyond it, because
+check stays green. The rule reads through the runtime's own source, from the root down to the
+type, for every type the project declares and every culture its files carry, and reports
+whatever no read reached: a whole file when nothing in it is reached, a section when it names
+no type, or the entries outside any section in a file read for its sections alone. It reads a
+file under the name the build embeds it by, and names generic and nested types as the runtime
+does. A file the project embeds under an explicit `LogicalName` is beyond it, because
 that decouples the file's position from its logical name entirely.
 
 LOC0109 catches the silent case: `"Stored {stored}."` translated as `"…{stord}…"` renders
@@ -452,15 +451,11 @@ Nothing at the call site decides these, so there is nothing to judge:
 - **A translation file the run did not name.** LOC0112 and LOC0209 both read the files a
   project owns, so linting a lone `.razor` file checks its call sites and nothing else.
   Point `--path` at the project, the solution, or a folder to get them.
-- **A host's own `locales` folder.** Files under a `locales` folder beside the project
-  translate other assemblies' types, which the runtime reads from that folder rather than
-  from the assembly. LOC0112 and LOC0209 read a project's embedded files alone; the file
-  rules still read every file.
-- **A name two files could be embedded under.** `Resources/Fixtures/Widget.he.json` and
-  `Fixtures/Widget.he.json` both answer to `Fixtures.Widget` once the folders `ResourcesPath`
-  may insert are allowed for, and which one the runtime reads depends on a setting no project
-  file records. LOC0112 leaves both alone rather than guess, and neither serves a key to
-  LOC0209.
+- **A file the project does not embed.** A host's own `.locales` folder, copied beside the
+  application, translates other assemblies' types, which the runtime reads from that folder
+  rather than from the assembly. LOC0112 and LOC0209 read the files a project's own
+  `EmbeddedResource` items embed, whatever folder they sit in, so a root `.locales` folder a
+  library embeds is read and a host's copied one is not; the file rules still read every file.
 
 ## Contributing
 

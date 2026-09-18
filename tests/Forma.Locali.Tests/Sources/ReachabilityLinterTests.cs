@@ -185,18 +185,20 @@ public sealed class ReachabilityLinterTests
     }
 
     [Fact]
-    public void Should_stay_silent_on_a_name_two_files_claim()
+    public void Should_report_a_file_under_a_folder_the_types_name_does_not_spell()
     {
-        // Arrange — one of the two is unreachable, but which depends on a ResourcesPath the linter cannot see.
+        // Arrange — the type is Scratch.Components.Widget, so a leading Resources folder places the file where no type reads.
         using var directory = new TempDirectory();
         var scoped = directory.Write(Path.Combine("Resources", "Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
         var plain = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
 
         // Act
-        var diagnostics = Lint(directory, Widget, scoped, plain);
+        var diagnostic = Assert.Single(Lint(directory, Widget, scoped, plain));
 
         // Assert
-        Assert.Empty(diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.UnreachableTranslation, diagnostic.Code),
+            () => Assert.Equal(scoped, diagnostic.Path));
     }
 
     [Fact]

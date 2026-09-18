@@ -1,10 +1,13 @@
 namespace Forma.Locali.Projects;
 
+using Microsoft.Build.Exceptions;
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Text;
+
+using ProjectCollection = Microsoft.Build.Evaluation.ProjectCollection;
 
 /// <summary>Loads projects through MSBuild, with the Razor generator's C# in each compilation.</summary>
 public sealed class MSBuildProjectLoader : IProjectLoader
@@ -79,30 +82,54 @@ public sealed class MSBuildProjectLoader : IProjectLoader
         var folder = project.FilePath is null ? null : Path.GetDirectoryName(project.FilePath);
         var markup = folder is not null && Directory.EnumerateFiles(folder, "*.razor", SearchOption.AllDirectories).Any();
         var root = string.IsNullOrEmpty(project.DefaultNamespace) ? null : project.DefaultNamespace;
+        var embedded = ReadEmbeddedFiles(project.FilePath);
 
         var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
         if (compilation is null)
         {
-            return new LoadedProject(file, null, HasGeneratedSources: false, markup, root);
+            return new LoadedProject(file, null, HasGeneratedSources: false, markup, root, embedded);
         }
 
         // The generator runs in the workspace when Roslyn is the SDK's own, which needs nothing on disk.
         var generated = await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false);
         if (generated.Any(document => document.HintName.EndsWith(RazorSuffix, StringComparison.OrdinalIgnoreCase)))
         {
-            return new LoadedProject(file, compilation, HasGeneratedSources: true, markup, root);
+            return new LoadedProject(file, compilation, HasGeneratedSources: true, markup, root, embedded);
         }
 
         var emitted = folder is null ? [] : Emitted(folder);
         if (emitted.Count == 0)
         {
-            return new LoadedProject(file, compilation, HasGeneratedSources: false, markup, root);
+            return new LoadedProject(file, compilation, HasGeneratedSources: false, markup, root, embedded);
         }
 
         var options = compilation.SyntaxTrees.FirstOrDefault()?.Options as CSharpParseOptions;
         var trees = await ParseAsync(emitted, options, cancellationToken).ConfigureAwait(false);
 
-        return new LoadedProject(file, compilation.AddSyntaxTrees(trees), HasGeneratedSources: true, markup, root);
+        return new LoadedProject(file, compilation.AddSyntaxTrees(trees), HasGeneratedSources: true, markup, root, embedded);
+    }
+
+    // Whether a file is embedded or copied beside the application is the project's items to say; no folder's name can.
+    private static HashSet<string>? ReadEmbeddedFiles(string? projectPath)
+    {
+        if (projectPath is null)
+        {
+            return null;
+        }
+
+        using var collection = new ProjectCollection();
+
+        try
+        {
+            return collection.LoadProject(projectPath)
+                .GetItems("EmbeddedResource")
+                .Select(item => Path.GetFullPath(item.GetMetadataValue("FullPath")))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (InvalidProjectFileException)
+        {
+            return null;
+        }
     }
 
     private static async ValueTask<IReadOnlyList<SyntaxTree>> ParseAsync(
