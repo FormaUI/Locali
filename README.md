@@ -275,11 +275,10 @@ renaming a type, or misspelling a section leaves the translations stranded while
 check stays green. The rule reads through the runtime's own source, from the root down to the
 type, for every type the project declares and every culture its files carry, and reports
 whatever no read reached: a whole file when nothing in it is reached, a section when it names
-no type, or the entries outside any section in a file read for its sections alone. It reads a
-file under the name the build embeds it by, and names generic and nested types as the runtime
-does. A file the project embeds under an explicit `LogicalName` is beyond it, because
-that decouples the file's position from its logical name entirely. A file no path in force
-places is reported as well, and every report names the anchors the runtime places the file at.
+no type, or the entries outside any section in a file read for its sections alone. It reads each
+file under the name the build's own naming gives it, an explicit `LogicalName` included, and
+names generic and nested types as the runtime does. A file no path in force places is reported
+as well, and every report names the anchors the runtime places the file at.
 
 LOC0109 catches the silent case: `"Stored {stored}."` translated as `"…{stord}…"` renders
 `{stord}` literally. A name may be written as a brace hole or as a plural expression's

@@ -42,9 +42,19 @@ public static class TranslationFiles
             var fullPath = Path.GetFullPath(file);
 
             // A file the project does not embed is the host's own, copied beside the application, and translates other assemblies' types.
-            if (project.EmbeddedFiles is { } embeddedFiles && !embeddedFiles.Contains(fullPath))
+            string name;
+            if (project.EmbeddedResourceNames is { } resourceNames)
             {
-                continue;
+                if (!resourceNames.TryGetValue(fullPath, out var resourceName))
+                {
+                    continue;
+                }
+
+                name = resourceName;
+            }
+            else
+            {
+                name = GetDefaultResourceName(root, projectDirectory, fullPath);
             }
 
             // A file that will not read is the file rules' business, and the runtime reads nothing from it.
@@ -53,13 +63,13 @@ public static class TranslationFiles
                 continue;
             }
 
-            files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), GetDefaultResourceName(root, projectDirectory, fullPath), read, ignored));
+            files.Add(new TranslationFile(fullPath, CultureInfo.GetCultureInfo(culture), name, read, ignored));
         }
 
         return new ProjectTranslations(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, format);
     }
 
-    // The SDK embeds a file as {RootNamespace}.{RelativeFolderPath}.{FileName}.
+    // The SDK embeds a file as {RootNamespace}.{RelativeFolderPath}.{FileName}, and the runtime reads a satellite's file back under the same name.
     private static string GetDefaultResourceName(string root, string projectDirectory, string fullPath)
     {
         var relative = Path.GetRelativePath(projectDirectory, fullPath);

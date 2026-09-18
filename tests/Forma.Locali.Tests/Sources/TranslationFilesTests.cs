@@ -39,6 +39,22 @@ public sealed class TranslationFilesTests
         Assert.Equal("Forma.Framework.Emojis..locales.he.json", resolved.Name);
     }
 
+    [Fact]
+    public void Should_read_a_file_by_the_name_the_build_gives_it()
+    {
+        // Arrange — a project may give a file a name of its own, which the build embeds it under.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Widgets", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgets..locales.he.json" };
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedResourceNames: resourceNames);
+
+        // Act
+        var resolved = Assert.Single(TranslationFiles.Resolve(project, [file])!.Files);
+
+        // Assert
+        Assert.Equal("Contoso.Widgets..locales.he.json", resolved.Name);
+    }
+
     [Theory]
     [InlineData("es-419.json")]
     [InlineData("ResourceFormatter.es-419.json")]
@@ -89,28 +105,13 @@ public sealed class TranslationFilesTests
         // Arrange — the host's own folder is copied beside the application and translates other assemblies' types.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine(".locales", "Forma.Blazor", ".locales", "he.json"), LocalizationFileFakeData.Valid);
-        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedFiles: new HashSet<string>());
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>());
 
         // Act
         var resolved = TranslationFiles.Resolve(project, [file])!;
 
         // Assert
         Assert.Empty(resolved.Files);
-    }
-
-    [Fact]
-    public void Should_resolve_an_embedded_file_in_a_locales_folder_at_the_project_root()
-    {
-        // Arrange — a folder of this name is the host's in one project and an embedded form in another; the project's items tell them apart.
-        using var directory = new TempDirectory();
-        var file = directory.Write(Path.Combine(".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
-        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedFiles: new HashSet<string> { Path.GetFullPath(file) });
-
-        // Act
-        var resolved = Assert.Single(TranslationFiles.Resolve(project, [file])!.Files);
-
-        // Assert
-        Assert.Equal("Scratch..locales.Widget.he.json", resolved.Name);
     }
 
     [Fact]
