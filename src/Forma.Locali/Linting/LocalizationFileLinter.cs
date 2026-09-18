@@ -34,7 +34,7 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
             return new LocalizationFileLintResult([Unreadable(filePath, exception.Message)], IgnoredRules.None);
         }
 
-        var culture = LocalizationFileName.CultureOf(filePath);
+        var culture = LocalizationFileName.GetCulture(filePath);
 
         if (!LocalizationDocument.TryRead(filePath, content, out var document, out var error))
         {

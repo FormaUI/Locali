@@ -40,12 +40,14 @@ public sealed class TranslationFilesTests
         Assert.Equal("Forma.Framework.Emojis.TwemojiEmojiProvider", resolved.ExpectedName);
     }
 
-    [Fact]
-    public void Should_carry_the_culture_the_file_name_gives_it()
+    [Theory]
+    [InlineData("es-419.json")]
+    [InlineData("ResourceFormatter.es-419.json")]
+    public void Should_carry_the_culture_the_file_name_gives_it(string name)
     {
         // Arrange
         using var directory = new TempDirectory();
-        var file = directory.Write("ResourceFormatter.es-419.json", LocalizationFileFakeData.ForCulture("es-419", "Today", "hoy"));
+        var file = directory.Write(name, LocalizationFileFakeData.ForCulture("es-419", "Today", "hoy"));
 
         // Act
         var resolved = Assert.Single(Resolve(directory, Compile("namespace Scratch;"), file).Files);

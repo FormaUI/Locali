@@ -34,7 +34,7 @@ public static class TranslationFiles
 
         foreach (var file in localizationFiles)
         {
-            if (LocalizationFileName.CultureOf(file) is not { } culture)
+            if (LocalizationFileName.GetCulture(file) is not { } culture)
             {
                 continue;
             }
