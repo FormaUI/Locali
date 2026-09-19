@@ -66,11 +66,6 @@ public sealed class ProjectLocaleSource : LocaleSource
     protected override string GetRootDirOutsideRootNamespace(string rootDir)
         => string.Empty;
 
-    // No embedded name reaches above the project's root namespace, so a root climbing past it lands there.
-    /// <inheritdoc />
-    protected override string GetRootDirPastStart(string configName, string rootDir, string rootNamespace)
-        => rootNamespace;
-
     // A config file is named by its path in anything the walk throws; a locale file keeps the name the walk's entries report it by.
     /// <inheritdoc />
     protected override string GetDisplayName(string name)

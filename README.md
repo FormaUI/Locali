@@ -195,7 +195,6 @@ or laid in its folder inside a host's `.locales`, and it applies to every file o
 ```json
 {
   "rootNamespace": "Forma.Blazor.Components.Composer.Plugins",
-  "rootDir": "./Forma.AddOns.Composer.Plugins.Explorer.csproj",
   "localesDir": ".locales",
   "paths": ["$RootDir/$AnchorName/$LocalesDir/$CurrentName.$Culture$Extension"]
 }

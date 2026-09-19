@@ -267,7 +267,7 @@ public sealed class LintingServiceTests
             () => Assert.Equal(LintingCodes.MalformedLocaleConfig, diagnostic.Code),
             () => Assert.Equal(config, diagnostic.Path),
             () => Assert.Equal(1, diagnostic.Line),
-            () => Assert.Contains("not a relative path", diagnostic.Message, StringComparison.Ordinal));
+            () => Assert.Contains("not a relative folder", diagnostic.Message, StringComparison.Ordinal));
     }
 
     [Fact]

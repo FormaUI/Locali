@@ -8,7 +8,7 @@ public sealed class LocaleConfigFileTests
 {
     [Theory]
     [InlineData("""{ "rootNamespace": "Contoso.Widgets" }""")]
-    [InlineData("""{ "rootDir": "./Contoso.csproj" }""")]
+    [InlineData("""{ "rootDir": "Strings/Main" }""")]
     [InlineData("""{ "localesDir": ".locales" }""")]
     [InlineData("""{ "paths": ["$RootDir/$AnchorName.$Culture$Extension"] }""")]
     [InlineData("{}")]
@@ -18,7 +18,7 @@ public sealed class LocaleConfigFileTests
     [Theory]
     [InlineData("""{ "rootNamespace": "Contoso..Widgets" }""", "not a namespace")]
     [InlineData("""{ "rootNamespace": 5 }""", "'rootNamespace' is not text")]
-    [InlineData("""{ "rootDir": "/strings" }""", "not a relative path")]
+    [InlineData("""{ "rootDir": "/strings" }""", "not a relative folder")]
     [InlineData("""{ "localesDir": "../strings" }""", "not a relative folder")]
     [InlineData("""{ "paths": "$RootDir/$AnchorName.$Culture$Extension" }""", "'paths' is not a list of text")]
     [InlineData("""{ "paths": [5] }""", "a path is not text")]
