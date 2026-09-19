@@ -13,7 +13,7 @@ Two things go wrong quietly in a localized codebase, and a build catches neither
   and `es` files already exist leaves both files behind, and falling back to the key is exactly
   what the runtime is defined to do, so nothing anywhere complains.
 
-## Quick start
+## Quick Start
 
 The binary is `locali`. The project is not packable, so run it from source:
 
@@ -30,7 +30,7 @@ locali --path ../Forma/Forma.slnx --exclude "*/Fixtures/*"
 Errors are reported by default; `--severity warning` reads the warnings as well. The examples
 below use `locali` for the built binary.
 
-## What it checks against
+## What It Checks Against
 
 The linter never re-derives how a file is found: it runs the runtime's own resolution over the
 project tree, so it places a file exactly where the application will. One type,
@@ -136,9 +136,9 @@ some or all of what is left out, it says so instead.
 rather than the severity — and a `diagnostics` array of `path`, `line`, `column`, `severity`,
 `code`, `message`.
 
-## How call sites are found
+## How Callsites Are Found
 
-Call sites are found semantically where the compilation binds `IStringLocale`, and syntactically
+Callsites are found semantically where the compilation binds `IStringLocale`, and syntactically
 otherwise. The syntactic path cannot resolve overloads, so the rules that count values stay
 silent for it.
 
@@ -213,7 +213,7 @@ under 100, a file rule in the 100s, and a call-site rule in the 200s.
 | `Rules/Projects/` | Rules over a project's locale files read whole |
 | `Sources/` | Finding call sites, and resolving a project's locale files for the project rules |
 
-### Adding a rule
+### Adding a Rule
 
 1. Add a `LintingCode` to `Diagnostics/LintingCodes.cs` and to its `All` list, numbered under
    100 for the linting configuration, in the 100s for a file rule, or in the 200s for a
@@ -236,7 +236,7 @@ needs to report two different things is two rules regardless of family.
 argument in brackets, and escaped braces are literal text. A rule that depends on how values
 reach the call site reads `context.Site.Arguments` and returns when it is `Unknown`.
 
-### Build and test
+### Build and Test
 
 ```powershell
 dotnet build Forma.Locali.slnx
@@ -251,7 +251,7 @@ clean, so anything a rule reports there is a false positive. It does not cover e
 call site can take — nothing there passes a values collection whole — so those belong in unit
 tests.
 
-### Roslyn is loaded from the SDK
+### Roslyn Is Loaded From The SDK
 
 This part is a workaround, and nothing above depends on understanding it.
 
