@@ -2,12 +2,11 @@ namespace Forma.Locali.Projects;
 
 using Forma.Locali.Cli;
 
+using Microsoft.Build.Construction;
 using Microsoft.Build.Exceptions;
 using Microsoft.Build.Execution;
-using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Options;
 
@@ -18,146 +17,196 @@ using ProjectCollection = Microsoft.Build.Evaluation.ProjectCollection;
 public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IProjectLoader
 {
     private const string RazorSuffix = "_razor.g.cs";
+    private const string ProjectExtension = ".csproj";
     private const string PrepareResourceNamesTarget = "PrepareResourceNames";
+    private const string ReferenceArgument = "/reference:";
 
-    // MSBuild loads from the installed SDK, which has to be registered before the first MSBuild type loads.
-    static MSBuildProjectLoader()
+    // The targets run in one build: a second build of the same instance fails, and the compiler's arguments with it.
+    private static readonly string[] Targets = [PrepareResourceNamesTarget, "Compile", "CoreCompile"];
+
+    // A design-time build runs the project's own targets up to the compiler and stops short of it, handing back what it would have been given.
+    private static readonly Dictionary<string, string> DesignTimeProperties = new(StringComparer.OrdinalIgnoreCase)
     {
-        if (!MSBuildLocator.IsRegistered)
-        {
-            MSBuildLocator.RegisterDefaults();
-        }
-    }
+        ["DesignTimeBuild"] = "true",
+        ["BuildingInsideVisualStudio"] = "true",
+        ["BuildProjectReferences"] = "false",
+        ["SkipCompilerExecution"] = "true",
+        ["ProvideCommandLineArgs"] = "true",
+    };
 
     private readonly IReadOnlyDictionary<string, string> _properties = options?.Value.Properties ?? throw new ArgumentNullException(nameof(options));
 
     /// <inheritdoc />
-    public async ValueTask<IReadOnlyList<LoadedProject>> LoadAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
+    public ValueTask<IReadOnlyList<LoadedProject>> LoadAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(paths);
 
-        var requested = paths.ToArray();
-        if (requested.Length == 0)
-        {
-            return [];
-        }
+        var evaluated = new Dictionary<string, EvaluatedProject?>(StringComparer.OrdinalIgnoreCase);
+        var loaded = new List<LoadedProject>();
 
-        // The compilation and the embedded names come from two loads, which the same properties keep to one build.
-        using var workspace = MSBuildWorkspace.Create(new Dictionary<string, string>(_properties));
-        var opened = new List<ProjectId>();
-
-        foreach (var path in requested)
+        foreach (var path in paths.SelectMany(GetProjectPaths).Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            opened.AddRange(await OpenAsync(workspace, path, cancellationToken).ConfigureAwait(false));
-        }
-
-        var loaded = new List<LoadedProject>();
-        foreach (var id in opened.Distinct())
-        {
-            if (workspace.CurrentSolution.GetProject(id) is { } project)
+            if (Evaluate(path, evaluated, cancellationToken) is { } project)
             {
-                loaded.Add(await ReadAsync(project, cancellationToken).ConfigureAwait(false));
+                loaded.Add(project.Loaded);
             }
         }
 
-        return loaded;
+        return ValueTask.FromResult<IReadOnlyList<LoadedProject>>(loaded);
     }
 
-    private static async ValueTask<IReadOnlyList<ProjectId>> OpenAsync(MSBuildWorkspace workspace, string path, CancellationToken cancellationToken)
+    private static IEnumerable<string> GetProjectPaths(string path)
+        => Path.GetExtension(path).StartsWith(".sln", StringComparison.OrdinalIgnoreCase)
+            ? SolutionFile.Parse(Path.GetFullPath(path)).ProjectsInOrder
+                .Where(project => project.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
+                .Select(project => project.AbsolutePath)
+                .Where(project => Path.GetExtension(project).Equals(ProjectExtension, StringComparison.OrdinalIgnoreCase))
+            : [path];
+
+    // One evaluation answers for the compilation and the embedded names alike, so the two never describe different builds.
+    private EvaluatedProject? Evaluate(string path, Dictionary<string, EvaluatedProject?> evaluated, CancellationToken cancellationToken, string? targetFramework = null)
     {
-        if (Path.GetExtension(path).StartsWith(".sln", StringComparison.OrdinalIgnoreCase))
+        if (evaluated.TryGetValue(path, out var known))
         {
-            var solution = await workspace.OpenSolutionAsync(path, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            return [.. solution.ProjectIds];
+            return known;
         }
 
-        // Opening a project pulls the ones it references in with it, and opening those again throws.
-        if (Find(workspace.CurrentSolution, path) is { } already)
+        // A project met again while it is still being evaluated references itself in a circle, and is left out of it.
+        evaluated[path] = null;
+
+        var properties = new Dictionary<string, string>(DesignTimeProperties, StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, value) in _properties)
         {
-            return [already];
+            properties[name] = value;
         }
 
-        var project = await workspace.OpenProjectAsync(path, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        return [project.Id];
-    }
-
-    private static ProjectId? Find(Solution solution, string path)
-    {
-        var full = Path.GetFullPath(path);
-
-        return solution.Projects
-            .FirstOrDefault(project => project.FilePath is { } file
-                && string.Equals(Path.GetFullPath(file), full, StringComparison.OrdinalIgnoreCase))?
-            .Id;
-    }
-
-    private async ValueTask<LoadedProject> ReadAsync(Project project, CancellationToken cancellationToken)
-    {
-        var file = project.FilePath ?? project.Name;
-        var folder = project.FilePath is null ? null : Path.GetDirectoryName(project.FilePath);
-        var markup = folder is not null && Directory.EnumerateFiles(folder, "*.razor", SearchOption.AllDirectories).Any();
-        var root = string.IsNullOrEmpty(project.DefaultNamespace) ? null : project.DefaultNamespace;
-        var resourceNames = ReadEmbeddedResourceNames(project.FilePath);
-
-        var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
-        if (compilation is null)
+        if (targetFramework is not null)
         {
-            return new LoadedProject(file, null, HasGeneratedSources: false, markup, root, resourceNames);
+            properties["TargetFramework"] = targetFramework;
         }
 
-        // The generator runs in the workspace when Roslyn is the SDK's own, which needs nothing on disk.
-        var generated = await project.GetSourceGeneratedDocumentsAsync(cancellationToken).ConfigureAwait(false);
-        if (generated.Any(document => document.HintName.EndsWith(RazorSuffix, StringComparison.OrdinalIgnoreCase)))
-        {
-            return new LoadedProject(file, compilation, HasGeneratedSources: true, markup, root, resourceNames);
-        }
+        using var collection = new ProjectCollection(properties);
 
-        var emitted = folder is null ? [] : Emitted(folder);
-        if (emitted.Count == 0)
-        {
-            return new LoadedProject(file, compilation, HasGeneratedSources: false, markup, root, resourceNames);
-        }
-
-        var options = compilation.SyntaxTrees.FirstOrDefault()?.Options as CSharpParseOptions;
-        var trees = await ParseAsync(emitted, options, cancellationToken).ConfigureAwait(false);
-
-        return new LoadedProject(file, compilation.AddSyntaxTrees(trees), HasGeneratedSources: true, markup, root, resourceNames);
-    }
-
-    // Whether a file is embedded or copied beside the application is the project's items to say, and the build's own naming targets say what each is embedded as; no folder's name can.
-    private Dictionary<string, string>? ReadEmbeddedResourceNames(string? projectPath)
-    {
-        if (projectPath is null)
-        {
-            return null;
-        }
-
-        using var collection = new ProjectCollection(new Dictionary<string, string>(_properties));
-
+        ProjectInstance instance;
         try
         {
-            var instance = collection.LoadProject(projectPath).CreateProjectInstance();
-            if (!instance.Build(PrepareResourceNamesTarget, loggers: null))
-            {
-                return null;
-            }
-
-            var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var item in instance.GetItems("EmbeddedResource"))
-            {
-                names[Path.GetFullPath(item.GetMetadataValue("FullPath"))] = GetResourceName(item);
-            }
-
-            return names;
+            instance = collection.LoadProject(path).CreateProjectInstance();
         }
         catch (InvalidProjectFileException)
         {
-            return null;
+            return evaluated[path] = new EvaluatedProject(new LoadedProject(path, null, HasGeneratedSources: false, HasMarkup(path)), null, null);
         }
+
+        // A project built for several frameworks compiles once per framework, so the first stands for it.
+        if (targetFramework is null
+            && instance.GetPropertyValue("TargetFramework").Length == 0
+            && instance.GetPropertyValue("TargetFrameworks").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) is [var first, ..])
+        {
+            evaluated.Remove(path);
+
+            return Evaluate(path, evaluated, cancellationToken, first);
+        }
+
+        // Each target answers for itself, so a project that does not compile may still name what it embeds, and the reverse.
+        _ = instance.Build(Targets, loggers: null, out var results);
+        var resourceNames = results.TryGetValue(PrepareResourceNamesTarget, out var naming) && naming.ResultCode == TargetResultCode.Success
+            ? GetResourceNames(instance)
+            : null;
+
+        var arguments = instance.GetItems("CscCommandLineArgs").Select(item => item.EvaluatedInclude).ToArray();
+
+        var rootNamespace = instance.GetPropertyValue("RootNamespace") is { Length: > 0 } declared ? declared : null;
+        var compilation = arguments.Length == 0
+            ? null
+            : CompilerCommandLine.Compile(arguments, Path.GetDirectoryName(path)!, GetProjectReferences(instance, arguments, evaluated, cancellationToken), cancellationToken);
+
+        var loaded = Read(path, compilation, rootNamespace, resourceNames, cancellationToken);
+
+        return evaluated[path] = new EvaluatedProject(loaded, instance.GetPropertyValue("TargetPath"), instance.GetPropertyValue("TargetRefPath"));
+    }
+
+    // A referenced project is evaluated only where the assembly it builds is missing, which is a tree that was never built.
+    private Dictionary<string, Compilation> GetProjectReferences(
+        ProjectInstance instance,
+        IReadOnlyList<string> arguments,
+        Dictionary<string, EvaluatedProject?> evaluated,
+        CancellationToken cancellationToken)
+    {
+        var references = new Dictionary<string, Compilation>(StringComparer.OrdinalIgnoreCase);
+
+        var isAnyMissing = arguments
+            .Where(argument => argument.StartsWith(ReferenceArgument, StringComparison.OrdinalIgnoreCase))
+            .Any(argument => !File.Exists(argument[ReferenceArgument.Length..].Trim('"')));
+
+        if (!isAnyMissing)
+        {
+            return references;
+        }
+
+        foreach (var reference in instance.GetItems("ProjectReference"))
+        {
+            if (Evaluate(Path.GetFullPath(reference.GetMetadataValue("FullPath")), evaluated, cancellationToken) is not { Loaded.Compilation: { } compilation } referenced)
+            {
+                continue;
+            }
+
+            foreach (var assembly in new[] { referenced.TargetPath, referenced.TargetRefPath })
+            {
+                if (!string.IsNullOrEmpty(assembly))
+                {
+                    references[assembly] = compilation;
+                }
+            }
+        }
+
+        return references;
+    }
+
+    private static LoadedProject Read(
+        string path,
+        Compilation? compilation,
+        string? rootNamespace,
+        IReadOnlyDictionary<string, string>? resourceNames,
+        CancellationToken cancellationToken)
+    {
+        var markup = HasMarkup(path);
+        if (compilation is null)
+        {
+            return new LoadedProject(path, null, HasGeneratedSources: false, markup, rootNamespace, resourceNames);
+        }
+
+        // The generator ran with the compilation, in the compiler it was built against, which needs nothing on disk.
+        if (compilation.SyntaxTrees.Any(tree => tree.FilePath.EndsWith(RazorSuffix, StringComparison.OrdinalIgnoreCase)))
+        {
+            return new LoadedProject(path, compilation, HasGeneratedSources: true, markup, rootNamespace, resourceNames);
+        }
+
+        var emitted = Emitted(Path.GetDirectoryName(path)!);
+        if (emitted.Count == 0)
+        {
+            return new LoadedProject(path, compilation, HasGeneratedSources: false, markup, rootNamespace, resourceNames);
+        }
+
+        var parseOptions = compilation.SyntaxTrees.FirstOrDefault()?.Options as CSharpParseOptions;
+
+        return new LoadedProject(path, compilation.AddSyntaxTrees(Parse(emitted, parseOptions, cancellationToken)), HasGeneratedSources: true, markup, rootNamespace, resourceNames);
+    }
+
+    private static bool HasMarkup(string path)
+        => Path.GetDirectoryName(path) is { } folder && Directory.EnumerateFiles(folder, "*.razor", SearchOption.AllDirectories).Any();
+
+    // Whether a file is embedded or copied beside the application is the project's items to say, and the build's own naming targets say what each is embedded as; no folder's name can.
+    private static Dictionary<string, string> GetResourceNames(ProjectInstance instance)
+    {
+        var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in instance.GetItems("EmbeddedResource"))
+        {
+            names[Path.GetFullPath(item.GetMetadataValue("FullPath"))] = GetResourceName(item);
+        }
+
+        return names;
     }
 
     // A file the build moves into a satellite assembly is named there without its culture, which the runtime reads back in just before the extension.
@@ -177,26 +226,19 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         return $"{name[..^extension.Length]}.{culture}{extension}";
     }
 
-    private static async ValueTask<IReadOnlyList<SyntaxTree>> ParseAsync(
-        IReadOnlyList<string> files,
-        CSharpParseOptions? options,
-        CancellationToken cancellationToken)
-    {
-        var sources = await Task.WhenAll(files.Select(async file =>
-        {
-            var bytes = await File.ReadAllBytesAsync(file, cancellationToken).ConfigureAwait(false);
-
-            return (file, text: SourceText.From(new MemoryStream(bytes, writable: false)));
-        })).ConfigureAwait(false);
-
-        // Parsing is processor-bound and each file is independent, so the trees are built across cores.
-        return [.. sources
+    // Parsing is processor-bound and each file is independent, so the trees are built across cores.
+    private static ParallelQuery<SyntaxTree> Parse(IReadOnlyList<string> files, CSharpParseOptions? parseOptions, CancellationToken cancellationToken)
+        => files
             .AsParallel()
             .WithCancellation(cancellationToken)
-            .Select(source => CSharpSyntaxTree.ParseText(source.text, options, source.file))];
-    }
+            .Select(file =>
+            {
+                using var stream = File.OpenRead(file);
 
-    // Read from where a build emitted it when the SDK ships no Roslyn new enough to run the generator here.
+                return CSharpSyntaxTree.ParseText(SourceText.From(stream), parseOptions, file, cancellationToken);
+            });
+
+    // Read from where a build emitted it, for a project whose generator did not run here.
     private static IReadOnlyList<string> Emitted(string folder)
     {
         var generated = Path.Combine(folder, "obj");
@@ -206,4 +248,6 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
                 .Where(static file => file.Contains($"{Path.DirectorySeparatorChar}generated{Path.DirectorySeparatorChar}", StringComparison.Ordinal))]
             : [];
     }
+
+    private sealed record EvaluatedProject(LoadedProject Loaded, string? TargetPath, string? TargetRefPath);
 }

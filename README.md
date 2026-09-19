@@ -145,9 +145,9 @@ silent for it.
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no
 build property is needed; `locali --path MyProject.csproj` is enough. LOC0205 covers the case
-where a project produced no generated Razor all the same. The Roslyn the
-linter references has to keep pace with the SDK's, described under
-[Contributing](#roslyn-keeps-pace-with-the-sdk).
+where a project produced no generated Razor all the same. The linter runs on the
+SDK's own compiler so that the generator always loads, described under
+[Contributing](#roslyn-is-the-sdks-compiler).
 
 ## Rules
 
@@ -252,18 +252,29 @@ clean, so anything a rule reports there is a false positive. It does not cover e
 callsite can take — nothing there passes a values collection whole — so those belong in unit
 tests.
 
-### Roslyn Keeps Pace With The SDK
+### Roslyn Is The SDK's Compiler
 
 The Razor generator ships inside the SDK, built against the SDK's own Roslyn, and Roslyn refuses
 to load a generator built against a newer compiler than its host: it reports
-`ReferencesNewerCompiler` and returns no generators at all. So the three `Microsoft.CodeAnalysis.*`
-packages the linter references have to be at or above the Roslyn of the SDK it runs on.
+`ReferencesNewerCompiler` and returns no generators at all. The linter therefore ships no Roslyn.
+It runs on the compiler of the SDK it finds, the one every generator of that SDK is built
+against, so a newer SDK needs nothing changed here.
 
-A preview SDK can carry a Roslyn ahead of anything on nuget.org. The linter still runs there, and
-LOC0205 reports each project whose Razor markup went unchecked; raising the three package
-versions, once the matching ones are published, closes it. The version an SDK's generator asks
-for is the `Microsoft.CodeAnalysis` reference of `Microsoft.CodeAnalysis.Razor.Compiler.dll`,
-under the SDK's `Sdks/Microsoft.NET.Sdk.Razor/source-generators`.
+`SdkCompiler` binds to `Roslyn/bincore` under the SDK, the folder `csc` runs from, in a
+`[ModuleInitializer]`, since resolution has to be registered before the first Roslyn type loads,
+which is earlier than `Main`. The `Microsoft.CodeAnalysis.CSharp` package carries
+`ExcludeAssets="runtime"` so it stays reference-only, and its version is the oldest Roslyn API the
+linter is written against: a newer compiler runs code built against an older one, as it does for
+every analyzer. When no compiler is found the linter stops with exit code 2 and says where it
+looked.
+
+A project is loaded in one MSBuild design-time build, which runs the project's own targets up to
+the compiler and hands back what it would have been given, together with the names the build
+embeds each resource under. `CompilerCommandLine` turns those arguments into a compilation and
+runs the generators they name, as the compiler would. The targets run in one build because a
+second build of the same project instance fails. A referenced project is evaluated only where
+the assembly it builds is missing, in a tree that was never built, and its compilation stands in
+for the assembly.
 
 MSBuild itself is loaded from the installed SDK through `MSBuildLocator`, so the `Microsoft.Build`
-packages stay reference-only.
+packages stay reference-only too.
