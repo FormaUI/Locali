@@ -40,7 +40,7 @@ public sealed class LintingConfigurationTests
     {
         // Arrange — the root leaves out a call-site rule everywhere; the nearer file adds a file rule for its own name.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "**/*.he.json": ["LOC0209"] } }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "**/*.he.json": ["LOC0207"] } }""");
         directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
         var file = directory.Write(Path.Combine("Widgets", "Widget.he.json"), "{}");
 

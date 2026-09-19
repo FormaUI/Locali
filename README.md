@@ -53,9 +53,9 @@ application, laid out by the type's name, the file directly in its folder:
 .locales/Forma.Blazor/Components/Bars/FormaToolbar.he.json          { "Bold": "עבה" }
 ```
 
-The rules that read a type's files, LOC0112 and LOC0209 among them, read a project's own
+The rules that read a type's files, LOC0112 and LOC0207 among them, read a project's own
 embedded files, whatever folder they sit in; a host's folder translates other assemblies' types,
-so the file rules read it and the type-bound rules do not, and LOC0118 reads it as a source of
+so the file rules read it and the type-bound rules do not, and LOC0117 reads it as a source of
 its own. `Forma.Framework.Localization`'s README walks the whole layout; this document covers
 the linter.
 
@@ -108,7 +108,7 @@ Linted 658 file(s); 6 diagnostic(s).
 
 8 diagnostic(s) not shown:
   - LOC0106 (1)
-  - LOC0205 (1), LOC0209 (4), LOC0210 (2)
+  - LOC0204 (1), LOC0207 (4), LOC0208 (2)
 Pass --severity warning to read them.
 ```
 
@@ -135,7 +135,7 @@ silent for it.
 
 Almost every call site lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no
-build property is needed; `locali --path MyProject.csproj` is enough. LOC0206 covers the case
+build property is needed; `locali --path MyProject.csproj` is enough. LOC0205 covers the case
 where a project produced no generated Razor all the same. Loading Roslyn is itself a workaround,
 described under [Contributing](#roslyn-is-loaded-from-the-sdk).
 
@@ -164,27 +164,25 @@ under 100, a file rule in the 100s, and a call-site rule in the 200s.
 | LOC0111 | Error | The file declares the same key more than once |
 | LOC0112 | Error | A locale file, or a section of one, names a type that does not exist |
 | LOC0113 | Warning | The file translates the same key differently across its sections |
-| LOC0115 | Warning | A reserved entry sits after an entry it has to precede |
-| LOC0116 | Error | A key or section is shaped like a reserved entry the runtime does not define |
-| LOC0117 | Error | The `$shared` entry is not an object holding translations alone |
-| LOC0118 | Warning | Two files of one source stand for one anchor in one culture |
-| LOC0119 | Warning | A folder of locale files is named for a type |
-| LOC0201 | Error | An expression reads a name nothing supplies |
-| LOC0202 | Error | The value count does not match the key's distinct holes |
-| LOC0203 | Error | An expression naming no argument is given no value |
-| LOC0204 | Error | A key carries a malformed expression |
-| LOC0205 | Warning | A plural expression omits `other` |
-| LOC0206 | Warning | A project's Razor markup went unchecked |
-| LOC0208 | Error | A key writes text shaped like a hole the runtime cannot read |
-| LOC0209 | Warning | A key is not answered in a culture its type is translated for |
-| LOC0210 | Warning | A lookup writes its key as an expression |
-| LOC0211 | Warning | A key carries holes but no words anywhere else |
-| LOC0212 | Warning | An expression key carries no words in any field |
-| LOC0213 | Error | A lookup writes its key as an interpolated string with holes |
-| LOC0214 | Error | A lookup writes a key shaped like a reserved entry |
-| LOC0215 | Error | A lookup supplies `string.Format`'s format text |
-
-LOC0114, LOC0200 and LOC0207 are retired, and no number is reused.
+| LOC0114 | Warning | A reserved entry sits after an entry it has to precede |
+| LOC0115 | Error | A key or section is shaped like a reserved entry the runtime does not define |
+| LOC0116 | Error | The `$shared` entry is not an object holding translations alone |
+| LOC0117 | Warning | Two files of one source stand for one anchor in one culture |
+| LOC0118 | Warning | A folder of locale files is named for a type |
+| LOC0200 | Error | An expression reads a name nothing supplies |
+| LOC0201 | Error | The value count does not match the key's distinct holes |
+| LOC0202 | Error | An expression naming no argument is given no value |
+| LOC0203 | Error | A key carries a malformed expression |
+| LOC0204 | Warning | A plural expression omits `other` |
+| LOC0205 | Warning | A project's Razor markup went unchecked |
+| LOC0206 | Error | A key writes text shaped like a hole the runtime cannot read |
+| LOC0207 | Warning | A key is not answered in a culture its type is translated for |
+| LOC0208 | Warning | A lookup writes its key as an expression |
+| LOC0209 | Warning | A key carries holes but no words anywhere else |
+| LOC0210 | Warning | An expression key carries no words in any field |
+| LOC0211 | Error | A lookup writes its key as an interpolated string with holes |
+| LOC0212 | Error | A lookup writes a key shaped like a reserved entry |
+| LOC0213 | Error | A lookup supplies `string.Format`'s format text |
 
 ## Contributing
 
@@ -220,7 +218,7 @@ LOC0114, LOC0200 and LOC0207 are retired, and no number is reused.
 `LintCodesTests` fails if a rule reports under a code missing from the catalogue, if two codes
 share an id, if two rules in the same family report under the same code, or if a file or
 call-site rule reports outside its family's range. The range rule means the same idea checked on
-both sides of a call needs two codes, one per family, as LOC0110 and LOC0208 show. A rule that
+both sides of a call needs two codes, one per family, as LOC0110 and LOC0206 show. A rule that
 needs to report two different things is two rules regardless of family.
 
 `HoleNames` reads the names a format refers to its values by, and matches the runtime's

@@ -19,7 +19,7 @@ runtime's own reader and never writes a key of its own into.
 ```json
 {
   "ignoreDiagnostics": {
-    "**/Forma.Blazor.Showcase/**/LocalizationPage.razor": ["LOC0209"]
+    "**/Forma.Blazor.Showcase/**/LocalizationPage.razor": ["LOC0207"]
   },
   "excludeFiles": ["*/Fixtures/*"]
 }
@@ -78,8 +78,7 @@ read the project's files through it, as the runtime does.
 ## Locale files (LOC0100–LOC0199)
 
 A locale file opens with `$localization`, then `$shared` where it carries one, then its
-translations and sections. LOC0114 is retired with the `$tools` entry it judged, and the number
-is not reused.
+translations and sections.
 
 ### LOC0100 — Not readable JSON
 
@@ -182,7 +181,7 @@ meant as a hole, whose name the runtime cannot read or whose alignment is not a 
 `{Name:specifier}`.
 
 **Silent where.** The text contains a space, as `{ color: red }` or `{colour, red}` does: that
-is prose, rendered as written and meant to be. LOC0208 is the same rule at a call site.
+is prose, rendered as written and meant to be. LOC0206 is the same rule at a call site.
 
 ### LOC0111 — A duplicate key
 
@@ -224,7 +223,7 @@ a section is the one compared.
 where a translation agrees in gender or number with the thing its type describes. That case is
 why the rule is a warning.
 
-### LOC0115 — A reserved entry out of order
+### LOC0114 — A reserved entry out of order
 
 **Reports.** A `$shared` before `$localization`, or either after a translation or a section.
 
@@ -232,7 +231,7 @@ why the rule is a warning.
 
 **What fixes it.** `$localization`, then `$shared`, then the rest.
 
-### LOC0116 — A key shaped like a reserved entry the runtime does not define
+### LOC0115 — A key shaped like a reserved entry the runtime does not define
 
 **Reports.** A key or section, at any level, that is `$` followed by one lowercase word and
 nothing else — `$import`, `$shraed` — which the runtime does not define.
@@ -244,9 +243,9 @@ doubled sign: `$$price` is the text `$price`.
 
 **Silent where.** Anything else starting with `$` is prose: `$`, `$ per month`, `$5 off`,
 `$USD`, `$camelCase`, `$price/month`, because an uppercase letter, a digit, a dot or a space
-breaks the shape. LOC0214 is the same rule at a call site.
+breaks the shape. LOC0212 is the same rule at a call site.
 
-### LOC0117 — A malformed `$shared` entry
+### LOC0116 — A malformed `$shared` entry
 
 **Reports.** A `$shared` that is not an object, or that nests a section or another `$shared`.
 
@@ -255,7 +254,7 @@ type reached through its node gets unless a section of its own says otherwise.
 
 **What fixes it.** Keep translations only in it; put a nested section beside it.
 
-### LOC0118 — Two files stand for one anchor
+### LOC0117 — Two files stand for one anchor
 
 **Reports.** Two files of one source standing for one anchor in one culture, through different
 paths or through a host's two forms of a file. Each file is reported, naming the other.
@@ -268,7 +267,7 @@ keeps answering from where it was left.
 host's `.locales` folder at the project's root as another, in which a file may sit in a folder's
 own `.locales` or directly in the folder. It is a warning because both files load.
 
-### LOC0119 — A folder named for a type
+### LOC0118 — A folder named for a type
 
 **Reports.** A file named for its culture alone whose folder is named for a type of the project,
 `Components/Widget/.locales/he.json`.
@@ -285,26 +284,25 @@ tell from namespaces.
 
 ## Call sites (LOC0200–LOC0299)
 
-Call sites are found semantically where the compilation binds `IStringLocale`, and
-syntactically otherwise; the syntactic path cannot resolve overloads, so the rules that count
-values stay silent for it. A key written as a constant is folded by the compiler and checked
-like a literal on the semantic path. A lookup inside a type that implements `IStringLocale` is
-left alone throughout, since such a type forwards the key its own caller wrote. LOC0200 and
-LOC0207 are retired, and neither number is reused.
+Call sites are found semantically where the compilation binds `IStringLocale`, and syntactically
+otherwise; the syntactic path cannot resolve overloads, so the rules that count values stay
+silent for it. A key written as a constant is folded by the compiler and checked like a literal
+on the semantic path. A lookup inside a type that implements `IStringLocale` is left alone
+throughout, since such a type forwards the key its own caller wrote.
 
 Values pair to a key's distinct holes by position, in the order the holes first appear, and a
 plural expression's bracketed argument names a value the way a brace hole does:
 
 ```csharp
 L["Stored {stored} of {total}.", written, allowed]        // right: one value per distinct hole
-L["Stored {stored} of {total}.", written]                 // LOC0202: two holes, one value
-L["Stored {stored} of {total}.", written, allowed, size]  // LOC0202: two holes, three values
+L["Stored {stored} of {total}.", written]                 // LOC0201: two holes, one value
+L["Stored {stored} of {total}.", written, allowed, size]  // LOC0201: two holes, three values
 L["Stored {total} of {total}.", total]                    // right: a repeated hole counts once
 L["Saved."]                                               // right: no holes, no values
-L[$"Stored {stored} of {total}."]                         // LOC0213: the key is interpolated
+L[$"Stored {stored} of {total}."]                         // LOC0211: the key is interpolated
 ```
 
-### LOC0201 — An expression reads a name nothing supplies
+### LOC0200 — An expression reads a name nothing supplies
 
 **Reports.** A plural expression naming an argument, `[$ [count] plural; …]`, whose key names no
 such hole and whose lookup supplies no such value.
@@ -313,7 +311,7 @@ such hole and whose lookup supplies no such value.
 
 **What fixes it.** Name the argument the lookup supplies.
 
-### LOC0202 — The value count does not match the key's holes
+### LOC0201 — The value count does not match the key's holes
 
 **Reports.** A lookup supplying more or fewer values than its key has distinct holes.
 
@@ -326,7 +324,7 @@ such hole and whose lookup supplies no such value.
 cannot convert, arrives as one boxed value, and is counted. Also silent on the syntactic path,
 where no overload resolved.
 
-### LOC0203 — An expression naming no argument is given no value
+### LOC0202 — An expression naming no argument is given no value
 
 **Reports.** A key whose plural expression names no argument, `[$ plural; …]`, looked up with no
 value.
@@ -336,7 +334,7 @@ without one.
 
 **What fixes it.** Supply the one value.
 
-### LOC0204 — A malformed expression at a call site
+### LOC0203 — A malformed expression at a call site
 
 **Reports.** A key written at a call site whose `[$ … $]` expression does not parse.
 
@@ -344,7 +342,7 @@ without one.
 
 **What fixes it.** Write `[$ [Name] plural; category: text; …; $]`, the trailing `;` included.
 
-### LOC0205 — A plural expression without `other`
+### LOC0204 — A plural expression without `other`
 
 **Reports.** A plural expression that omits the `other` category.
 
@@ -352,7 +350,7 @@ without one.
 
 **What fixes it.** Add `other`, which every category the expression leaves out falls back to.
 
-### LOC0206 — A project's Razor markup went unchecked
+### LOC0205 — A project's Razor markup went unchecked
 
 **Reports.** A project whose `.razor` files produced no generated C#, so their call sites were
 not read.
@@ -364,7 +362,7 @@ loaded but the project produced nothing, and the fallback over `obj/**/generated
 `EmitCompilerGeneratedFiles=true` and a full build — came up empty too. Do not ignore it in a
 build gate.
 
-### LOC0208 — A key writes text shaped like a hole the runtime cannot read
+### LOC0206 — A key writes text shaped like a hole the runtime cannot read
 
 **Reports.** `{0}`, `{a.b}` or `{stored,x}` in a key at a call site.
 
@@ -372,7 +370,7 @@ build gate.
 
 **What fixes it.** Write the hole as `{Name}`.
 
-### LOC0209 — A key is not answered in a culture its type is translated for
+### LOC0207 — A key is not answered in a culture its type is translated for
 
 **Reports.** A key written at a call site that a culture translating its type leaves out, once
 per key per culture, at the first call site writing it.
@@ -391,7 +389,7 @@ under-translated; the lookup is through the unbound `IStringLocale`, which names
 parent culture answers, since `es-419` reads `es` for what it does not declare; or the run did
 not name the project's files.
 
-### LOC0210 — A lookup writes its key as an expression
+### LOC0208 — A lookup writes its key as an expression
 
 **Reports.** `L[column.ToString()]`: a key only the run knows.
 
@@ -401,7 +399,7 @@ silent would let a run read as complete when part of it was never looked at.
 **What fixes it.** Write the key as a literal or a constant, which the compiler folds and every
 rule reads.
 
-### LOC0211 — A key with holes and no words
+### LOC0209 — A key with holes and no words
 
 **Reports.** A key made only of holes and punctuation, `"{count} / {total}"`.
 
@@ -412,15 +410,15 @@ translation is the source text, and there is no text here to mark.
 **What fixes it.** Format the value directly, `$"{count} / {total}"`. A single letter of prose
 clears the rule.
 
-### LOC0212 — An expression key with no words in any field
+### LOC0210 — An expression key with no words in any field
 
 **Reports.** A plural expression whose fields carry only `#`, `"[$ plural; other: #; $]"`.
 
-**Why it matters.** As LOC0211: a number formatted, not a sentence translated.
+**Why it matters.** As LOC0209: a number formatted, not a sentence translated.
 
 **What fixes it.** `count.ToString("N0", culture)`, or a field with a word in it.
 
-### LOC0213 — A key written as an interpolated string with holes
+### LOC0211 — A key written as an interpolated string with holes
 
 **Reports.** `L[$"Stored {stored} of {total}."]`.
 
@@ -431,16 +429,16 @@ text as the key, which no translation is keyed by.
 stored, total]`. An interpolated string with no holes folds to a constant and is checked like a
 literal.
 
-### LOC0214 — A lookup writes a key shaped like a reserved entry
+### LOC0212 — A lookup writes a key shaped like a reserved entry
 
 **Reports.** `L["$import"]`: `$` followed by one lowercase word, which the runtime reserves.
 
 **Why it matters.** No file can answer it, since a file naming it fails to load, so the lookup
 always falls back to the key.
 
-**What fixes it.** `L["$$import"]` for the text `$import`; see LOC0116.
+**What fixes it.** `L["$$import"]` for the text `$import`; see LOC0115.
 
-### LOC0215 — A lookup supplies `string.Format`'s format text
+### LOC0213 — A lookup supplies `string.Format`'s format text
 
 **Reports.** `string.Format(L[key], value)`: the lookup written as the format text, whether by
 position or by the `format` name.

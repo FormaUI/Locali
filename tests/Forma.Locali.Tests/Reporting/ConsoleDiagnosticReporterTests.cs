@@ -58,7 +58,7 @@ public sealed class ConsoleDiagnosticReporterTests
                 string.Empty,
                 "7 diagnostic(s) not shown:",
                 "  - LOC0102 (2)",
-                "  - LOC0209 (4), LOC0210 (1)",
+                "  - LOC0207 (4), LOC0208 (1)",
                 "Pass --severity warning to read them.",
             ],
             lines);
@@ -109,7 +109,7 @@ public sealed class ConsoleDiagnosticReporterTests
                 string.Empty,
                 "2 diagnostic(s) not shown:",
                 "  - LOC0102 (1)",
-                "  - LOC0209 (1)",
+                "  - LOC0207 (1)",
                 "Pass --severity warning to read the rest; the linting configuration accounts for the others.",
             ],
             lines);

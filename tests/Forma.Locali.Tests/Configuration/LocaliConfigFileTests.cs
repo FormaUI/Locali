@@ -10,14 +10,14 @@ public sealed class LocaliConfigFileTests
     public void Should_read_a_globs_codes_with_their_offsets()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "**/LocalizationPage.razor": ["LOC0209", "LOC0113"] } }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "**/LocalizationPage.razor": ["LOC0207", "LOC0113"] } }""");
 
         // Assert
         var entry = Assert.Single(document.IgnoreDiagnostics);
 
         Assert.Multiple(
             () => Assert.Equal("**/LocalizationPage.razor", entry.Glob),
-            () => Assert.Equal(["LOC0209", "LOC0113"], entry.Codes.Select(code => code.Id)));
+            () => Assert.Equal(["LOC0207", "LOC0113"], entry.Codes.Select(code => code.Id)));
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public sealed class LocaliConfigFileTests
     {
         // Arrange
         var document = LocaliConfigFileTestFactory.Read(
-            """{ "ignoreDiagnostics": { "One.he.json": ["LOC0113"], "Two.he.json": ["LOC0209"] } }""");
+            """{ "ignoreDiagnostics": { "One.he.json": ["LOC0113"], "Two.he.json": ["LOC0207"] } }""");
 
         // Assert
         Assert.Equal(["One.he.json", "Two.he.json"], document.IgnoreDiagnostics.Select(entry => entry.Glob));
