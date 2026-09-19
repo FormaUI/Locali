@@ -1,5 +1,6 @@
 namespace Forma.Locali.Sources;
 
+using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 
 /// <summary>
@@ -49,7 +50,9 @@ public sealed class ReachabilityLinter : IReachabilityLinter
             {
                 diagnostics.Add(Diagnose(file, section.Length == 0
                     ? $"No type named {FormatNames(anchorNames, "or")} exists, so the entries outside any section are unreachable."
-                    : $"Section '{section}' names no type below this file's position, so its translations are unreachable."));
+                    : section.StartsWith(LocalizationSchema.RootedSectionPrefix, StringComparison.Ordinal)
+                        ? $"Section '{section}' names no type from the assembly's root, so its translations are unreachable."
+                        : $"Section '{section}' names no type below this file's position, so its translations are unreachable."));
             }
         }
 

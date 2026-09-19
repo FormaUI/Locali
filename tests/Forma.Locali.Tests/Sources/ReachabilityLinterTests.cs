@@ -56,6 +56,37 @@ public sealed class ReachabilityLinterTests
     }
 
     [Fact]
+    public void Should_leave_a_rooted_section_naming_a_type_alone()
+    {
+        // Arrange — the file sits under a folder no type is named for, and its section names the type from the root.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Strings", ".locales", "he.json"), LocalizationFileFakeData.WithSection("@.Components.Widget", "Today", "היום"));
+
+        // Act
+        var diagnostics = Lint(directory, Widget, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_a_rooted_section_naming_no_type()
+    {
+        // Arrange — the folder's file reaches its type through one section, and names no type through the rooted one.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), """{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "Widget": { "Today": "היום" }, "@.Components.Gadget": { "Today": "היום" } }""");
+
+        // Act
+        var diagnostic = Assert.Single(Lint(directory, Widget, file));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.UnreachableLocalization, diagnostic.Code),
+            () => Assert.Contains("'@.Components.Gadget'", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains("from the assembly's root", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Should_report_a_file_in_a_form_no_path_reads()
     {
         // Arrange — a file beside its type is no default form, so nothing places it.

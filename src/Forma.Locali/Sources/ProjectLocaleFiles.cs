@@ -1,7 +1,6 @@
 namespace Forma.Locali.Sources;
 
 using System.Globalization;
-using System.Text.Json;
 
 using Forma.Framework.Localization.Files;
 using Forma.Framework.Localization.Json;
@@ -108,11 +107,7 @@ public static class ProjectLocaleFiles
         {
             return null;
         }
-        catch (JsonException)
-        {
-            return null;
-        }
-        catch (LocalizationMetadataException)
+        catch (LocaleFileException)
         {
             return null;
         }
