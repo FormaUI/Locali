@@ -30,6 +30,7 @@ public static class LintingCodes
             ReservedShapedKey,
             MalformedShared,
             DuplicateAnchorFile,
+            TypeNamedFolder,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
@@ -171,6 +172,12 @@ public static class LintingCodes
         "LOC0118",
         LintingSeverity.Warning,
         "Two files of one source stand for one anchor in one culture, so both are read and, where they share a key, the file the later path reads wins.");
+
+    /// <summary>A folder of locale files is named for a type.</summary>
+    public static LintingCode TypeNamedFolder { get; } = new(
+        "LOC0119",
+        LintingSeverity.Warning,
+        "A folder of locale files is named for a type, which lays the type out as a namespace; a type's own file is named for the type among its namespace folder's locale files.");
 
     /// <summary>An expression names an argument the lookup never supplies.</summary>
     public static LintingCode UnsuppliedPluralArgument { get; } = new(

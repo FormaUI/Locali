@@ -32,6 +32,7 @@ public static class LintingServiceTestFactory
             new ReachabilityLinter(),
             new LocalizationCoverageLinter(),
             new DuplicateAnchorFileLinter(),
+            new TypeNamedFolderLinter(),
             lintingConfiguration);
     }
 }

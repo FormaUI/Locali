@@ -168,6 +168,7 @@ under 100, a file rule in the 100s, and a call-site rule in the 200s.
 | LOC0116 | Error | A key or section is shaped like a reserved entry the runtime does not define |
 | LOC0117 | Error | The `$shared` entry is not an object holding translations alone |
 | LOC0118 | Warning | Two files of one source stand for one anchor in one culture |
+| LOC0119 | Warning | A folder of locale files is named for a type |
 | LOC0201 | Error | An expression reads a name nothing supplies |
 | LOC0202 | Error | The value count does not match the key's distinct holes |
 | LOC0203 | Error | An expression naming no argument is given no value |

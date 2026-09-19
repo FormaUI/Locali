@@ -268,6 +268,21 @@ keeps answering from where it was left.
 host's `.locales` folder at the project's root as another, in which a file may sit in a folder's
 own `.locales` or directly in the folder. It is a warning because both files load.
 
+### LOC0119 — A folder named for a type
+
+**Reports.** A file named for its culture alone whose folder is named for a type of the project,
+`Components/Widget/.locales/he.json`.
+
+**Why it matters.** A folder is a namespace, so the file lays the type out as one, and a reader
+has to know the folder is a type to tell what the file localizes. The runtime reads it all the
+same.
+
+**What fixes it.** Name the file for the type among its namespace folder's locale files,
+`Components/.locales/Widget.he.json`.
+
+**Silent where.** A host's folder, which names other assemblies' types the compilation cannot
+tell from namespaces.
+
 ## Call sites (LOC0200–LOC0299)
 
 Call sites are found semantically where the compilation binds `IStringLocale`, and

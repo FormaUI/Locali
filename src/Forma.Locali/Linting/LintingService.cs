@@ -20,6 +20,7 @@ using Microsoft.Extensions.Options;
 /// <param name="reachabilityLinter">Checks that a project's locale files can still be found by type.</param>
 /// <param name="coverageLinter">Checks that a project's keys are answered by the locale files it owns.</param>
 /// <param name="duplicateLinter">Checks that no two files of one source stand for one anchor.</param>
+/// <param name="typeFolderLinter">Checks that no folder of a project's locale files is named for a type.</param>
 /// <param name="lintingConfiguration">What the linting configuration's <c>.locali.json</c> files leave out.</param>
 public sealed class LintingService(
     IOptions<LinterOptions> options,
@@ -30,6 +31,7 @@ public sealed class LintingService(
     IReachabilityLinter reachabilityLinter,
     ILocalizationCoverageLinter coverageLinter,
     IDuplicateAnchorFileLinter duplicateLinter,
+    ITypeNamedFolderLinter typeFolderLinter,
     ILintingConfiguration lintingConfiguration) : ILintingService
 {
     private static readonly IReadOnlySet<LintingCode> NoConfigIgnores = new HashSet<LintingCode>();
@@ -42,6 +44,7 @@ public sealed class LintingService(
     private readonly IReachabilityLinter _reachability = reachabilityLinter ?? throw new ArgumentNullException(nameof(reachabilityLinter));
     private readonly ILocalizationCoverageLinter _coverage = coverageLinter ?? throw new ArgumentNullException(nameof(coverageLinter));
     private readonly IDuplicateAnchorFileLinter _duplicates = duplicateLinter ?? throw new ArgumentNullException(nameof(duplicateLinter));
+    private readonly ITypeNamedFolderLinter _typeFolders = typeFolderLinter ?? throw new ArgumentNullException(nameof(typeFolderLinter));
     private readonly ILintingConfiguration _lintingConfiguration = lintingConfiguration ?? throw new ArgumentNullException(nameof(lintingConfiguration));
 
     /// <inheritdoc />
@@ -135,6 +138,7 @@ public sealed class LintingService(
                     diagnostics.AddRange(_reachability.Lint(localization));
                     diagnostics.AddRange(_coverage.Lint(localization, sources.CallSites));
                     diagnostics.AddRange(_duplicates.Lint(localization.GetPlacedFiles()));
+                    diagnostics.AddRange(_typeFolders.Lint(localization));
                 }
                 catch (LocaleConfigException exception)
                 {

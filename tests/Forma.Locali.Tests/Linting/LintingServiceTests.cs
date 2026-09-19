@@ -354,17 +354,17 @@ public sealed class LintingServiceTests
     [Fact]
     public async Task Should_report_two_embedded_files_standing_for_one_anchor()
     {
-        // Arrange — the config puts a second form in force beside the default, and one type's file is written in both.
+        // Arrange — the config puts a second form in force beside the default, and one folder's file is written in both.
         using var directory = new TempDirectory();
         var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
         var config = directory.Write(".locale.json", """{ "paths": ["$RootDir/$AnchorName/$LocalesDir/$Culture$Extension", "$RootDir/$AnchorName.$Culture$Extension"] }""");
-        var first = directory.Write(Path.Combine("Components", "Widget", ".locales", "he.json"), LocalizationFileFakeData.Valid);
-        var second = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var first = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var second = directory.Write("Components.he.json", LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
         var resourceNames = new Dictionary<string, string>
         {
             [Path.GetFullPath(config)] = "Scratch..locale.json",
-            [Path.GetFullPath(first)] = "Scratch.Components.Widget..locales.he.json",
-            [Path.GetFullPath(second)] = "Scratch.Components.Widget.he.json",
+            [Path.GetFullPath(first)] = "Scratch.Components..locales.he.json",
+            [Path.GetFullPath(second)] = "Scratch.Components.he.json",
         };
         var compilation = CompilationTestFactory.Unreferenced("namespace Scratch.Components; public sealed class Widget;");
         var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: resourceNames));
@@ -376,7 +376,7 @@ public sealed class LintingServiceTests
         Assert.Multiple(
             () => Assert.Equal([LintingCodes.DuplicateAnchorFile, LintingCodes.DuplicateAnchorFile], result.Diagnostics.Codes()),
             () => Assert.Equal([second, first], result.Diagnostics.Select(diagnostic => diagnostic.Path)),
-            () => Assert.Contains("'Scratch.Components.Widget' in 'he'", result.Diagnostics[0].Message, StringComparison.Ordinal));
+            () => Assert.Contains("'Scratch.Components' in 'he'", result.Diagnostics[0].Message, StringComparison.Ordinal));
     }
 
     [Fact]
