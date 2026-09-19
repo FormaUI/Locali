@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 
 /// <summary>Reads the key out of a lookup's arguments, mapped back to the file a human wrote.</summary>
-internal static class CallSiteReader
+internal static class CallsiteReader
 {
     /// <summary>The name a lookup goes through when it is not an indexer.</summary>
     public const string ResolveMethod = "Resolve";

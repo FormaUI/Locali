@@ -1,6 +1,6 @@
 namespace Forma.Locali.Tests.Sources;
 
-public sealed class SyntacticCallSiteFinderTests
+public sealed class SyntacticCallsiteFinderTests
 {
     [Fact]
     public void Should_read_a_key_from_an_indexer_on_a_declared_localizer()
@@ -18,7 +18,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
@@ -40,7 +40,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
@@ -62,7 +62,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.Empty(sites);
@@ -82,7 +82,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.Empty(sites);
@@ -111,7 +111,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Last()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Last()).Lookups;
 
         // Assert
         Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
@@ -140,7 +140,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Last()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Last()).Lookups;
 
         // Assert
         Assert.Empty(sites);
@@ -160,7 +160,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
@@ -187,7 +187,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
@@ -209,7 +209,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.Equal(["Today"], sites.Select(site => site.Key.Text));
@@ -231,7 +231,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.True(Assert.Single(sites).IsFormatString);
@@ -253,7 +253,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.False(Assert.Single(sites).IsFormatString);
@@ -275,7 +275,7 @@ public sealed class SyntacticCallSiteFinderTests
             """);
 
         // Act
-        var sites = new SyntacticCallSiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
+        var sites = new SyntacticCallsiteFinder().Find(compilation, compilation.SyntaxTrees.Single()).Lookups;
 
         // Assert
         Assert.False(Assert.Single(sites).IsFormatString);

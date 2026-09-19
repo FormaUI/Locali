@@ -2,7 +2,7 @@
 
 Every rule `locali` reports, one entry each. An entry says what the rule reports, why it
 matters at run time, what fixes it, and where it deliberately stays silent. The linting
-configuration reports under 100, a file rule in the 100s, and a call-site rule in the 200s, so
+configuration reports under 100, a file rule in the 100s, and a callsite rule in the 200s, so
 the range names the family.
 
 An **error** is something the runtime will get wrong; a **warning** is something worth changing
@@ -202,7 +202,7 @@ meant as a hole, whose name the runtime cannot read or whose alignment is not a 
 `{Name:specifier}`.
 
 **Silent where.** The text contains a space, as `{ color: red }` or `{colour, red}` does: that
-is prose, rendered as written and meant to be. LOC0206 is the same rule at a call site.
+is prose, rendered as written and meant to be. LOC0206 is the same rule at a callsite.
 
 ### LOC0111 — A duplicate key
 
@@ -266,7 +266,7 @@ doubled sign: `$$price` is the text `$price`.
 
 **Silent where.** Anything else starting with `$` is prose: `$`, `$ per month`, `$5 off`,
 `$USD`, `$camelCase`, `$price/month`, because an uppercase letter, a digit, a dot or a space
-breaks the shape. LOC0212 is the same rule at a call site.
+breaks the shape. LOC0212 is the same rule at a callsite.
 
 ### LOC0116 — A malformed `$shared` entry
 
@@ -305,9 +305,9 @@ same.
 **Silent where.** A host's folder, which names other assemblies' types the compilation cannot
 tell from namespaces.
 
-## Call sites (LOC0200–LOC0299)
+## Callsites (LOC0200–LOC0299)
 
-Call sites are found semantically where the compilation binds `IStringLocale`, and syntactically
+Callsites are found semantically where the compilation binds `IStringLocale`, and syntactically
 otherwise; the syntactic path cannot resolve overloads, so the rules that count values stay
 silent for it. A key written as a constant is folded by the compiler and checked like a literal
 on the semantic path. A lookup inside a type that implements `IStringLocale` is left alone
@@ -357,9 +357,9 @@ without one.
 
 **What fixes it.** Supply the one value.
 
-### LOC0203 — A malformed expression at a call site
+### LOC0203 — A malformed expression at a callsite
 
-**Reports.** A key written at a call site whose `[$ … $]` expression does not parse.
+**Reports.** A key written at a callsite whose `[$ … $]` expression does not parse.
 
 **Why it matters.** The expression renders as written, silently.
 
@@ -375,7 +375,7 @@ without one.
 
 ### LOC0205 — A project's Razor markup went unchecked
 
-**Reports.** A project whose `.razor` files produced no generated C#, so their call sites were
+**Reports.** A project whose `.razor` files produced no generated C#, so their callsites were
 not read.
 
 **Why it matters.** The run reads as complete when part of it was never looked at.
@@ -387,7 +387,7 @@ build gate.
 
 ### LOC0206 — A key writes text shaped like a hole the runtime cannot read
 
-**Reports.** `{0}`, `{a.b}` or `{stored,x}` in a key at a call site.
+**Reports.** `{0}`, `{a.b}` or `{stored,x}` in a key at a callsite.
 
 **Why it matters.** The text renders as written; see LOC0110, the same rule in a file.
 
@@ -395,8 +395,8 @@ build gate.
 
 ### LOC0207 — A key is not answered in a culture its type is translated for
 
-**Reports.** A key written at a call site that a culture translating its type leaves out, once
-per key per culture, at the first call site writing it.
+**Reports.** A key written at a callsite that a culture translating its type leaves out, once
+per key per culture, at the first callsite writing it.
 
 **Why it matters.** Falling back to the key is exactly what the runtime is defined to do, so the
 string renders in English and every other rule stays green; adding `L["Details columns"]` to a

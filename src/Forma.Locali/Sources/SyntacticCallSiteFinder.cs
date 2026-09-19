@@ -5,8 +5,8 @@ using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-/// <summary>Finds call sites without a semantic model, by tracking which identifiers a type declares as localizers.</summary>
-public sealed class SyntacticCallSiteFinder : ILocalizerCallSiteFinder
+/// <summary>Finds callsites without a semantic model, by tracking which identifiers a type declares as localizers.</summary>
+public sealed class SyntacticCallsiteFinder : ILocalizerCallsiteFinder
 {
     private readonly ConditionalWeakTable<Compilation, Dictionary<string, HashSet<string>>> _members = [];
 
@@ -21,7 +21,7 @@ public sealed class SyntacticCallSiteFinder : ILocalizerCallSiteFinder
         ArgumentNullException.ThrowIfNull(tree);
 
         // A component's markup and its code-behind are partials of one type, so the declaration
-        // usually sits in a different tree from the call site.
+        // usually sits in a different tree from the callsite.
         var members = _members.GetValue(compilation, static key => IndexMembers(key.SyntaxTrees));
         var root = tree.GetRoot();
 
@@ -47,7 +47,7 @@ public sealed class SyntacticCallSiteFinder : ILocalizerCallSiteFinder
                 InvocationExpressionSyntax
                 {
                     Expression: MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax name } member,
-                } invocation when member.Name.Identifier.ValueText == CallSiteReader.ResolveMethod
+                } invocation when member.Name.Identifier.ValueText == CallsiteReader.ResolveMethod
                     => (name.Identifier.ValueText, invocation.ArgumentList),
                 _ => (null, null),
             };
@@ -57,17 +57,17 @@ public sealed class SyntacticCallSiteFinder : ILocalizerCallSiteFinder
                 continue;
             }
 
-            if (CallSiteReader.Read(tree, arguments, null, null) is { } site)
+            if (CallsiteReader.Read(tree, arguments, null, null) is { } site)
             {
                 lookups.Add(site);
             }
             else if (!LocalizerContract.InsideLocalizer(node))
             {
-                if (CallSiteReader.InterpolatedKey(tree, arguments) is { } key)
+                if (CallsiteReader.InterpolatedKey(tree, arguments) is { } key)
                 {
                     interpolated.Add(key);
                 }
-                else if (CallSiteReader.UnreadableKey(tree, arguments) is { } location)
+                else if (CallsiteReader.UnreadableKey(tree, arguments) is { } location)
                 {
                     unreadable.Add(location);
                 }

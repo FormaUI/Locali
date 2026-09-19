@@ -2,7 +2,7 @@
 
 A standalone CLI localization linter. **.NET 11 · C# latest · console tool · binary name `locali`.**
 
-The linter reads locale files against Forma's localization schema, and reads every `IStringLocale` call site in C# and Razor against what the runtime will do with it. It was extracted from the Forma repository and lives beside it; Forma remains both the source of the runtime it mirrors and its primary lint target.
+The linter reads locale files against Forma's localization schema, and reads every `IStringLocale` callsite in C# and Razor against what the runtime will do with it. It was extracted from the Forma repository and lives beside it; Forma remains both the source of the runtime it mirrors and its primary lint target.
 
 ## Task guides
 

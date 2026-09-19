@@ -3,14 +3,14 @@ namespace Forma.Locali.Rules.Sources;
 using Forma.Locali.Diagnostics;
 
 /// <summary>Checks that a lookup does not write a key shaped like a reserved entry.</summary>
-public sealed class ReservedLookupShapeChecker : ICallSiteRuleChecker
+public sealed class ReservedLookupShapeChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
         => LintingCodes.ReservedShapedLookup;
 
     /// <inheritdoc />
-    public void Check(CallSiteContext context)
+    public void Check(CallsiteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 

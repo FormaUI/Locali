@@ -2,7 +2,7 @@ namespace Forma.Locali.Cli;
 
 /// <summary>The files a run was asked to read, split by how each is checked.</summary>
 /// <param name="LocalizationFiles">The JSON files to check against the schema.</param>
-/// <param name="SourceFiles">The C# and Razor files whose call sites are checked.</param>
+/// <param name="SourceFiles">The C# and Razor files whose callsites are checked.</param>
 /// <param name="Projects">The projects the source files belong to.</param>
 /// <param name="LocalizationFilesByProject">The locale files each project owns, keyed by its full path.</param>
 public sealed record LintingTarget(

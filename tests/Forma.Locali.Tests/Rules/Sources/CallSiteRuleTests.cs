@@ -1,6 +1,6 @@
 namespace Forma.Locali.Tests.Rules.Sources;
 
-public sealed class CallSiteRuleTests
+public sealed class CallsiteRuleTests
 {
     [Fact]
     public void Should_report_fewer_values_than_the_key_names_holes()

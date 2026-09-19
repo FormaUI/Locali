@@ -47,7 +47,7 @@ public sealed class LocalizationCoverageCheckerTests
     [Fact]
     public async Task Should_match_an_escaped_key_the_way_the_runtime_reads_it()
     {
-        // Arrange — the file and the call site both write the escape, and the runtime drops it on both sides.
+        // Arrange — the file and the callsite both write the escape, and the runtime drops it on both sides.
         using var directory = new TempDirectory();
         var file = directory.Write(HebrewFile, LocalizationFileFakeData.WithLocalizationEntry("$$price", "מחיר"));
 
@@ -246,13 +246,13 @@ public sealed class LocalizationCoverageCheckerTests
 
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false);
         var sources = new SourceLinter(
-            new SemanticCallSiteFinder(),
-            new SyntacticCallSiteFinder(),
+            new SemanticCallsiteFinder(),
+            new SyntacticCallsiteFinder(),
             SourceLinterTestFactory.Checkers());
 
         var sites = sources
             .Lint(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)])
-            .CallSites;
+            .Callsites;
 
         return ValueTask.FromResult(ProjectLinterTestFactory.Check(new LocalizationCoverageChecker(), project, localizationFiles, sites));
     }

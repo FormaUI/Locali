@@ -4,14 +4,14 @@ using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
 /// <summary>Checks that an expression naming an argument is given one.</summary>
-public sealed class PluralArgumentChecker : ICallSiteRuleChecker
+public sealed class PluralArgumentChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
         => LintingCodes.UnsuppliedPluralArgument;
 
     /// <inheritdoc />
-    public void Check(CallSiteContext context)
+    public void Check(CallsiteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -39,7 +39,7 @@ public sealed class PluralArgumentChecker : ICallSiteRuleChecker
     }
 
     // Values paired by position are named after the key's holes.
-    private static IReadOnlyList<string>? Supplied(CallSiteContext context)
+    private static IReadOnlyList<string>? Supplied(CallsiteContext context)
         => context.Lookup.Arguments.Kind switch
         {
             LocalizerArgumentKind.None => [],

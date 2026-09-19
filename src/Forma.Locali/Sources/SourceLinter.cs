@@ -9,20 +9,20 @@ using Forma.Locali.Rules;
 
 using Microsoft.CodeAnalysis;
 
-/// <summary>Finds a project's localization call sites, then lets every rule read each one.</summary>
-/// <param name="semantic">Finds call sites by binding the receiver.</param>
-/// <param name="syntactic">Finds call sites when no semantic model is available.</param>
-/// <param name="checkers">The rules to run over each call site.</param>
+/// <summary>Finds a project's localization callsites, then lets every rule read each one.</summary>
+/// <param name="semantic">Finds callsites by binding the receiver.</param>
+/// <param name="syntactic">Finds callsites when no semantic model is available.</param>
+/// <param name="checkers">The rules to run over each callsite.</param>
 public sealed class SourceLinter(
-    SemanticCallSiteFinder semantic,
-    SyntacticCallSiteFinder syntactic,
-    IEnumerable<ICallSiteRuleChecker> checkers) : ISourceLinter
+    SemanticCallsiteFinder semantic,
+    SyntacticCallsiteFinder syntactic,
+    IEnumerable<ICallsiteRuleChecker> checkers) : ISourceLinter
 {
     private static readonly LocaleKeywords Known = new(PluralExpressionEvaluator.Keyword);
 
-    private readonly SemanticCallSiteFinder _semantic = semantic ?? throw new ArgumentNullException(nameof(semantic));
-    private readonly SyntacticCallSiteFinder _syntactic = syntactic ?? throw new ArgumentNullException(nameof(syntactic));
-    private readonly IEnumerable<ICallSiteRuleChecker> _checkers = checkers ?? throw new ArgumentNullException(nameof(checkers));
+    private readonly SemanticCallsiteFinder _semantic = semantic ?? throw new ArgumentNullException(nameof(semantic));
+    private readonly SyntacticCallsiteFinder _syntactic = syntactic ?? throw new ArgumentNullException(nameof(syntactic));
+    private readonly IEnumerable<ICallsiteRuleChecker> _checkers = checkers ?? throw new ArgumentNullException(nameof(checkers));
 
     /// <inheritdoc />
     public SourceLintResult Lint(
@@ -43,7 +43,7 @@ public sealed class SourceLinter(
                 1,
                 LintingCodes.RazorNotAnalysed.DefaultSeverity,
                 LintingCodes.RazorNotAnalysed,
-                "The project carries Razor markup but no generated C# was found; build with EmitCompilerGeneratedFiles=true or its call sites go unchecked."));
+                "The project carries Razor markup but no generated C# was found; build with EmitCompilerGeneratedFiles=true or its callsites go unchecked."));
         }
 
         if (project.Compilation is not { } compilation)
@@ -86,7 +86,7 @@ public sealed class SourceLinter(
 
     private LocalizerLookups Walk(Compilation compilation, IReadOnlyCollection<string> files, CancellationToken cancellationToken)
     {
-        var finder = _semantic.CanRead(compilation) ? (ILocalizerCallSiteFinder)_semantic : _syntactic;
+        var finder = _semantic.CanRead(compilation) ? (ILocalizerCallsiteFinder)_semantic : _syntactic;
 
         // Each tree binds independently, and the caller orders what comes back.
         var found = compilation.SyntaxTrees
@@ -108,7 +108,7 @@ public sealed class SourceLinter(
     private IReadOnlyList<LintingDiagnostic> Check(LocalizerLookup site)
     {
         // The key parses once here rather than inside each rule that reads its expressions.
-        var context = new CallSiteContext(site, LocaleExpressionParser.Parse(site.Key.Text, Known));
+        var context = new CallsiteContext(site, LocaleExpressionParser.Parse(site.Key.Text, Known));
 
         foreach (var checker in _checkers)
         {

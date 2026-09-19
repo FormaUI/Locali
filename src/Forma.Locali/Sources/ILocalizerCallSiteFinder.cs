@@ -3,7 +3,7 @@ namespace Forma.Locali.Sources;
 using Microsoft.CodeAnalysis;
 
 /// <summary>Finds the places a syntax tree looks a localization key up.</summary>
-public interface ILocalizerCallSiteFinder
+public interface ILocalizerCallsiteFinder
 {
     /// <summary>Whether the finder can judge this tree at all.</summary>
     /// <param name="compilation">The compilation the tree belongs to.</param>

@@ -84,8 +84,8 @@ internal static class Program
         builder.Services.AddSingleton<ILintingTargetResolver, LintingTargetResolver>();
         builder.Services.AddSingleton<ILocalizationFileLinter, LocalizationFileLinter>();
         builder.Services.AddSingleton<IProjectLoader, MSBuildProjectLoader>();
-        builder.Services.AddSingleton<SemanticCallSiteFinder>();
-        builder.Services.AddSingleton<SyntacticCallSiteFinder>();
+        builder.Services.AddSingleton<SemanticCallsiteFinder>();
+        builder.Services.AddSingleton<SyntacticCallsiteFinder>();
 
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, RequiredFieldsChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, RequiredFieldOrderChecker>();
@@ -100,16 +100,16 @@ internal static class Program
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, ReservedKeyShapeChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, SharedEntryChecker>();
 
-        builder.Services.AddSingleton<ICallSiteRuleChecker, MalformedExpressionChecker>();
-        builder.Services.AddSingleton<ICallSiteRuleChecker, ValueCountChecker>();
-        builder.Services.AddSingleton<ICallSiteRuleChecker, PluralArgumentChecker>();
-        builder.Services.AddSingleton<ICallSiteRuleChecker, SoleArgumentChecker>();
-        builder.Services.AddSingleton<ICallSiteRuleChecker, PluralOtherFieldChecker>();
-        builder.Services.AddSingleton<ICallSiteRuleChecker, HoleShapeChecker>();
-        builder.Services.AddSingleton<ICallSiteRuleChecker, BareHoleKeyChecker>();
-        builder.Services.AddSingleton<ICallSiteRuleChecker, BareExpressionKeyChecker>();
-        builder.Services.AddSingleton<ICallSiteRuleChecker, ReservedLookupShapeChecker>();
-        builder.Services.AddSingleton<ICallSiteRuleChecker, ReformattedLookupChecker>();
+        builder.Services.AddSingleton<ICallsiteRuleChecker, MalformedExpressionChecker>();
+        builder.Services.AddSingleton<ICallsiteRuleChecker, ValueCountChecker>();
+        builder.Services.AddSingleton<ICallsiteRuleChecker, PluralArgumentChecker>();
+        builder.Services.AddSingleton<ICallsiteRuleChecker, SoleArgumentChecker>();
+        builder.Services.AddSingleton<ICallsiteRuleChecker, PluralOtherFieldChecker>();
+        builder.Services.AddSingleton<ICallsiteRuleChecker, HoleShapeChecker>();
+        builder.Services.AddSingleton<ICallsiteRuleChecker, BareHoleKeyChecker>();
+        builder.Services.AddSingleton<ICallsiteRuleChecker, BareExpressionKeyChecker>();
+        builder.Services.AddSingleton<ICallsiteRuleChecker, ReservedLookupShapeChecker>();
+        builder.Services.AddSingleton<ICallsiteRuleChecker, ReformattedLookupChecker>();
 
         builder.Services.AddSingleton<IProjectRuleChecker, LocaleConfigPlacementChecker>();
         builder.Services.AddSingleton<IProjectRuleChecker, RootNamespaceWithoutTypesChecker>();

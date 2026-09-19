@@ -4,14 +4,14 @@ using Forma.Framework.Localization;
 using Forma.Locali.Diagnostics;
 
 /// <summary>Checks that a key is not nothing but holes, which carry no words to translate.</summary>
-public sealed class BareHoleKeyChecker : ICallSiteRuleChecker
+public sealed class BareHoleKeyChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
         => LintingCodes.BareHoleKey;
 
     /// <inheritdoc />
-    public void Check(CallSiteContext context)
+    public void Check(CallsiteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 

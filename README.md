@@ -1,7 +1,7 @@
 # locali
 
 A linter for `Forma.Framework.Localization`. It reads locale files against the runtime's own
-rules, and every `IStringLocale` call site in C# and Razor against what the runtime will do with
+rules, and every `IStringLocale` callsite in C# and Razor against what the runtime will do with
 it, and reports what would throw, render wrong, or quietly stay in English.
 
 Two things go wrong quietly in a localized codebase, and a build catches neither:
@@ -142,7 +142,7 @@ Callsites are found semantically where the compilation binds `IStringLocale`, an
 otherwise. The syntactic path cannot resolve overloads, so the rules that count values stay
 silent for it.
 
-Almost every call site lives in `.razor`, which reaches Roslyn only through the Razor source
+Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no
 build property is needed; `locali --path MyProject.csproj` is enough. LOC0205 covers the case
 where a project produced no generated Razor all the same. Loading Roslyn is itself a workaround,
@@ -152,7 +152,7 @@ described under [Contributing](#roslyn-is-loaded-from-the-sdk).
 
 [docs/rules.md](docs/rules.md) has an entry per rule: what it reports, why it matters at run
 time, what fixes it, and where it stays silent on purpose. The linting configuration reports
-under 100, a file rule in the 100s, and a call-site rule in the 200s.
+under 100, a file rule in the 100s, and a callsite rule in the 200s.
 
 | Code | Severity | Reports |
 |------|----------|---------|
@@ -209,17 +209,17 @@ under 100, a file rule in the 100s, and a call-site rule in the 200s.
 | `Reporting/` | Console and JSON reporters |
 | `Rules/` | Rule contracts, rule contexts, shared hole-name reading |
 | `Rules/Files/` | Rules over a locale file |
-| `Rules/Sources/` | Rules over a call site |
+| `Rules/Sources/` | Rules over a callsite |
 | `Rules/Projects/` | Rules over a project's locale files read whole |
-| `Sources/` | Finding call sites, and resolving a project's locale files for the project rules |
+| `Sources/` | Finding callsites, and resolving a project's locale files for the project rules |
 
 ### Adding a Rule
 
 1. Add a `LintingCode` to `Diagnostics/LintingCodes.cs` and to its `All` list, numbered under
    100 for the linting configuration, in the 100s for a file rule, or in the 200s for a
-   call-site rule; a project rule is numbered for what it reports about, a config file, a locale
-   file, or a call site.
-2. Implement `ILocalizationFileRuleChecker`, `ICallSiteRuleChecker`, or `IProjectRuleChecker`
+   callsite rule; a project rule is numbered for what it reports about, a config file, a locale
+   file, or a callsite.
+2. Implement `ILocalizationFileRuleChecker`, `ICallsiteRuleChecker`, or `IProjectRuleChecker`
    under `Rules/Files/`, `Rules/Sources/`, or `Rules/Projects/`. Expose the code through `Code`
    and report through the context, which owns the position.
 3. Register it in `Program.cs`, and in the matching test factory under `tests/…/Support/`.
@@ -227,14 +227,14 @@ under 100, a file rule in the 100s, and a call-site rule in the 200s.
 
 `LintCodesTests` fails if a rule reports under a code missing from the catalogue, if two codes
 share an id, if two rules in the same family report under the same code, or if a file or
-call-site rule reports outside its family's range. The range rule means the same idea checked on
+callsite rule reports outside its family's range. The range rule means the same idea checked on
 both sides of a call needs two codes, one per family, as LOC0110 and LOC0206 show. A rule that
 needs to report two different things is two rules regardless of family.
 
 `HoleNames` reads the names a format refers to its values by, and matches the runtime's
 `LocalizedFormat.Names`. Use it rather than scanning for braces; a plural expression names its
 argument in brackets, and escaped braces are literal text. A rule that depends on how values
-reach the call site reads `context.Site.Arguments` and returns when it is `Unknown`.
+reach the callsite reads `context.Site.Arguments` and returns when it is `Unknown`.
 
 ### Build and Test
 
@@ -245,10 +245,10 @@ dotnet format Forma.Locali.slnx --verify-no-changes
 ```
 
 `SourceLinterTestFactory.Lint` compiles a class body against the real `IStringLocale` and
-returns what the call-site rules report, so a rule is tested against a bound compilation rather
+returns what the callsite rules report, so a rule is tested against a bound compilation rather
 than a stub. Run a new rule over the sibling Forma repository before trusting it; it lints
 clean, so anything a rule reports there is a false positive. It does not cover every shape a
-call site can take — nothing there passes a values collection whole — so those belong in unit
+callsite can take — nothing there passes a values collection whole — so those belong in unit
 tests.
 
 ### Roslyn Is Loaded From The SDK

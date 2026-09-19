@@ -10,12 +10,12 @@ using Forma.Locali.Sources;
 
 using Microsoft.Extensions.Options;
 
-/// <summary>Lints the localization files and the source call sites the target names.</summary>
+/// <summary>Lints the localization files and the source callsites the target names.</summary>
 /// <param name="options">What the command line asked for.</param>
 /// <param name="resolver">Turns the path into a file set.</param>
 /// <param name="loader">Loads the projects the source files belong to.</param>
 /// <param name="localizationFileLinter">Checks one localization file.</param>
-/// <param name="sourcesLinter">Checks the keys written at call sites.</param>
+/// <param name="sourcesLinter">Checks the keys written at callsites.</param>
 /// <param name="projectLinter">Checks a project's locale files read whole.</param>
 /// <param name="lintingConfiguration">What the linting configuration's <c>.locali.json</c> files leave out.</param>
 public sealed class LintingService(
@@ -117,7 +117,7 @@ public sealed class LintingService(
         {
             var sources = _sources.Lint(project, wanted, cancellationToken);
             diagnostics.AddRange(sources.Diagnostics);
-            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), sources.CallSites));
+            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), sources.Callsites));
         }
 
         return diagnostics;

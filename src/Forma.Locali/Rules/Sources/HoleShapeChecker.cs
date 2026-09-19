@@ -4,14 +4,14 @@ using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
 /// <summary>Checks that a key writes nothing shaped like a hole the runtime cannot read.</summary>
-public sealed class HoleShapeChecker : ICallSiteRuleChecker
+public sealed class HoleShapeChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
         => LintingCodes.HoleShapedText;
 
     /// <inheritdoc />
-    public void Check(CallSiteContext context)
+    public void Check(CallsiteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 

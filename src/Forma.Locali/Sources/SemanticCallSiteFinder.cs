@@ -3,8 +3,8 @@ namespace Forma.Locali.Sources;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-/// <summary>Finds call sites by binding the receiver to the localizer contract.</summary>
-public sealed class SemanticCallSiteFinder : ILocalizerCallSiteFinder
+/// <summary>Finds callsites by binding the receiver to the localizer contract.</summary>
+public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 {
     /// <inheritdoc />
     public bool CanRead(Compilation compilation)
@@ -29,7 +29,7 @@ public sealed class SemanticCallSiteFinder : ILocalizerCallSiteFinder
         => symbol switch
         {
             IPropertySymbol indexer => LocalizerContract.Implements(indexer.ContainingType, contract),
-            IMethodSymbol method => method.Name == CallSiteReader.ResolveMethod
+            IMethodSymbol method => method.Name == CallsiteReader.ResolveMethod
                 && LocalizerContract.Implements(method.ContainingType, contract),
             _ => false,
         };
@@ -63,17 +63,17 @@ public sealed class SemanticCallSiteFinder : ILocalizerCallSiteFinder
                 continue;
             }
 
-            if (CallSiteReader.Read(tree, arguments, symbol, model) is { } site)
+            if (CallsiteReader.Read(tree, arguments, symbol, model) is { } site)
             {
                 lookups.Add(site with { ResourceType = Resource(model, node, generic) });
             }
             else if (!LocalizerContract.InsideLocalizer(node, model, contract))
             {
-                if (CallSiteReader.InterpolatedKey(tree, arguments) is { } key)
+                if (CallsiteReader.InterpolatedKey(tree, arguments) is { } key)
                 {
                     interpolated.Add(key);
                 }
-                else if (CallSiteReader.UnreadableKey(tree, arguments) is { } location)
+                else if (CallsiteReader.UnreadableKey(tree, arguments) is { } location)
                 {
                     unreadable.Add(location);
                 }

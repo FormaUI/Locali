@@ -12,17 +12,17 @@ public sealed class ProjectLinter(IEnumerable<IProjectRuleChecker> checkers) : I
     private readonly IEnumerable<IProjectRuleChecker> _checkers = checkers ?? throw new ArgumentNullException(nameof(checkers));
 
     /// <inheritdoc />
-    public IReadOnlyList<LintingDiagnostic> Lint(LoadedProject project, IReadOnlyList<string> localizationFiles, IReadOnlyList<LocalizerLookup> callSites)
+    public IReadOnlyList<LintingDiagnostic> Lint(LoadedProject project, IReadOnlyList<string> localizationFiles, IReadOnlyList<LocalizerLookup> callsites)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
-        ArgumentNullException.ThrowIfNull(callSites);
+        ArgumentNullException.ThrowIfNull(callsites);
 
         var context = new ProjectContext(
             project,
             localizationFiles,
             ProjectLocaleFiles.Resolve(project, localizationFiles),
-            callSites,
+            callsites,
             HostLocaleFiles.Resolve(project, localizationFiles));
 
         var refusal = default(LocaleConfigException);

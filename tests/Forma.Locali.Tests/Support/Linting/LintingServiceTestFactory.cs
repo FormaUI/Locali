@@ -28,7 +28,7 @@ public static class LintingServiceTestFactory
             new LintingTargetResolver(lintingConfiguration),
             projectLoader ?? new StubProjectLoader(),
             new LocalizationFileLinter(SchemaLinterTestFactory.Create()),
-            new SourceLinter(new SemanticCallSiteFinder(), new SyntacticCallSiteFinder(), SourceLinterTestFactory.Checkers()),
+            new SourceLinter(new SemanticCallsiteFinder(), new SyntacticCallsiteFinder(), SourceLinterTestFactory.Checkers()),
             new ProjectLinter(ProjectLinterTestFactory.Checkers()),
             lintingConfiguration);
     }

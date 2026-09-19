@@ -3,14 +3,14 @@ namespace Forma.Locali.Rules.Sources;
 using Forma.Locali.Diagnostics;
 
 /// <summary>Checks that every expression a key carries follows the grammar.</summary>
-public sealed class MalformedExpressionChecker : ICallSiteRuleChecker
+public sealed class MalformedExpressionChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
         => LintingCodes.MalformedSourceExpression;
 
     /// <inheritdoc />
-    public void Check(CallSiteContext context)
+    public void Check(CallsiteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 

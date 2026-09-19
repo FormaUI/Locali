@@ -30,7 +30,7 @@ public sealed class LintingCodesTests
     }
 
     [Fact]
-    public void Should_catalogue_the_code_every_shipped_call_site_rule_reports_under()
+    public void Should_catalogue_the_code_every_shipped_callsite_rule_reports_under()
     {
         // Act
         var codes = SourceLinterTestFactory.Checkers().Select(checker => checker.Code);
@@ -70,7 +70,7 @@ public sealed class LintingCodesTests
     }
 
     [Fact]
-    public void Should_let_no_two_call_site_rules_report_under_the_same_code()
+    public void Should_let_no_two_callsite_rules_report_under_the_same_code()
     {
         // Act
         var codes = SourceLinterTestFactory.Checkers().Select(checker => checker.Code).ToArray();
@@ -90,7 +90,7 @@ public sealed class LintingCodesTests
             id.StartsWith("LOC00", StringComparison.Ordinal)
                 || id.StartsWith("LOC01", StringComparison.Ordinal)
                 || id.StartsWith("LOC02", StringComparison.Ordinal),
-            $"'{id}' is in no family range: linting configuration, file, or call-site."));
+            $"'{id}' is in no family range: linting configuration, file, or callsite."));
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public sealed class LintingCodesTests
     }
 
     [Fact]
-    public void Should_report_every_call_site_rule_in_the_200s()
+    public void Should_report_every_callsite_rule_in_the_200s()
     {
         // Act
         var codes = SourceLinterTestFactory.Checkers().Select(checker => checker.Code.Id);

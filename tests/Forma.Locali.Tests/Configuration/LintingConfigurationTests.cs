@@ -38,7 +38,7 @@ public sealed class LintingConfigurationTests
     [Fact]
     public void Should_merge_an_ancestors_ignore_diagnostics_with_a_nearer_ones()
     {
-        // Arrange — the root leaves out a call-site rule everywhere; the nearer file adds a file rule for its own name.
+        // Arrange — the root leaves out a callsite rule everywhere; the nearer file adds a file rule for its own name.
         using var directory = new TempDirectory();
         directory.Write(".locali.json", """{ "ignoreDiagnostics": { "**/*.he.json": ["LOC0207"] } }""");
         directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");

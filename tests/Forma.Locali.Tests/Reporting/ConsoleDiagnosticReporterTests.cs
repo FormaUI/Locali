@@ -35,7 +35,7 @@ public sealed class ConsoleDiagnosticReporterTests
     [Fact]
     public async Task Should_brief_the_diagnostics_the_severity_left_out()
     {
-        // Arrange — a file rule and two call-site rules, so the brief has both families to line up.
+        // Arrange — a file rule and two callsite rules, so the brief has both families to line up.
         await using var writer = new StringWriter();
         var reporter = new ConsoleDiagnosticReporter(writer);
 
@@ -92,7 +92,7 @@ public sealed class ConsoleDiagnosticReporterTests
     [Fact]
     public async Task Should_brief_a_mix_of_severity_and_configuration()
     {
-        // Arrange — a file rule for the severity-suppressed one, a call-site rule for the ignored one.
+        // Arrange — a file rule for the severity-suppressed one, a callsite rule for the ignored one.
         await using var writer = new StringWriter();
         var reporter = new ConsoleDiagnosticReporter(writer);
         SuppressedRule[] suppressed = [new(LintingCodes.MarkerNotFirst, 1), new(LintingCodes.MissingLocalization, 1)];

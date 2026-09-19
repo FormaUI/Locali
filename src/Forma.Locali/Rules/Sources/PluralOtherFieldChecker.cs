@@ -5,7 +5,7 @@ using Forma.Framework.Localization.Parser.Syntax;
 using Forma.Locali.Diagnostics;
 
 /// <summary>Checks that a plural expression carries the category the others fall back to.</summary>
-public sealed class PluralOtherFieldChecker : ICallSiteRuleChecker
+public sealed class PluralOtherFieldChecker : ICallsiteRuleChecker
 {
     private const string Fallback = "other";
 
@@ -14,7 +14,7 @@ public sealed class PluralOtherFieldChecker : ICallSiteRuleChecker
         => LintingCodes.MissingPluralOther;
 
     /// <inheritdoc />
-    public void Check(CallSiteContext context)
+    public void Check(CallsiteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 

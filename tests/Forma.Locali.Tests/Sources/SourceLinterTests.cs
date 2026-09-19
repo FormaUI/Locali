@@ -227,7 +227,7 @@ public sealed class SourceLinterTests
         => Reported(Compile(body), code);
 
     private static IReadOnlyList<LocalizerLookup> Lookups(string body)
-        => Result(Compile(body)).CallSites;
+        => Result(Compile(body)).Callsites;
 
     private static IReadOnlyList<LintingDiagnostic> Reported(Compilation compilation)
         => Reported(compilation, LintingCodes.KeyNotAnalysed);
@@ -237,8 +237,8 @@ public sealed class SourceLinterTests
 
     private static SourceLintResult Result(Compilation compilation)
         => new SourceLinter(
-                new SemanticCallSiteFinder(),
-                new SyntacticCallSiteFinder(),
+                new SemanticCallsiteFinder(),
+                new SyntacticCallsiteFinder(),
                 SourceLinterTestFactory.Checkers())
             .Lint(
                 new LoadedProject("Scratch.csproj", compilation, HasGeneratedSources: false, HasRazorMarkup: false),

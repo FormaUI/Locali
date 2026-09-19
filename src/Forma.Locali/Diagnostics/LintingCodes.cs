@@ -1,10 +1,10 @@
 namespace Forma.Locali.Diagnostics;
 
 /// <summary>Every rule the linter can report, with the severity each carries by default.</summary>
-/// <remarks>The linting configuration reports under 100, a file rule in the 100s, and a call-site rule in the 200s, so the range names the family.</remarks>
+/// <remarks>The linting configuration reports under 100, a file rule in the 100s, and a callsite rule in the 200s, so the range names the family.</remarks>
 public static class LintingCodes
 {
-    /// <summary>Every rule, ordered by the identifier it reports under: the linting configuration under 100, then files in the 100s, then call sites in the 200s.</summary>
+    /// <summary>Every rule, ordered by the identifier it reports under: the linting configuration under 100, then files in the 100s, then callsites in the 200s.</summary>
     // Computed, not stored: a stored initialiser runs before the codes below it and would capture nulls.
     public static IReadOnlyList<LintingCode> All
         =>
@@ -208,7 +208,7 @@ public static class LintingCodes
     public static LintingCode MalformedSourceExpression { get; } = new(
         "LOC0203",
         LintingSeverity.Error,
-        "A key written at a call site carries a malformed expression.");
+        "A key written at a callsite carries a malformed expression.");
 
     /// <summary>A plural expression omits the category every other one falls back to.</summary>
     public static LintingCode MissingPluralOther { get; } = new(
@@ -232,7 +232,7 @@ public static class LintingCodes
     public static LintingCode MissingLocalization { get; } = new(
         "LOC0207",
         LintingSeverity.Warning,
-        "A key written at a call site has no entry in a culture its type is already translated for, so it renders untranslated.");
+        "A key written at a callsite has no entry in a culture its type is already translated for, so it renders untranslated.");
 
     /// <summary>A lookup writes its key as an expression, so no rule could read it.</summary>
     public static LintingCode KeyNotAnalysed { get; } = new(

@@ -11,7 +11,7 @@ The runtime lives in the sibling Forma repository as `Forma.Framework.Localizati
 
 - A consumer injects `IStringLocale<T>` and reads strings as `L["The English sentence"]`; the key **is** the English source text, and an absent translation falls back to the key, silently.
 - A lookup takes one form: a literal key with values paired to its distinct holes by position, in the order the holes first appear — `L["Stored {stored} of {total}.", written, allowed]`. A wrong count throws (LOC0201).
-- An interpolated key — `L[$"…{stored}…"]` — formats before the lookup, so the runtime receives the formatted text as the key and no translation matches it; LOC0211 reports every such call site as an error.
+- An interpolated key — `L[$"…{stored}…"]` — formats before the lookup, so the runtime receives the formatted text as the key and no translation matches it; LOC0211 reports every such callsite as an error.
 - Consumers name holes in PascalCase as a matter of style; the linter does not enforce it, and no rule should start to — a hole name is legal wherever the runtime reads it.
 
 ## Files
@@ -25,7 +25,7 @@ The runtime lives in the sibling Forma repository as `Forma.Framework.Localizati
 - A file the project does not embed, such as the host's `.locales` folder copied beside the application, translates other assemblies' types; the file rules read it, the type-bound rules do not, and LOC0117 reads the host's `.locales` folder at the project's root as a source of its own. The project's `EmbeddedResource` items decide which files are embedded, and the build's own naming decides the name each is read by.
 - Two files of one source standing for one anchor in one culture are both read, in the order of the paths that place them, so the later path's file wins a key both carry; in a host's folder, a folder's file directly in the folder and one in the folder's own `.locales` are that pair. LOC0117 reports both files of a pair.
 - A file leads with its reserved entries in order: `$localization`, then `$shared`, the section whose entries every type the file reaches gets and which holds translations alone, so a `$shared` that is not an object or that nests a section fails to load and LOC0116 reports it; LOC0114 reports the order. A locale file holds translations and nothing a tool reads: a per-file exception to a rule is written in the linter's `.locali.json`, never in the locale file.
-- A key shaped like a reserved entry, `$` followed by one lowercase word and nothing else, is the engine's; one the runtime does not define is reported by LOC0115 in a file, at any level, and by LOC0212 at a call site. `$$` escapes the shape, dropping one `$` and reading the rest as text, and any other `$` text, such as `$`, `$ per month`, `$5 off`, `$USD`, `$camelCase`, or `$price/month`, is ordinary source text.
+- A key shaped like a reserved entry, `$` followed by one lowercase word and nothing else, is the engine's; one the runtime does not define is reported by LOC0115 in a file, at any level, and by LOC0212 at a callsite. `$$` escapes the shape, dropping one `$` and reading the rest as text, and any other `$` text, such as `$`, `$ per month`, `$5 off`, `$USD`, `$camelCase`, or `$price/month`, is ordinary source text.
 
 ## Holes and expressions
 

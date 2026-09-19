@@ -4,14 +4,14 @@ using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
 /// <summary>Checks that an expression naming no argument is given the single value it reads.</summary>
-public sealed class SoleArgumentChecker : ICallSiteRuleChecker
+public sealed class SoleArgumentChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
         => LintingCodes.SoleArgumentExpected;
 
     /// <inheritdoc />
-    public void Check(CallSiteContext context)
+    public void Check(CallsiteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 

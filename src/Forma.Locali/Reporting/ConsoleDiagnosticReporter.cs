@@ -51,7 +51,7 @@ public sealed class ConsoleDiagnosticReporter(TextWriter writer) : IDiagnosticRe
         await _writer.WriteLineAsync(hint.AsMemory(), cancellationToken).ConfigureAwait(false);
     }
 
-    // The linting configuration reports under 100, a file rule in the 100s, and a call-site rule in the
+    // The linting configuration reports under 100, a file rule in the 100s, and a callsite rule in the
     // 200s, so the range gives the brief its lines.
     private static string Family(SuppressedRule rule)
         => rule.Code.Id[..^2];

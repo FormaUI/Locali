@@ -3,14 +3,14 @@ namespace Forma.Locali.Rules.Sources;
 using Forma.Locali.Diagnostics;
 
 /// <summary>Checks that a lookup does not itself supply string.Format's format text, which would format its already-translated result a second time.</summary>
-public sealed class ReformattedLookupChecker : ICallSiteRuleChecker
+public sealed class ReformattedLookupChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
         => LintingCodes.ReformattedLookup;
 
     /// <inheritdoc />
-    public void Check(CallSiteContext context)
+    public void Check(CallsiteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 

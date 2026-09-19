@@ -4,14 +4,14 @@ using Forma.Framework.Localization.Parser.Syntax;
 using Forma.Locali.Diagnostics;
 
 /// <summary>Checks that an expression key is not nothing but a count, which carries no words to translate.</summary>
-public sealed class BareExpressionKeyChecker : ICallSiteRuleChecker
+public sealed class BareExpressionKeyChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
         => LintingCodes.BareExpressionKey;
 
     /// <inheritdoc />
-    public void Check(CallSiteContext context)
+    public void Check(CallsiteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 

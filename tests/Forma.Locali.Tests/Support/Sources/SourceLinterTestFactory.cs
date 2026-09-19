@@ -6,11 +6,11 @@ using Forma.Locali.Rules;
 using Forma.Locali.Rules.Sources;
 using Forma.Locali.Sources;
 
-/// <summary>Builds the call-site rules the linter ships with.</summary>
+/// <summary>Builds the callsite rules the linter ships with.</summary>
 public static class SourceLinterTestFactory
 {
-    /// <summary>Every call-site rule the linter ships with.</summary>
-    public static IReadOnlyList<ICallSiteRuleChecker> Checkers()
+    /// <summary>Every callsite rule the linter ships with.</summary>
+    public static IReadOnlyList<ICallsiteRuleChecker> Checkers()
         =>
         [
             new MalformedExpressionChecker(),
@@ -25,7 +25,7 @@ public static class SourceLinterTestFactory
             new ReformattedLookupChecker(),
         ];
 
-    /// <summary>What the call-site rules report over members of a class that holds a localizer.</summary>
+    /// <summary>What the callsite rules report over members of a class that holds a localizer.</summary>
     /// <param name="body">The members to place inside the class.</param>
     public static IReadOnlyList<LintingDiagnostic> Lint(string body)
     {
@@ -42,7 +42,7 @@ public static class SourceLinterTestFactory
             }
             """);
 
-        var linter = new SourceLinter(new SemanticCallSiteFinder(), new SyntacticCallSiteFinder(), Checkers());
+        var linter = new SourceLinter(new SemanticCallsiteFinder(), new SyntacticCallsiteFinder(), Checkers());
         var files = compilation.SyntaxTrees.Select(tree => tree.FilePath).ToArray();
 
         return linter.Lint(new LoadedProject("Scratch.csproj", compilation, HasGeneratedSources: false, HasRazorMarkup: false), files).Diagnostics;

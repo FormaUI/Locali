@@ -1,6 +1,6 @@
 namespace Forma.Locali.Tests.Sources;
 
-public sealed class SemanticCallSiteFinderTests
+public sealed class SemanticCallsiteFinderTests
 {
     [Fact]
     public void Should_name_the_type_the_generic_contract_carries()
@@ -69,6 +69,6 @@ public sealed class SemanticCallSiteFinderTests
             }
             """);
 
-        return [.. compilation.SyntaxTrees.SelectMany(tree => new SemanticCallSiteFinder().Find(compilation, tree).Lookups)];
+        return [.. compilation.SyntaxTrees.SelectMany(tree => new SemanticCallsiteFinder().Find(compilation, tree).Lookups)];
     }
 }

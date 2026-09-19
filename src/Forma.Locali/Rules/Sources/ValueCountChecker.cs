@@ -4,14 +4,14 @@ using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
 /// <summary>Checks that a lookup supplies one value for each hole its key names.</summary>
-public sealed class ValueCountChecker : ICallSiteRuleChecker
+public sealed class ValueCountChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
     public LintingCode Code
         => LintingCodes.ValueCountMismatch;
 
     /// <inheritdoc />
-    public void Check(CallSiteContext context)
+    public void Check(CallsiteContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 

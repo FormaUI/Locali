@@ -4,10 +4,10 @@ using Forma.Framework.Localization.Parser.Syntax;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
-/// <summary>What a call-site rule reads, and what it reports through.</summary>
+/// <summary>What a callsite rule reads, and what it reports through.</summary>
 /// <param name="lookup">The lookup being checked.</param>
 /// <param name="expression">The key's expressions, already parsed.</param>
-public sealed class CallSiteContext(LocalizerLookup lookup, LocaleParseResult expression)
+public sealed class CallsiteContext(LocalizerLookup lookup, LocaleParseResult expression)
 {
     private readonly List<LintingDiagnostic> _reported = [];
     private List<string>? _holes;

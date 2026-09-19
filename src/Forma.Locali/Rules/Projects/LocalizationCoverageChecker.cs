@@ -30,7 +30,7 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
         // A key written at several sites is reported once per culture it is missing from, at the first site.
         var seen = new HashSet<(string Key, string TypeName, string CultureName)>();
 
-        foreach (var site in Ordered(context.CallSites))
+        foreach (var site in Ordered(context.Callsites))
         {
             if (site.ResourceType is not { } resource)
             {
@@ -63,10 +63,10 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
         }
     }
 
-    // Every culture's file can carry the same name, so a file is named by where it sits from the call site's folder.
-    private static string FormatFilePath(string callSitePath, string filePath)
-        => Path.GetDirectoryName(callSitePath) is { Length: > 0 } callSiteFolder
-            ? Path.GetRelativePath(callSiteFolder, filePath)
+    // Every culture's file can carry the same name, so a file is named by where it sits from the callsite's folder.
+    private static string FormatFilePath(string callsitePath, string filePath)
+        => Path.GetDirectoryName(callsitePath) is { Length: > 0 } callsiteFolder
+            ? Path.GetRelativePath(callsiteFolder, filePath)
             : filePath;
 
     // The runtime walks the culture up to its parents, so a regional file need only carry what differs.
@@ -84,8 +84,8 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
     }
 
     // The walk that found the sites ran in parallel, so which site a key is reported at is settled here.
-    private static IEnumerable<LocalizerLookup> Ordered(IReadOnlyList<LocalizerLookup> callSites)
-        => callSites
+    private static IEnumerable<LocalizerLookup> Ordered(IReadOnlyList<LocalizerLookup> callsites)
+        => callsites
             .OrderBy(site => site.Key.Location.Path, StringComparer.Ordinal)
             .ThenBy(site => site.Key.Location.StartLinePosition.Line)
             .ThenBy(site => site.Key.Location.StartLinePosition.Character);
