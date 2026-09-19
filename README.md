@@ -143,12 +143,12 @@ the 100s, and a call-site rule in the 200s.
 |------|----------|---------|
 | LOC0020 | Error | The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define |
 | LOC0021 | Warning | A glob in the linting configuration matched no file the run reached |
-| LOC0022 | Error | The runtime's `.locale.json` is not readable JSON, names a key the runtime does not read, gives a value it would refuse, or is one of two for an assembly |
+| LOC0022 | Error | The runtime's `.locale.json` is not readable JSON, names a key the runtime does not read, gives a value it would refuse, is one of two for an assembly, or sits anywhere but its project's root |
 
 Two files configure two things. `.locali.json` is the linter's own, cascading like an
 `.editorconfig` and never read by the runtime; `.locale.json` is the runtime's, one optional file
-per assembly that cascades nowhere, which the linter reads through the runtime's own reader
-and never writes a key of its own into.
+per assembly, at its root, that cascades nowhere, which the linter reads through the runtime's own
+reader and never writes a key of its own into.
 
 A `.locali.json` beside or above a file is that file's linting configuration, discovered the
 way an `.editorconfig` would: every one found walking up from the file, root to the file's
@@ -205,7 +205,9 @@ a malformed path at the token that is wrong rather than at the line — and a ke
 not read, which it passes over and which therefore steers nothing. A `.locale.json` a project
 embeds shapes the type-bound rules too: they read the project's files through the config it
 embeds, as the runtime does, so the paths it states decide what is read. Two such files for one
-assembly are reported at the project, since the runtime refuses every lookup in that assembly.
+assembly are reported at the project, since the runtime refuses every lookup in that assembly. The
+file sits at the project's root and nowhere else: one embedded beneath it is reported where it
+sits, and so is one laid in a host's `.locales` folder, which the runtime reads no config from.
 
 ### Locale files (LOC0100–LOC0199)
 

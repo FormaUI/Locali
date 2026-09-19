@@ -121,9 +121,11 @@ public sealed class LintingService(
         {
             var sources = _sources.Lint(project, wanted, cancellationToken);
             diagnostics.AddRange(sources.Diagnostics);
+            var localizationFiles = target.LocalizationFilesOf(project.Path);
+            diagnostics.AddRange(LintConfigPlacement(project, localizationFiles));
 
             // Both rules over a project's locale files read the same resolution, so it is made once.
-            if (ProjectLocaleFiles.Resolve(project, target.LocalizationFilesOf(project.Path)) is { } localization)
+            if (ProjectLocaleFiles.Resolve(project, localizationFiles) is { } localization)
             {
                 try
                 {
@@ -140,4 +142,31 @@ public sealed class LintingService(
 
         return diagnostics;
     }
+
+    // An assembly's config file is embedded at its project's root; the runtime reads one embedded elsewhere as the assembly's all the same, and one in a host's folder not at all.
+    private static IEnumerable<LintingDiagnostic> LintConfigPlacement(LoadedProject project, IReadOnlyList<string> localizationFiles)
+    {
+        var projectFolder = Path.GetDirectoryName(Path.GetFullPath(project.Path))!;
+
+        foreach (var file in localizationFiles)
+        {
+            var fullPath = Path.GetFullPath(file);
+            if (!Path.GetFileName(fullPath).Equals(LocaleConfig.FileName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (project.EmbeddedResourceNames is { } resourceNames && !resourceNames.ContainsKey(fullPath))
+            {
+                yield return DiagnoseConfig(fullPath, "The project does not embed this file, so the runtime never reads it, and a host's folder is never read for config; an assembly's config file is embedded at its project's root.");
+            }
+            else if (!Path.GetDirectoryName(fullPath)!.Equals(projectFolder, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return DiagnoseConfig(fullPath, $"This file sits beneath '{Path.GetRelativePath(projectFolder, Path.GetDirectoryName(fullPath)!)}'; an assembly's config file sits at its project's root, beside '{Path.GetFileName(project.Path)}'.");
+            }
+        }
+    }
+
+    private static LintingDiagnostic DiagnoseConfig(string path, string message)
+        => new(path, 1, 1, LintingCodes.MalformedLocaleConfig.DefaultSeverity, LintingCodes.MalformedLocaleConfig, message);
 }

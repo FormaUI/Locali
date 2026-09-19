@@ -57,11 +57,11 @@ public static class LintingCodes
         LintingSeverity.Warning,
         "A glob in the linting configuration matched no file the run linted, so it no longer excludes or leaves anything out.");
 
-    /// <summary>The runtime's config file is not readable JSON, names a key the runtime does not read, gives a value the runtime would refuse, or is one of two for an assembly.</summary>
+    /// <summary>The runtime's config file is not readable JSON, names a key the runtime does not read, gives a value the runtime would refuse, is one of two for an assembly, or sits anywhere but its project's root.</summary>
     public static LintingCode MalformedLocaleConfig { get; } = new(
         "LOC0022",
         LintingSeverity.Error,
-        "The runtime's config file is not readable JSON, names a key the runtime does not read, gives a value the runtime would refuse, or is one of two for an assembly, so it does not place the files beneath it as written.");
+        "The runtime's config file is not readable JSON, names a key the runtime does not read, gives a value the runtime would refuse, is one of two for an assembly, or sits anywhere but its project's root, so it does not place the assembly's files as written.");
 
     /// <summary>The file is not readable JSON.</summary>
     public static LintingCode InvalidJson { get; } = new(

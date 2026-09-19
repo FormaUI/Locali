@@ -224,15 +224,15 @@ public sealed class LintingServiceTests
     [Fact]
     public async Task Should_report_an_embedded_config_marking_two_roots_and_finish_the_run()
     {
-        // Arrange — two config files with none above them each mark a root, which the runtime refuses for the whole assembly.
+        // Arrange — a second config file among an assembly's files is refused for the whole assembly, and the misplaced one is reported where it sits.
         using var directory = new TempDirectory();
         var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
-        var first = directory.Write(Path.Combine("Components", ".locale.json"), "{}");
+        var first = directory.Write(".locale.json", "{}");
         var second = directory.Write(Path.Combine("Pages", ".locale.json"), "{}");
         var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var resourceNames = new Dictionary<string, string>
         {
-            [Path.GetFullPath(first)] = "Scratch.Components..locale.json",
+            [Path.GetFullPath(first)] = "Scratch..locale.json",
             [Path.GetFullPath(second)] = "Scratch.Pages..locale.json",
             [Path.GetFullPath(file)] = "Scratch.Components..locales.he.json",
         };
@@ -243,10 +243,10 @@ public sealed class LintingServiceTests
         var result = await LintingServiceTestFactory.Create(directory.Root, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        var diagnostic = Assert.Single(result.Diagnostics);
+        var diagnostic = Assert.Single(result.Diagnostics, candidate => candidate.Path == project);
         Assert.Multiple(
-            () => Assert.Equal(LintingCodes.MalformedLocaleConfig, diagnostic.Code),
-            () => Assert.Equal(project, diagnostic.Path),
+            () => Assert.Equal([LintingCodes.MalformedLocaleConfig, LintingCodes.MalformedLocaleConfig], result.Diagnostics.Codes()),
+            () => Assert.Contains(result.Diagnostics, candidate => candidate.Path == second),
             () => Assert.Contains(Path.GetFullPath(first), diagnostic.Message, StringComparison.Ordinal),
             () => Assert.Contains(Path.GetFullPath(second), diagnostic.Message, StringComparison.Ordinal));
     }
@@ -284,5 +284,70 @@ public sealed class LintingServiceTests
         Assert.Multiple(
             () => Assert.Empty(result.Diagnostics),
             () => Assert.Equal(1, result.FileCount));
+    }
+
+    [Fact]
+    public async Task Should_report_a_locale_config_beneath_the_projects_root()
+    {
+        // Arrange — the runtime reads a config embedded anywhere as the assembly's, so the one place it may sit is stated at lint time.
+        using var directory = new TempDirectory();
+        var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var config = directory.Write(Path.Combine("Components", ".locale.json"), "{}");
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(config)] = "Scratch.Components..locale.json" };
+        var compilation = CompilationTestFactory.Unreferenced("namespace Scratch.Components; public sealed class Widget;");
+        var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: resourceNames));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MalformedLocaleConfig, diagnostic.Code),
+            () => Assert.Equal(config, diagnostic.Path),
+            () => Assert.Contains("'Components'", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains("Scratch.csproj", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_report_a_locale_config_in_a_hosts_folder()
+    {
+        // Arrange — the host's folder is copied beside the application rather than embedded, and the runtime reads no config from it.
+        using var directory = new TempDirectory();
+        var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var config = directory.Write(Path.Combine(".locales", "Contoso.Widgets", ".locale.json"), """{ "rootNamespace": "Contoso" }""");
+        var compilation = CompilationTestFactory.Unreferenced("namespace Scratch; public sealed class Widget;");
+        var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: new Dictionary<string, string>()));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MalformedLocaleConfig, diagnostic.Code),
+            () => Assert.Equal(config, diagnostic.Path),
+            () => Assert.Contains("host", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_report_a_locale_config_at_the_projects_root_that_the_project_does_not_embed()
+    {
+        // Arrange — the file sits where it belongs, but a project that embeds only some folders leaves it out of the assembly.
+        using var directory = new TempDirectory();
+        var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var config = directory.Write(".locale.json", "{}");
+        var compilation = CompilationTestFactory.Unreferenced("namespace Scratch; public sealed class Widget;");
+        var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: new Dictionary<string, string>()));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(config, diagnostic.Path),
+            () => Assert.Contains("does not embed", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains("never reads it", diagnostic.Message, StringComparison.Ordinal));
     }
 }
