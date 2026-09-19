@@ -15,7 +15,7 @@ Detailed standards live in `.claude/skills/` and load on demand. Read the matchi
 
 ## Source of truth
 
-- Do use [src/Forma.Locali/README.md](src/Forma.Locali/README.md) for everything about the tool itself: the CLI, every rule and where it stays silent, the source layout, how to add a rule, and the SdkRoslyn workaround. It is the authority; this file only says what the repository around it expects.
+- Do use [src/Forma.Locali/README.md](src/Forma.Locali/README.md) for everything about the tool itself: the CLI, every rule and where it stays silent, the source layout, how to add a rule, and how Roslyn keeps pace with the SDK. It is the authority; this file only says what the repository around it expects.
 - Do read `.editorconfig` before writing C#; it is the authority on style, and the root file and `tests/.editorconfig` differ deliberately.
 - Do treat the sibling **Forma** repository (`c:\Users\eyal\Development\Projects\Forma`) as the reference for how the runtime behaves; a rule is right when it reports exactly what `Forma.Framework.Localization` will get wrong at run time.
 - Don't invent scope, status, or style rules when an authoritative file defines them.
@@ -34,7 +34,7 @@ Forma.Locali.slnx
 - Do compile against the real runtime rather than re-implementing any of its parsing here; the linter's promise is that a rule and the runtime cannot disagree, and it keeps that promise by calling the runtime's own parser, plural rules, and schema types.
 - Do keep a folder and its namespace in step, so `src/Forma.Locali/Rules/Files/` holds `Forma.Locali.Rules.Files`.
 - Do reference the narrowest thing that supplies what the code uses, give every project its own reference for what it uses directly, and keep no reference no code uses.
-- Don't disturb the `ExcludeAssets="runtime"` on the `Microsoft.CodeAnalysis.*` references or the `SdkRoslyn` module initializer without reading the README's *Roslyn is loaded from the SDK* section; the arrangement is deliberate and all-or-nothing.
+- Do keep the three `Microsoft.CodeAnalysis.*` references on one version, at or above the installed SDK's Roslyn, and leave `ExcludeAssets="runtime"` on the `Microsoft.Build` references; the README's *Roslyn Keeps Pace With The SDK* section says why.
 
 ## Rules
 

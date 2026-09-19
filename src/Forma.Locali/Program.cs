@@ -20,14 +20,6 @@ internal static class Program
 {
     private static async Task<int> Main(string[] args)
     {
-        // Nothing can be analysed without Roslyn, so the run stops before a load failure buries the reason.
-        if (SdkRoslyn.Unavailable is { } unavailable)
-        {
-            await Console.Error.WriteLineAsync(unavailable).ConfigureAwait(false);
-
-            return (int)ExitCode.Usage;
-        }
-
         if (!CommandLine.TryParse(args, out var options, out var error))
         {
             await Console.Error.WriteLineAsync(error).ConfigureAwait(false);

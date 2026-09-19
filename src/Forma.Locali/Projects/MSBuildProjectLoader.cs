@@ -20,6 +20,15 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
     private const string RazorSuffix = "_razor.g.cs";
     private const string PrepareResourceNamesTarget = "PrepareResourceNames";
 
+    // MSBuild loads from the installed SDK, which has to be registered before the first MSBuild type loads.
+    static MSBuildProjectLoader()
+    {
+        if (!MSBuildLocator.IsRegistered)
+        {
+            MSBuildLocator.RegisterDefaults();
+        }
+    }
+
     private readonly IReadOnlyDictionary<string, string> _properties = options?.Value.Properties ?? throw new ArgumentNullException(nameof(options));
 
     /// <inheritdoc />

@@ -145,8 +145,9 @@ silent for it.
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no
 build property is needed; `locali --path MyProject.csproj` is enough. LOC0205 covers the case
-where a project produced no generated Razor all the same. Loading Roslyn is itself a workaround,
-described under [Contributing](#roslyn-is-loaded-from-the-sdk).
+where a project produced no generated Razor all the same. The Roslyn the
+linter references has to keep pace with the SDK's, described under
+[Contributing](#roslyn-keeps-pace-with-the-sdk).
 
 ## Rules
 
@@ -251,37 +252,18 @@ clean, so anything a rule reports there is a false positive. It does not cover e
 callsite can take — nothing there passes a values collection whole — so those belong in unit
 tests.
 
-### Roslyn Is Loaded From The SDK
+### Roslyn Keeps Pace With The SDK
 
-This part is a workaround, and nothing above depends on understanding it.
+The Razor generator ships inside the SDK, built against the SDK's own Roslyn, and Roslyn refuses
+to load a generator built against a newer compiler than its host: it reports
+`ReferencesNewerCompiler` and returns no generators at all. So the three `Microsoft.CodeAnalysis.*`
+packages the linter references have to be at or above the Roslyn of the SDK it runs on.
 
-Roslyn refuses to load a generator built against a newer compiler than the host, reporting
-`ReferencesNewerCompiler` and returning no generators at all. The Razor generator ships inside
-the SDK and is built against the SDK's Roslyn, which is ahead of anything published:
+A preview SDK can carry a Roslyn ahead of anything on nuget.org. The linter still runs there, and
+LOC0205 reports each project whose Razor markup went unchecked; raising the three package
+versions, once the matching ones are published, closes it. The version an SDK's generator asks
+for is the `Microsoft.CodeAnalysis` reference of `Microsoft.CodeAnalysis.Razor.Compiler.dll`,
+under the SDK's `Sdks/Microsoft.NET.Sdk.Razor/source-generators`.
 
-| | Version |
-|---|---|
-| Razor generator, from the SDK | built against Roslyn 5.9.0 |
-| Newest `Microsoft.CodeAnalysis.CSharp` on nuget.org | 5.6.0 |
-
-So the linter cannot load the generator using the packages it compiles against, and
-`GetSourceGeneratedDocumentsAsync` returns nothing for Razor. What closes the gap is that the SDK
-also carries a complete, version-matched Roslyn — compiler, workspaces and
-`Workspaces.MSBuild` — under `DotnetTools`, shipped for `dotnet format` and `dotnet watch`.
-
-`SdkRoslyn` binds to that copy from a `[ModuleInitializer]`, since resolution has to be
-registered before the first Roslyn type loads, which is earlier than `Main`. The three
-`Microsoft.CodeAnalysis.*` packages carry `ExcludeAssets="runtime"` so their assemblies stay
-reference-only and cannot shadow the SDK's at run time. Redirecting only part of the stack does
-not work: a 5.6.0 `Workspaces` on a 5.9.0 compiler throws `TypeLoadException` on members added
-in the newer version. It is all or nothing.
-
-When Roslyn cannot be bound, the linter stops with exit code 2 and explains what it looked for.
-It cannot degrade: `ExcludeAssets="runtime"` keeps the published assemblies out of the output,
-so if the SDK's are not found there is no Roslyn to run on at all. Failing at startup is what
-keeps that from surfacing as an unrelated `FileNotFoundException` several frames later.
-
-`DotnetTools` is an SDK implementation detail, not a documented redistribution point, so this
-should not outlive the version gap. Once a Roslyn at or above the SDK's is on nuget.org, raise
-the three `Microsoft.CodeAnalysis.*` versions, drop their `ExcludeAssets="runtime"`, delete
-`Projects/SdkRoslyn.cs`, and register MSBuild in `MSBuildProjectLoader` again.
+MSBuild itself is loaded from the installed SDK through `MSBuildLocator`, so the `Microsoft.Build`
+packages stay reference-only.
