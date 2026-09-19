@@ -29,6 +29,10 @@ public sealed class ProjectLocaleSource : LocaleSource
         }
     }
 
+    /// <summary>The full path of every config file the project embeds.</summary>
+    public IReadOnlyCollection<string> ConfigPaths
+        => _configPaths.Values;
+
     /// <summary>The file the source serves under a name, or null when none answers to it.</summary>
     /// <param name="name">The name, as the source's entries report it.</param>
     public ProjectLocaleFile? GetFile(string name)

@@ -14,6 +14,7 @@ public static class ProjectLinterTestFactory
         =>
         [
             new LocaleConfigPlacementChecker(),
+            new RootNamespaceWithoutTypesChecker(),
             new UnreachableLocalizationChecker(),
             new LocalizationCoverageChecker(),
             new DuplicateAnchorFileChecker(),

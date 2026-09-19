@@ -112,6 +112,7 @@ internal static class Program
         builder.Services.AddSingleton<ICallSiteRuleChecker, ReformattedLookupChecker>();
 
         builder.Services.AddSingleton<IProjectRuleChecker, LocaleConfigPlacementChecker>();
+        builder.Services.AddSingleton<IProjectRuleChecker, RootNamespaceWithoutTypesChecker>();
         builder.Services.AddSingleton<IProjectRuleChecker, UnreachableLocalizationChecker>();
         builder.Services.AddSingleton<IProjectRuleChecker, LocalizationCoverageChecker>();
         builder.Services.AddSingleton<IProjectRuleChecker, DuplicateAnchorFileChecker>();
