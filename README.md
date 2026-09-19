@@ -1,6 +1,8 @@
 # locali
 
-A static-analysis linter for Forma.Framework.Localization.Json, validating translation resources and C#/Razor call sites for malformed expressions, placeholder mismatches, missing translations, and silent runtime fallbacks.
+A linter for `Forma.Framework.Localization`. It reads locale files against the runtime's own
+rules, and every `IStringLocale` call site in C# and Razor against what the runtime will do with
+it, and reports what would throw, render wrong, or quietly stay in English.
 
 Two things go wrong quietly in a localized codebase, and a build catches neither:
 
@@ -8,11 +10,8 @@ Two things go wrong quietly in a localized codebase, and a build catches neither
   supplies one value for two holes and throws at run time. A Hebrew translation that writes
   `{stord}` renders those seven characters literally, in front of a user.
 - **A string silently stays in English.** Adding `L["Details columns"]` to a component whose `he`
-  and `es` files already exist leaves both files behind — and falling back to the key is exactly
+  and `es` files already exist leaves both files behind, and falling back to the key is exactly
   what the runtime is defined to do, so nothing anywhere complains.
-
-The linter reads locale files against the schema, and reads every `IStringLocale` call site in
-C# and Razor against what the runtime will do with it. [Rules](#rules) lists what it reports.
 
 ## Quick start
 
@@ -28,13 +27,37 @@ Lint a whole solution, skipping the test fixtures that are malformed on purpose:
 locali --path ../Forma/Forma.slnx --exclude "*/Fixtures/*"
 ```
 
-Errors are reported by default. To read the warnings as well:
+Errors are reported by default; `--severity warning` reads the warnings as well. The examples
+below use `locali` for the built binary.
 
-```powershell
-locali --path ../Forma/Forma.slnx --exclude "*/Fixtures/*" --severity warning
+## What it checks against
+
+The linter never re-derives how a file is found: it runs the runtime's own resolution over the
+project tree, so it places a file exactly where the application will. One type,
+`Forma.Blazor.Components.Bars.FormaToolbar`, and the files that can localize it in `he`:
+
+```text
+src/Forma.Blazor/.locales/he.json                                   { "Components.Bars.FormaToolbar": { "Bold": "מודגש" } }
+src/Forma.Blazor/Components/Bars/.locales/he.json                   { "FormaToolbar": { "Bold": "מודגש" } }
+src/Forma.Blazor/Components/Bars/.locales/FormaToolbar.he.json      { "Bold": "מודגש" }
+src/Forma.Blazor/Strings/.locales/he.json                           { "@.Components.Bars.FormaToolbar": { "Bold": "מודגש" } }
 ```
 
-The examples below use `locali` for the built binary.
+A folder is a namespace; a file is the folder's, named for the culture and sectioned by type, or
+a type's own, named for the type; a section starting with `@.` names a type from the assembly's
+root from anywhere. A host overrides any of them from its `.locales` folder beside the
+application, laid out by the type's name, the file directly in its folder:
+
+```text
+.locales/Forma.Blazor/Components/Bars/he.json                       { "FormaToolbar": { "Bold": "עבה" } }
+.locales/Forma.Blazor/Components/Bars/FormaToolbar.he.json          { "Bold": "עבה" }
+```
+
+The rules that read a type's files, LOC0112 and LOC0209 among them, read a project's own
+embedded files, whatever folder they sit in; a host's folder translates other assemblies' types,
+so the file rules read it and the type-bound rules do not, and LOC0118 reads it as a source of
+its own. `Forma.Framework.Localization`'s README walks the whole layout; this document covers
+the linter.
 
 ## Options
 
@@ -55,21 +78,18 @@ Usage: locali --path <file-or-directory> [--report [<path>]] [--exclude <glob>]
              warnings do not fail the run, and the summary briefs them by rule.
 ```
 
-`--path` accepts a `.json` file, a `.cs` or `.razor` file, a `.csproj`, a `.sln`/`.slnx`,
-or a directory. A directory is searched for `.json`, `.cs`, and `.razor`, skipping `bin`
-and `obj`. Source files are linted through the project that owns them, found by walking
-up to the nearest `.csproj`.
+`--path` accepts a `.json` file, a `.cs` or `.razor` file, a `.csproj`, a `.sln`/`.slnx`, or a
+directory. A directory is searched for `.json`, `.cs` and `.razor`, skipping `bin` and `obj`.
+Source files are linted through the project that owns them, found by walking up to the nearest
+`.csproj`.
 
-`--exclude` is what makes a test tree lintable. A test project's fixtures are often
-malformed on purpose — a file with no `$localization` entry, a culture that disagrees with
-its own name — so linting them reports what the fixture exists to prove. Excluding the
-folder they live in leaves the rest of the tree checked. A `.locali.json` file's own
-`excludeFiles` entry does the same thing without a flag on every invocation; see
-[Linting configuration](#linting-configuration).
+`--exclude` is what makes a test tree lintable: a fixture that is malformed on purpose reports
+what it exists to prove. A `.locali.json` file's `excludeFiles` entry does the same without a
+flag on every invocation, and its `ignoreDiagnostics` entry leaves a named file out of named
+rules; [Rules](docs/rules.md) describes both under the linting configuration.
 
-`--severity` decides what counts as a finding. An error is something the runtime will get
-wrong; a warning is something worth changing that still loads. `warning` includes both,
-since `LintingSeverity` is declared in ascending order and the comparison is `>=`.
+`--severity` decides what counts as a finding. An error is something the runtime will get wrong;
+a warning is something worth changing that still loads.
 
 ## Output
 
@@ -79,9 +99,9 @@ Console output is MSBuild-formatted, so an editor can navigate it:
 path(line,col): severity CODE: message
 ```
 
-A diagnostic below `--severity`, or one the linting configuration leaves out — a `.locali.json`
-above the file — is left out of the console, the JSON report, and the exit code alike, but a
-default run still briefs what it left out, so nothing disappears without a trace:
+A diagnostic below `--severity`, or one the linting configuration leaves out, is left out of the
+console, the JSON report and the exit code alike, but a run still briefs what it left out, so
+nothing disappears without a trace:
 
 ```text
 Linted 658 file(s); 6 diagnostic(s).
@@ -92,11 +112,9 @@ Linted 658 file(s); 6 diagnostic(s).
 Pass --severity warning to read them.
 ```
 
-The brief names each rule and how many it contributed, a line per family, so a run says
-whether the diagnostics are one rule worth looking at or noise already known about. The
-closing line only ever promises what raising `--severity` will actually reveal: where the
-linting configuration accounts for some or all of what is left out, it says so instead,
-since no severity uncovers a diagnostic a file was told to leave out.
+The brief names each rule and how many it contributed, a line per family. Its closing line only
+promises what raising `--severity` will reveal: where the linting configuration accounts for
+some or all of what is left out, it says so instead.
 
 | Exit code | Meaning |
 |-----------|---------|
@@ -105,114 +123,33 @@ since no severity uncovers a diagnostic a file was told to leave out.
 | 2 | The command line was wrong, or a path could not be read |
 
 `--report` writes a JSON report carrying `fileCount`, `diagnosticCount`, `suppressedCount`,
-`ignoredCount` — how many of the suppressed diagnostics a file's own configuration left out
-rather than the severity — and a `diagnostics` array of `path`, `line`, `column`,
-`severity`, `code`, `message`.
+`ignoredCount` — how many of the suppressed diagnostics the linting configuration left out
+rather than the severity — and a `diagnostics` array of `path`, `line`, `column`, `severity`,
+`code`, `message`.
 
 ## How call sites are found
 
-Call sites are found semantically where the compilation binds `IStringLocale`, and
-syntactically otherwise. The syntactic path cannot resolve overloads, so the rules that
-count values stay silent for it.
+Call sites are found semantically where the compilation binds `IStringLocale`, and syntactically
+otherwise. The syntactic path cannot resolve overloads, so the rules that count values stay
+silent for it.
 
-Almost every call site in this repository lives in `.razor`, which reaches Roslyn only
-through the Razor source generator. The linter runs that generator itself, so nothing has
-to be emitted to disk and no build property is needed:
-
-```powershell
-locali --path MyProject.csproj
-```
-
-LOC0206 covers the narrower case where Roslyn did load but a project produced no generated
-Razor. The linter then reads whatever a build left in `obj/**/generated/`, which needs
-`EmitCompilerGeneratedFiles=true` and a full build — an incremental one emits nothing while
-still reporting success. LOC0206 says that route came up empty too, so the project's markup
-went unchecked; do not ignore it in a build gate.
-
-Loading Roslyn is itself a workaround, described under
-[Roslyn is loaded from the SDK](#roslyn-is-loaded-from-the-sdk).
+Almost every call site lives in `.razor`, which reaches Roslyn only through the Razor source
+generator. The linter runs that generator itself, so nothing has to be emitted to disk and no
+build property is needed; `locali --path MyProject.csproj` is enough. LOC0206 covers the case
+where a project produced no generated Razor all the same. Loading Roslyn is itself a workaround,
+described under [Contributing](#roslyn-is-loaded-from-the-sdk).
 
 ## Rules
 
-The [linting configuration](#linting-configuration) reports under 100, a file rule in
-the 100s, and a call-site rule in the 200s.
-
-### Linting configuration (LOC0020–LOC0099)
+[docs/rules.md](docs/rules.md) has an entry per rule: what it reports, why it matters at run
+time, what fixes it, and where it stays silent on purpose. The linting configuration reports
+under 100, a file rule in the 100s, and a call-site rule in the 200s.
 
 | Code | Severity | Reports |
 |------|----------|---------|
 | LOC0020 | Error | The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define |
 | LOC0021 | Warning | A glob in the linting configuration matched no file the run reached |
-| LOC0022 | Error | The runtime's `.locale.json` is not readable JSON, names a key the runtime does not read, gives a value it would refuse, is one of two for an assembly, or sits anywhere but its project's root |
-
-Two files configure two things. `.locali.json` is the linter's own, cascading like an
-`.editorconfig` and never read by the runtime; `.locale.json` is the runtime's, one optional file
-per assembly, at its root, that cascades nowhere, which the linter reads through the runtime's own
-reader and never writes a key of its own into.
-
-A `.locali.json` beside or above a file is that file's linting configuration, discovered the
-way an `.editorconfig` would: every one found walking up from the file, root to the file's
-own folder, applies together, so a solution-wide file at the root and a narrower one for one
-project both take effect, the nearer file adding to the root's rather than replacing it. Its
-globs read exactly like `--exclude`'s: case-insensitive, forward slashes, and `*` or `**` —
-the two mean the same thing — spanning separators; each one is read relative to the folder
-its own `.locali.json` sits in, so the file stays correct wherever the tree that carries it
-is checked out. Its JSON tolerates the same things a locale file's does: a `//` or `/*
-*/` comment and a trailing comma are both skipped rather than reported as invalid.
-
-```json
-{
-  "ignoreDiagnostics": {
-    "**/Forma.Blazor.Showcase/**/LocalizationPage.razor": ["LOC0209"]
-  },
-  "excludeFiles": ["*/Fixtures/*"]
-}
-```
-
-`ignoreDiagnostics` pairs a glob with the rules a file it matches is left out of. It is the one
-place a per-file exception is written: a locale file holds translations and nothing a tool
-reads, so a file that translates one key two ways on purpose is excused here, by its path,
-rather than in the file. `excludeFiles` mirrors the command line's own flag, so a fixture folder
-a whole team excludes needs writing once rather than on every invocation; the two lists combine
-there as well.
-
-LOC0020 reports a rule identifier neither list names, so a typo silences nothing, and the rule
-over `.locali.json` itself can never be named in its own `ignoreDiagnostics` list. LOC0021
-reports a glob that never matched a file the run actually reached, so an exception a rename left
-behind does not sit unnoticed; a file moved out of the tree the run reads is exactly when its
-`.locali.json` entries go stale.
-
-Leaving a diagnostic out this way is never silent: it is still counted in `suppressedCount`
-and still named in the console brief, exactly as a diagnostic below `--severity` is, so the
-linting configuration cannot make a finding disappear without a trace.
-
-`.locale.json` carries the keys the localization runtime reads and no other: `rootNamespace`, the
-namespace a type's name is completed from; `rootDir`, where the assembly's names begin;
-`localesDir`, the folder locale files are gathered in; and `paths`, the paths the assembly's
-files are read by, written in tokens. It is the assembly's file, embedded at its project's root,
-and it applies to every file of the assembly.
-
-```json
-{
-  "rootNamespace": "Forma.Blazor.Components.Composer.Plugins",
-  "localesDir": ".locales",
-  "paths": ["$RootDir/$AnchorName/$LocalesDir/$CurrentName.$Culture$Extension"]
-}
-```
-
-Each value is held to the runtime's own rule, and LOC0022 reports one the runtime would refuse —
-a malformed path at the token that is wrong rather than at the line — and a key the runtime does
-not read, which it passes over and which therefore steers nothing. A `.locale.json` a project
-embeds shapes the type-bound rules too: they read the project's files through the config it
-embeds, as the runtime does, so the paths it states decide what is read. Two such files for one
-assembly are reported at the project, since the runtime refuses every lookup in that assembly. The
-file sits at the project's root and nowhere else: one embedded beneath it is reported where it
-sits, and so is one laid in a host's `.locales` folder, which the runtime reads no config from.
-
-### Locale files (LOC0100–LOC0199)
-
-| Code | Severity | Reports |
-|------|----------|---------|
+| LOC0022 | Error | The runtime's `.locale.json` is not readable, names a key the runtime does not read, gives a value it would refuse, is one of two for an assembly, or sits anywhere but its project's root |
 | LOC0100 | Error | The file is not readable JSON |
 | LOC0101 | Error | The file carries no `$localization` entry |
 | LOC0102 | Warning | The metadata entry is not the file's first property |
@@ -231,245 +168,22 @@ sits, and so is one laid in a host's `.locales` folder, which the runtime reads 
 | LOC0116 | Error | A key or section is shaped like a reserved entry the runtime does not define |
 | LOC0117 | Error | The `$shared` entry is not an object holding translations alone |
 | LOC0118 | Warning | Two files of one source stand for one anchor in one culture |
+| LOC0201 | Error | An expression reads a name nothing supplies |
+| LOC0202 | Error | The value count does not match the key's distinct holes |
+| LOC0203 | Error | An expression naming no argument is given no value |
+| LOC0204 | Error | A key carries a malformed expression |
+| LOC0205 | Warning | A plural expression omits `other` |
+| LOC0206 | Warning | A project's Razor markup went unchecked |
+| LOC0208 | Error | A key writes text shaped like a hole the runtime cannot read |
+| LOC0209 | Warning | A key is not answered in a culture its type is translated for |
+| LOC0210 | Warning | A lookup writes its key as an expression |
+| LOC0211 | Warning | A key carries holes but no words anywhere else |
+| LOC0212 | Warning | An expression key carries no words in any field |
+| LOC0213 | Error | A lookup writes its key as an interpolated string with holes |
+| LOC0214 | Error | A lookup writes a key shaped like a reserved entry |
+| LOC0215 | Error | A lookup supplies `string.Format`'s format text |
 
-LOC0114 is retired with the `$tools` entry it judged, and the number is not reused.
-
-LOC0100 accepts what the runtime's own reader does: a `//` or `/* */` comment and a trailing
-comma are both skipped rather than reported as invalid JSON.
-
-LOC0111 counts a key once per section, because a key repeats across sections whenever two
-types share a string; LOC0113 reads those repeats and reports the ones that disagree.
-
-A file leads with its reserved entries, in this order: `$localization`, then `$shared` where it
-carries one, then its translations and sections. LOC0115 reports one out of that order.
-
-`$shared` is the runtime's: a section, at any node, whose entries every type reached through that
-node gets, so a translation shared by every component in a category is written once and one
-shared by a folder's types alone sits in that folder's section. It holds translations
-alone: the runtime refuses a `$shared` that is not an object, and one nesting a section or
-another `$shared`, so LOC0117 reports both. The file rules read it as a section named `$shared`,
-so LOC0113 compares it with the sections beside it, and a section that words a shared key
-differently on purpose says so in `.locali.json`.
-
-A name shaped like a reserved entry is the runtime's: `$` followed by one lowercase word
-and nothing else, so `$import` and `$shraed` are reserved. The runtime refuses a file naming
-one it does not define, and LOC0116 reports it, whether a key or a section at any level, so a
-misspelled `$shraed` or an invented `$import` is caught at lint time rather than at load;
-LOC0214 reports a lookup writing one, which no file can answer. Anything else that starts
-with `$` is prose:
-`$` alone, `$ per month`, `$5 off`, `$0.00`, `$USD`, `$camelCase`, `$import something`, and
-`$price/month`, because an uppercase letter, a digit, a dot, or a space breaks the shape. A
-doubled sign escapes it: `$$price` is the text `$price`, with one `$` dropped and the rest
-read as written.
-
-LOC0113 is a warning because both translations load: each type shows the one its own
-section declares, so the same English text reads two ways across the application. It
-compares the last declaration each section makes, reads a `null` as the key text, and
-reports every section after the first whose translation differs, naming the section it
-differs from. Two sections can disagree on purpose, where a translation agrees in gender or
-number with the thing its type describes, which is why the rule stays below the default
-severity.
-
-LOC0112 covers the drift a rename opens: the runtime resolves translations by the owning
-type's full name, from a file's position and the sections inside it, so moving a folder,
-renaming a type, or misspelling a section leaves the translations stranded while every other
-check stays green. The rule reads through the runtime's own source, from the root down to the
-type, for every type the project declares and every culture its files carry, and reports
-whatever no read reached: a whole file when nothing in it is reached, a section when it names
-no type, or the entries outside any section in a file read for its sections alone. It reads each
-file under the name the build's own naming gives it, an explicit `LogicalName` included, together
-with the `.locale.json` the project embeds, and names generic and nested types as the
-runtime does. A file no path in force places is reported as well, and every report names the
-anchors the runtime places the file at.
-
-LOC0118 reads the same placement and reports two files of one source standing for one anchor
-in one culture: the runtime reads both, in the order of the paths that place them, so where
-the two share a key the file the later path reads wins without a word, and a file that was
-meant to be moved rather than copied keeps answering from where it was. Each file of the pair
-is reported, naming the other, since either may be the stray one. The rule reads a project's
-embedded files as one source and the host's folder as another: `.locales` at the project's
-root, where the runtime reads a host's files by default, in which a folder's file may sit in
-the folder's own `.locales` or directly in the folder, the two forms standing for one anchor.
-It is a warning because both files load; only a key the two share reads one way rather than
-the other.
-
-LOC0109 catches the silent case: `"Stored {stored}."` translated as `"…{stord}…"` renders
-`{stord}` literally. A name may be written as a brace hole or as a plural expression's
-bracketed argument, and the two are equivalent, so mixing them across a key and its
-translation is legal. Reordering or dropping a name is legal.
-
-### Call sites (LOC0200–LOC0299)
-
-| Code | Severity | Reports | Runtime |
-|------|----------|---------|---------|
-| LOC0201 | Error | An expression reads a name nothing supplies | counts as 0, silently |
-| LOC0202 | Error | The value count does not match the key's distinct holes | throws |
-| LOC0203 | Error | An expression naming no argument is given no value | throws |
-| LOC0204 | Error | A key carries a malformed expression | renders as written, silently |
-| LOC0205 | Warning | A plural expression omits `other` | renders nothing, silently |
-| LOC0206 | Warning | A project's Razor markup went unchecked | — |
-| LOC0208 | Error | A key writes text shaped like a hole the runtime cannot read | renders as written, silently |
-| LOC0209 | Warning | A key is not answered in a culture its type is translated for | renders untranslated, silently |
-| LOC0210 | Warning | A lookup writes its key as an expression | unchecked, whatever it reads |
-| LOC0211 | Warning | A key carries holes but no words anywhere else | works, but names no translation |
-| LOC0212 | Warning | An expression key carries no words in any field | works, but names no translation |
-| LOC0213 | Error | A lookup writes its key as an interpolated string with holes | the formatted text becomes the key, silently |
-| LOC0214 | Error | A lookup writes a key shaped like a reserved entry | falls back to the key, which no file can answer |
-| LOC0215 | Error | A lookup supplies string.Format's format text | throws once a translation names a hole |
-
-LOC0200 and LOC0207 are retired, and neither number is reused.
-
-LOC0215 catches a lookup that itself supplies the *format text* `string.Format` reads, not a
-value passed alongside one: the runtime already substitutes a lookup's values into its holes,
-so feeding the translated result back into `string.Format` reads it as a second, unrelated
-composite format string. A key shaped like `"Stored {0} of {1}."` survives that by accident,
-because a hole named `{0}` is also a valid .NET index; the same key written the way every
-other rule expects, `"Stored {stored} of {total}."`, throws `FormatException` the moment any
-culture is active, since `stored` is not a number `string.Format` can read. Which argument the
-lookup fills, not where it sits in the source, decides this — `string.Format(provider, L[key],
-value)` and a named argument that reorders them are both read correctly — and a bound
-compilation confirms the parameter directly; without one, only the lookup written as the
-unnamed, or explicitly `format`-named, first argument is certain.
-
-LOC0209 catches the drift a new string opens. Adding `L["Details columns"]` to a component
-whose `he` and `es` files already exist leaves both files behind, and nothing else notices:
-falling back to the key is exactly what an absent entry is defined to do, so the string
-renders in English and every other rule stays green.
-
-The type is read from the receiver's `IStringLocale<T>`, so the rule needs the semantic
-path; a lookup through the unbound `IStringLocale` names no type to check against. The rule
-asks the runtime's own walk what the type reads in each culture the project's files carry,
-whether from the type's own folder's file or from a section of a file higher up, and names that
-file by its path from the call site's folder. Only cultures the type already has translations in are checked, because a component
-with no translations at all is unlocalized rather than under-translated. One diagnostic is
-reported per key per culture, at the first call site writing it, so a key used in ten places
-reports twice and not twenty.
-
-Writing the key with a JSON `null` answers it:
-
-```json
-{
-  "$localization": "SchemaVersion: 1.0.0; Culture: he;",
-  "Email": null
-}
-```
-
-That is the runtime's own way of saying a key stays in the source language here, which
-`JsonResourceCache` reads as source text rather than a missing entry. A key whose right
-translation is the source text — a term the language borrows, an acronym, a brand, a symbol
-— is declared, not omitted.
-
-The escape hatch is not free: a null entry is *found*, and a found entry behaves differently
-from an absent one wherever a caller can tell the two apart:
-
-| | `"Email": null` | key absent |
-| --- | --- | --- |
-| `ResourceNotFound` | `false` | `true` |
-| `RequireMatchingLocalization` | passes | throws |
-| `GetAllStrings` | lists it | omits it |
-
-A key that has to read as genuinely missing cannot use `null` for that reason — it would pass
-checks meant to catch it — and the warning is the honest answer there instead.
-
-A parent culture answers for its children, because `JsonStringLocale` walks a culture up to
-its parents when it looks a key up. A `.locales/es-419.json` carrying only what differs from
-`.locales/es.json` is complete, and only a key neither file declares is reported.
-
-LOC0210 names what the other rules could not see. `L[column.ToString()]` reads a key only
-the run knows, so no rule can judge it and no coverage check can count it — leaving it
-silent would let a run read as complete when part of it was never looked at. It mirrors
-LOC0206, which says the same about Razor markup that produced no generated C#.
-
-A key written as a constant is not a blind spot, because the compiler folds it:
-
-```csharp
-private const string Retry = "Try again";
-
-L[Retry]                  // read as "Try again", checked like a literal
-L["Try " + "again"]       // folded too
-L[column.ToString()]      // LOC0210
-```
-
-A folded key is a real call site, so every rule reads it and LOC0209 expects a translation
-for it. Only the semantic path folds, since the syntactic one has no compiler to ask.
-
-A lookup inside a type that implements `IStringLocale` is left alone. Such a type forwards
-the key its own caller wrote rather than writing one, so `_inner[name]` in a decorator or a
-test stub is not a blind spot — the key belongs to whoever called it.
-
-LOC0211 and LOC0212 catch a key with nothing for a translator to read. A key made only of
-holes and punctuation, such as `"{count} / {total}"`, and a plural expression whose fields
-carry only `#`, such as `"[$ plural; other: #; $]"`, both format a value rather than say
-anything, so `$"{count} / {total}"` or `count.ToString("N0", culture)` replaces the lookup
-outright — there is no locale file entry for either rule to expect, because there is no
-prose to translate. A field or a literal run carrying a single letter is enough to clear
-either rule, so `"{count} files"` and `"[$ plural; one: # file; other: # files; $]"` are left
-alone. A localization file cannot rescue such a key either: `null` marks a key whose
-translation is deliberately the source text, and there is no source text here to mark, only a
-value with nowhere to put it.
-
-Values pair to the key's distinct holes by position, in the order the holes first appear,
-and a plural expression's bracketed argument names a value the same way a brace hole does:
-
-```csharp
-L["Stored {stored} of {total}.", written, allowed]        // right: one value per distinct hole
-L["Stored {stored} of {total}.", written]                 // LOC0202: two holes, one value
-L["Stored {stored} of {total}.", written, allowed, size]  // LOC0202: two holes, three values
-L["Stored {total} of {total}.", total]                    // right: a repeated hole counts once
-L["Saved."]                                               // right: no holes, no values
-L[$"Stored {stored} of {total}."]                         // LOC0213: the key is interpolated
-```
-
-LOC0213 catches the key that never reaches the runtime as written: an interpolated string
-formats before the lookup, so the runtime receives the formatted text as the key, which no
-translation is keyed by. An interpolated string with no holes folds to a constant on the
-semantic path and is checked like a literal, and a key composed inside a type that
-implements `IStringLocale` is left alone, as under LOC0210.
-
-### Where a rule stays silent
-
-Silence below is the rule working. A false positive in a build gate blocks correct code,
-so a rule fires only where the failure is certain.
-
-Reporting these would flag code that is right:
-
-- **A hole repeated twice counts once.** `"{n} of {n}"` takes one value, because that is
-  how the runtime pairs them. Counting it twice would report every correct call.
-- **A hole no value fills renders as written.** `Resolve` returns a pattern with its holes
-  still open for the caller to fill, so an unfilled hole is the feature, not a mistake.
-- **A `$` that does not spell one lowercase word is prose.** `$`, `$ per month`, `$5 off`,
-  `$USD`, `$camelCase`, and `$price/month` render as written and were meant to, and `$$price`
-  is the escaped text `$price`. LOC0116 and LOC0214 take `$import`, whose shape could only
-  have been a reserved name.
-- **Text shaped like a hole, containing a space, is prose.** `{ color: red }`, `{ }` and
-  `{colour, red}` render as written and were meant to. LOC0110 and LOC0208 take the other
-  half, where the text could only have been a hole: `{0}`, `{a.b}`, and `{stored,x}`, whose
-  name the runtime reads but whose alignment is not a number, so the hole goes unread.
-
-Nothing at the call site decides these, so there is nothing to judge:
-
-- **A values collection passed whole.** `object?[]` into `params ReadOnlySpan<object?>`
-  converts, so the items arrive as the values and their count is whatever the collection
-  holds at run time. An `int[]` in the same position cannot convert and arrives as one
-  boxed value, which is why that one *is* counted.
-- **An overload nothing resolved.** Only the syntactic path reaches this, and only when
-  the compilation did not bind the call. Build with the references in place and the
-  semantic path takes over.
-- **A result string.Format never sees directly.** LOC0215 reads the lookup's own syntax, so
-  a result stored in a variable and formatted later, or passed through a method, is beyond
-  it; only a lookup written straight into the argument list is certain.
-- **A value passed alongside the format text.** `string.Format("Found {0}.", L[key])` and
-  `string.Format(arg0: L[key], format: "Found {0}.")` both use the lookup as an ordinary
-  value, not as the format text a translation could collide with, so LOC0215 leaves them be.
-- **A locale file the run did not name.** LOC0112 and LOC0209 both read the files a
-  project owns, so linting a lone `.razor` file checks its call sites and nothing else.
-  Point `--path` at the project, the solution, or a folder to get them.
-- **A file the project does not embed.** A host's own `.locales` folder, copied beside the
-  application, translates other assemblies' types, which the runtime reads from that folder
-  rather than from the assembly. LOC0112 and LOC0209 read the files a project's own
-  `EmbeddedResource` items embed, whatever folder they sit in, so a root `.locales` folder a
-  library embeds is read and a host's copied one is not; the file rules still read every file,
-  and LOC0118 reads the host's `.locales` folder at the project's root as a source of its own.
+LOC0114, LOC0200 and LOC0207 are retired, and no number is reused.
 
 ## Contributing
 
@@ -491,28 +205,25 @@ Nothing at the call site decides these, so there is nothing to judge:
 
 ### Adding a rule
 
-1. Add a `LintingCode` to `Diagnostics/LintingCodes.cs` and to its `All` list, numbered
-   under 100 for the linting configuration, in the 100s for a file rule, or in the 200s
-   for a call-site rule.
-2. Implement `ILocalizationFileRuleChecker` or `ICallSiteRuleChecker` under
-   `Rules/Files/` or `Rules/Sources/`. Expose the code through `Code` and report through
-   the context, which owns the position.
-3. Register it in `Program.cs`.
-4. Register it in the matching test factory under `tests/…/Support/`.
+1. Add a `LintingCode` to `Diagnostics/LintingCodes.cs` and to its `All` list, numbered under
+   100 for the linting configuration, in the 100s for a file rule, or in the 200s for a
+   call-site rule.
+2. Implement `ILocalizationFileRuleChecker` or `ICallSiteRuleChecker` under `Rules/Files/` or
+   `Rules/Sources/`, or a linter over a project's files under `Sources/`. Expose the code
+   through `Code` and report through the context, which owns the position.
+3. Register it in `Program.cs`, and in the matching test factory under `tests/…/Support/`.
+4. Write its entry in `docs/rules.md` and its row in the table above.
 
-`LintCodesTests` fails if a rule reports under a code missing from the catalogue, if two
-codes share an id, if two rules in the same family report under the same code, or if a
-rule reports outside its family's range. The range rule means the same idea checked on
-both sides of a call — a key and a translation, say — needs two codes, one per family, as
-`LocalizedTextHoleShapedText` (LOC0110) and `HoleShapedText` (LOC0208) show. A rule that
-needs to report two different things is two rules regardless of family.
+`LintCodesTests` fails if a rule reports under a code missing from the catalogue, if two codes
+share an id, if two rules in the same family report under the same code, or if a rule reports
+outside its family's range. The range rule means the same idea checked on both sides of a call
+needs two codes, one per family, as LOC0110 and LOC0208 show. A rule that needs to report two
+different things is two rules regardless of family.
 
 `HoleNames` reads the names a format refers to its values by, and matches the runtime's
-`LocalizedFormat.Names`. Use it rather than scanning for braces; a plural expression names
-its argument in brackets, and escaped braces are literal text.
-
-A rule that depends on how values reach the call site should read
-`context.Site.Arguments` and return when it is `Unknown`.
+`LocalizedFormat.Names`. Use it rather than scanning for braces; a plural expression names its
+argument in brackets, and escaped braces are literal text. A rule that depends on how values
+reach the call site reads `context.Site.Arguments` and returns when it is `Unknown`.
 
 ### Build and test
 
@@ -522,22 +233,20 @@ dotnet test tests/Forma.Locali.Tests
 dotnet format Forma.Locali.slnx --verify-no-changes
 ```
 
-`SourceLinterTestFactory.Lint` compiles a class body against the real
-`IStringLocale` and returns what the call-site rules report, so a rule can be tested
-against a bound compilation rather than a stub.
+`SourceLinterTestFactory.Lint` compiles a class body against the real `IStringLocale` and
+returns what the call-site rules report, so a rule is tested against a bound compilation rather
+than a stub. Run a new rule over the sibling Forma repository before trusting it; it lints
+clean, so anything a rule reports there is a false positive. It does not cover every shape a
+call site can take — nothing there passes a values collection whole — so those belong in unit
+tests.
 
-Run a new rule over the sibling Forma repository's `src/Forma.Blazor` and
-`src/Forma.Blazor.Showcase` before trusting it; both lint clean, so anything it
-reports there is a false positive. They do not cover every shape a call site can take —
-nothing there passes a values collection whole — so those belong in unit tests.
-
-## Roslyn is loaded from the SDK
+### Roslyn is loaded from the SDK
 
 This part is a workaround, and nothing above depends on understanding it.
 
 Roslyn refuses to load a generator built against a newer compiler than the host, reporting
-`ReferencesNewerCompiler` and returning no generators at all. The Razor generator ships
-inside the SDK and is built against the SDK's Roslyn, which is ahead of anything published:
+`ReferencesNewerCompiler` and returning no generators at all. The Razor generator ships inside
+the SDK and is built against the SDK's Roslyn, which is ahead of anything published:
 
 | | Version |
 |---|---|
@@ -545,40 +254,23 @@ inside the SDK and is built against the SDK's Roslyn, which is ahead of anything
 | Newest `Microsoft.CodeAnalysis.CSharp` on nuget.org | 5.6.0 |
 
 So the linter cannot load the generator using the packages it compiles against, and
-`GetSourceGeneratedDocumentsAsync` returns nothing for Razor. What closes the gap is that
-the SDK also carries a complete, version-matched Roslyn — compiler, workspaces and
+`GetSourceGeneratedDocumentsAsync` returns nothing for Razor. What closes the gap is that the SDK
+also carries a complete, version-matched Roslyn — compiler, workspaces and
 `Workspaces.MSBuild` — under `DotnetTools`, shipped for `dotnet format` and `dotnet watch`.
 
 `SdkRoslyn` binds to that copy from a `[ModuleInitializer]`, since resolution has to be
 registered before the first Roslyn type loads, which is earlier than `Main`. The three
-`Microsoft.CodeAnalysis.*` packages carry `ExcludeAssets="runtime"` so their assemblies
-stay reference-only and cannot shadow the SDK's at run time.
+`Microsoft.CodeAnalysis.*` packages carry `ExcludeAssets="runtime"` so their assemblies stay
+reference-only and cannot shadow the SDK's at run time. Redirecting only part of the stack does
+not work: a 5.6.0 `Workspaces` on a 5.9.0 compiler throws `TypeLoadException` on members added
+in the newer version. It is all or nothing.
 
-Redirecting only part of the stack does not work: a 5.6.0 `Workspaces` on a 5.9.0 compiler
-throws `TypeLoadException` on members added in the newer version. It is all or nothing.
+When Roslyn cannot be bound, the linter stops with exit code 2 and explains what it looked for.
+It cannot degrade: `ExcludeAssets="runtime"` keeps the published assemblies out of the output,
+so if the SDK's are not found there is no Roslyn to run on at all. Failing at startup is what
+keeps that from surfacing as an unrelated `FileNotFoundException` several frames later.
 
-### When Roslyn cannot be bound
-
-The linter stops with exit code 2 and explains what it looked for. It cannot degrade:
-`ExcludeAssets="runtime"` keeps the published assemblies out of the output, so if the
-SDK's are not found there is no Roslyn to run on at all. Failing at startup is what keeps
-that from surfacing as an unrelated `FileNotFoundException` several frames later.
-
-### Removing it
-
-`DotnetTools` is an SDK implementation detail, not a documented redistribution point, so
-this should not outlive the version gap. Once a Roslyn at or above the SDK's is on
-nuget.org:
-
-1. Raise the three `Microsoft.CodeAnalysis.*` versions.
-2. Drop their `ExcludeAssets="runtime"`.
-3. Delete `Projects/SdkRoslyn.cs`, and register MSBuild in `MSBuildProjectLoader` again.
-
-Nothing else depends on it, and the startup failure above stays either way.
-
-## License
-
-Source-available under the [Locali Community License](LICENSE.md), free for an individual or
-a small, low-revenue organization; see [COMMERCIAL.md](COMMERCIAL.md) for eligibility and
-pricing beyond that, and the [Commercial License Agreement](COMMERCIAL-LICENSE.md) for the
-terms paid use is governed by.
+`DotnetTools` is an SDK implementation detail, not a documented redistribution point, so this
+should not outlive the version gap. Once a Roslyn at or above the SDK's is on nuget.org, raise
+the three `Microsoft.CodeAnalysis.*` versions, drop their `ExcludeAssets="runtime"`, delete
+`Projects/SdkRoslyn.cs`, and register MSBuild in `MSBuildProjectLoader` again.

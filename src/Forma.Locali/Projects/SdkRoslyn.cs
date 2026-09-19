@@ -35,7 +35,7 @@ internal static class SdkRoslyn
                  Microsoft.CodeAnalysis packages are older than that generator, so the linter binds to the
                  Roslyn the SDK itself ships. None was found: no '{Workspaces}' under
                  '{string.Join("' or '", Tools)}' in '{Path.Combine(sdk ?? "<no SDK located>", "DotnetTools")}'.
-                 See 'Razor call sites' in the linter's README.
+                 See 'Roslyn is loaded from the SDK' in the linter's README.
                  """;
 
             return;
