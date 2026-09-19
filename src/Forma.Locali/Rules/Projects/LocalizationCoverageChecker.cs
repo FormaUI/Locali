@@ -1,29 +1,36 @@
-namespace Forma.Locali.Sources;
+namespace Forma.Locali.Rules.Projects;
 
 using System.Globalization;
 
 using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
+using Forma.Locali.Sources;
 
 /// <summary>
 /// Checks that a key written in source is answered in every culture its type is already translated for. A new key
 /// added to a component whose translations exist otherwise passes every check while rendering in the source
 /// language, because falling back to the key is what an absent entry is supposed to do.
 /// </summary>
-public sealed class LocalizationCoverageLinter : ILocalizationCoverageLinter
+public sealed class LocalizationCoverageChecker : IProjectRuleChecker
 {
     /// <inheritdoc />
-    public IReadOnlyList<LintingDiagnostic> Lint(ProjectLocalization localization, IReadOnlyList<LocalizerLookup> callSites)
-    {
-        ArgumentNullException.ThrowIfNull(localization);
-        ArgumentNullException.ThrowIfNull(callSites);
+    public LintingCode Code
+        => LintingCodes.MissingLocalization;
 
-        var diagnostics = new List<LintingDiagnostic>();
+    /// <inheritdoc />
+    public void Check(ProjectContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        if (context.Localization is not { } localization)
+        {
+            return;
+        }
 
         // A key written at several sites is reported once per culture it is missing from, at the first site.
         var seen = new HashSet<(string Key, string TypeName, string CultureName)>();
 
-        foreach (var site in Ordered(callSites))
+        foreach (var site in Ordered(context.CallSites))
         {
             if (site.ResourceType is not { } resource)
             {
@@ -48,17 +55,12 @@ public sealed class LocalizationCoverageLinter : ILocalizationCoverageLinter
                     ? FormatFilePath(site.Key.Location.Path, file.Path)
                     : entries[^1].FileName;
 
-                diagnostics.Add(new LintingDiagnostic(
-                    site.Key.Location.Path,
-                    site.Key.Location.StartLinePosition.Line + 1,
-                    site.Key.Location.StartLinePosition.Character + 1 + site.Key.TextOffset,
-                    LintingCodes.MissingLocalization.DefaultSeverity,
-                    LintingCodes.MissingLocalization,
-                    $"'{site.Key.Text}' has no entry in '{filePath}', which translates '{typeName}' for '{culture.Name}', so it renders in the source language there."));
+                context.Report(
+                    Code,
+                    site,
+                    $"'{site.Key.Text}' has no entry in '{filePath}', which translates '{typeName}' for '{culture.Name}', so it renders in the source language there.");
             }
         }
-
-        return diagnostics;
     }
 
     // Every culture's file can carry the same name, so a file is named by where it sits from the call site's folder.

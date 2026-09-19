@@ -7,6 +7,7 @@ using Forma.Locali.Projects;
 using Forma.Locali.Reporting;
 using Forma.Locali.Rules;
 using Forma.Locali.Rules.Files;
+using Forma.Locali.Rules.Projects;
 using Forma.Locali.Rules.Sources;
 using Forma.Locali.Sources;
 
@@ -109,12 +110,15 @@ internal static class Program
         builder.Services.AddSingleton<ICallSiteRuleChecker, ReservedLookupShapeChecker>();
         builder.Services.AddSingleton<ICallSiteRuleChecker, ReformattedLookupChecker>();
 
+        builder.Services.AddSingleton<IProjectRuleChecker, LocaleConfigPlacementChecker>();
+        builder.Services.AddSingleton<IProjectRuleChecker, UnreachableLocalizationChecker>();
+        builder.Services.AddSingleton<IProjectRuleChecker, LocalizationCoverageChecker>();
+        builder.Services.AddSingleton<IProjectRuleChecker, DuplicateAnchorFileChecker>();
+        builder.Services.AddSingleton<IProjectRuleChecker, TypeNamedFolderChecker>();
+
         builder.Services.AddSingleton<ISchemaLinter, SchemaLinter>();
         builder.Services.AddSingleton<ISourceLinter, SourceLinter>();
-        builder.Services.AddSingleton<IReachabilityLinter, ReachabilityLinter>();
-        builder.Services.AddSingleton<ILocalizationCoverageLinter, LocalizationCoverageLinter>();
-        builder.Services.AddSingleton<IDuplicateAnchorFileLinter, DuplicateAnchorFileLinter>();
-        builder.Services.AddSingleton<ITypeNamedFolderLinter, TypeNamedFolderLinter>();
+        builder.Services.AddSingleton<IProjectLinter, ProjectLinter>();
         builder.Services.AddSingleton<ILintingService, LintingService>();
 
         builder.Services.AddSingleton<IDiagnosticReporter>(_ => new ConsoleDiagnosticReporter(Console.Out));

@@ -1,8 +1,9 @@
-namespace Forma.Locali.Tests.Sources;
+namespace Forma.Locali.Tests.Rules.Projects;
 
 using Forma.Locali.Projects;
+using Forma.Locali.Rules.Projects;
 
-public sealed class LocalizationCoverageLinterTests
+public sealed class LocalizationCoverageCheckerTests
 {
     private static readonly string HebrewFile = Path.Combine("Widget", ".locales", "he.json");
     private static readonly string SpanishFile = Path.Combine("Widget", ".locales", "es.json");
@@ -253,6 +254,6 @@ public sealed class LocalizationCoverageLinterTests
             .Lint(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)])
             .CallSites;
 
-        return ValueTask.FromResult(new LocalizationCoverageLinter().Lint(ProjectLocaleFiles.Resolve(project, localizationFiles)!, sites));
+        return ValueTask.FromResult(ProjectLinterTestFactory.Check(new LocalizationCoverageChecker(), project, localizationFiles, sites));
     }
 }

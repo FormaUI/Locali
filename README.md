@@ -202,24 +202,26 @@ LOC0114, LOC0200 and LOC0207 are retired, and no number is reused.
 | `Rules/` | Rule contracts, rule contexts, shared hole-name reading |
 | `Rules/Files/` | Rules over a locale file |
 | `Rules/Sources/` | Rules over a call site |
-| `Sources/` | Finding call sites, and the rules that read a project's locale files whole |
+| `Rules/Projects/` | Rules over a project's locale files read whole |
+| `Sources/` | Finding call sites, and resolving a project's locale files for the project rules |
 
 ### Adding a rule
 
 1. Add a `LintingCode` to `Diagnostics/LintingCodes.cs` and to its `All` list, numbered under
    100 for the linting configuration, in the 100s for a file rule, or in the 200s for a
-   call-site rule.
-2. Implement `ILocalizationFileRuleChecker` or `ICallSiteRuleChecker` under `Rules/Files/` or
-   `Rules/Sources/`, or a linter over a project's files under `Sources/`. Expose the code
-   through `Code` and report through the context, which owns the position.
+   call-site rule; a project rule is numbered for what it reports about, a config file, a locale
+   file, or a call site.
+2. Implement `ILocalizationFileRuleChecker`, `ICallSiteRuleChecker`, or `IProjectRuleChecker`
+   under `Rules/Files/`, `Rules/Sources/`, or `Rules/Projects/`. Expose the code through `Code`
+   and report through the context, which owns the position.
 3. Register it in `Program.cs`, and in the matching test factory under `tests/…/Support/`.
 4. Write its entry in `docs/rules.md` and its row in the table above.
 
 `LintCodesTests` fails if a rule reports under a code missing from the catalogue, if two codes
-share an id, if two rules in the same family report under the same code, or if a rule reports
-outside its family's range. The range rule means the same idea checked on both sides of a call
-needs two codes, one per family, as LOC0110 and LOC0208 show. A rule that needs to report two
-different things is two rules regardless of family.
+share an id, if two rules in the same family report under the same code, or if a file or
+call-site rule reports outside its family's range. The range rule means the same idea checked on
+both sides of a call needs two codes, one per family, as LOC0110 and LOC0208 show. A rule that
+needs to report two different things is two rules regardless of family.
 
 `HoleNames` reads the names a format refers to its values by, and matches the runtime's
 `LocalizedFormat.Names`. Use it rather than scanning for braces; a plural expression names its

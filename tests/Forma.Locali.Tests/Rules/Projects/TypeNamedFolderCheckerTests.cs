@@ -1,8 +1,9 @@
-namespace Forma.Locali.Tests.Sources;
+namespace Forma.Locali.Tests.Rules.Projects;
 
 using Forma.Locali.Projects;
+using Forma.Locali.Rules.Projects;
 
-public sealed class TypeNamedFolderLinterTests
+public sealed class TypeNamedFolderCheckerTests
 {
     private const string Widget = """
         namespace Scratch.Components;
@@ -60,6 +61,6 @@ public sealed class TypeNamedFolderLinterTests
     {
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(source), false, false);
 
-        return new TypeNamedFolderLinter().Lint(ProjectLocaleFiles.Resolve(project, files)!);
+        return ProjectLinterTestFactory.Check(new TypeNamedFolderChecker(), project, files);
     }
 }

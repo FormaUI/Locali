@@ -40,6 +40,26 @@ public sealed class LintingCodesTests
     }
 
     [Fact]
+    public void Should_catalogue_the_code_every_shipped_project_rule_reports_under()
+    {
+        // Act
+        var codes = ProjectLinterTestFactory.Checkers().Select(checker => checker.Code);
+
+        // Assert
+        Assert.All(codes, code => Assert.Contains(code, LintingCodes.All));
+    }
+
+    [Fact]
+    public void Should_let_no_two_project_rules_report_under_the_same_code()
+    {
+        // Act
+        var codes = ProjectLinterTestFactory.Checkers().Select(checker => checker.Code).ToArray();
+
+        // Assert
+        Assert.Equal(codes.Length, codes.Distinct().Count());
+    }
+
+    [Fact]
     public void Should_let_no_two_file_rules_report_under_the_same_code()
     {
         // Act

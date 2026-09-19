@@ -1,8 +1,9 @@
-namespace Forma.Locali.Tests.Sources;
+namespace Forma.Locali.Tests.Rules.Projects;
 
 using Forma.Locali.Projects;
+using Forma.Locali.Rules.Projects;
 
-public sealed class ReachabilityLinterTests
+public sealed class UnreachableLocalizationCheckerTests
 {
     private const string Widget = """
         namespace Scratch.Components;
@@ -202,7 +203,7 @@ public sealed class ReachabilityLinterTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false, "Forma.Framework");
 
         // Act
-        var diagnostics = new ReachabilityLinter().Lint(ProjectLocaleFiles.Resolve(project, [file])!);
+        var diagnostics = ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), project, [file]);
 
         // Assert
         Assert.Empty(diagnostics);
@@ -245,6 +246,6 @@ public sealed class ReachabilityLinterTests
     {
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(source), false, false, EmbeddedResourceNames: resourceNames);
 
-        return new ReachabilityLinter().Lint(ProjectLocaleFiles.Resolve(project, files)!);
+        return ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), project, files);
     }
 }

@@ -39,7 +39,7 @@ Forma.Locali.slnx
 ## Rules
 
 - Do treat a false positive as the worst defect a rule can have: the linter runs in build gates, so a rule fires only where the failure is certain, and the README's *Where a rule stays silent* section is binding.
-- Do follow the README's *Adding a rule* steps exactly — code in the catalogue and its `All` list, checker under `Rules/Files/` or `Rules/Sources/`, registration in `Program.cs`, registration in the matching test factory — because `LintCodesTests` enforces the catalogue and the family ranges.
+- Do follow the README's *Adding a rule* steps exactly — code in the catalogue and its `All` list, checker under `Rules/Files/`, `Rules/Sources/`, or `Rules/Projects/`, registration in `Program.cs`, registration in the matching test factory — because `LintCodesTests` enforces the catalogue and the family ranges.
 - Do run a new rule over the sibling Forma repository's `src` before trusting it; the tree lints clean, so anything a new rule reports there is a false positive.
 - Do write a diagnostic message as one sentence saying what is wrong and what the runtime does about it, matching the voice of the existing messages.
 - Don't widen an existing rule and its message in one change without re-reading the README's table row for it; the row states what the rule reports and drifts silently.

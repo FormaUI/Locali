@@ -1,6 +1,8 @@
-namespace Forma.Locali.Tests.Sources;
+namespace Forma.Locali.Tests.Rules.Projects;
 
-public sealed class DuplicateAnchorFileLinterTests
+using Forma.Locali.Rules.Projects;
+
+public sealed class DuplicateAnchorFileCheckerTests
 {
     [Fact]
     public void Should_report_each_file_of_a_pair_standing_for_one_anchor()
@@ -10,7 +12,7 @@ public sealed class DuplicateAnchorFileLinterTests
         var second = new PlacedLocaleFile(@"C:\Scratch\Components\Widget.he.json", "he", ["Scratch.Components.Widget"]);
 
         // Act
-        var diagnostics = new DuplicateAnchorFileLinter().Lint([first, second]);
+        var diagnostics = ProjectLinterTestFactory.Check(new DuplicateAnchorFileChecker(), [first, second]);
 
         // Assert
         Assert.Multiple(
@@ -29,7 +31,7 @@ public sealed class DuplicateAnchorFileLinterTests
         var second = new PlacedLocaleFile(@"C:\Scratch\Components\.locales\es.json", "es", ["Scratch.Components"]);
 
         // Act
-        var diagnostics = new DuplicateAnchorFileLinter().Lint([first, second]);
+        var diagnostics = ProjectLinterTestFactory.Check(new DuplicateAnchorFileChecker(), [first, second]);
 
         // Assert
         Assert.Empty(diagnostics);
@@ -43,7 +45,7 @@ public sealed class DuplicateAnchorFileLinterTests
         var second = new PlacedLocaleFile(@"C:\Scratch\Components\Widget\.locales\he.json", "he", ["Scratch.Components.Widget"]);
 
         // Act
-        var diagnostics = new DuplicateAnchorFileLinter().Lint([first, second]);
+        var diagnostics = ProjectLinterTestFactory.Check(new DuplicateAnchorFileChecker(), [first, second]);
 
         // Assert
         Assert.Empty(diagnostics);
@@ -56,7 +58,7 @@ public sealed class DuplicateAnchorFileLinterTests
         var file = new PlacedLocaleFile(@"C:\Scratch\Components\.locales\he.json", "he", ["Scratch.Components", "Contoso.Components"]);
 
         // Act
-        var diagnostics = new DuplicateAnchorFileLinter().Lint([file]);
+        var diagnostics = ProjectLinterTestFactory.Check(new DuplicateAnchorFileChecker(), [file]);
 
         // Assert
         Assert.Empty(diagnostics);
@@ -71,7 +73,7 @@ public sealed class DuplicateAnchorFileLinterTests
         var third = new PlacedLocaleFile(@"C:\Scratch\Strings\Components.he.json", "he", ["Scratch.Components"]);
 
         // Act
-        var diagnostics = new DuplicateAnchorFileLinter().Lint([first, second, third]);
+        var diagnostics = ProjectLinterTestFactory.Check(new DuplicateAnchorFileChecker(), [first, second, third]);
 
         // Assert
         Assert.Multiple(

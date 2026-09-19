@@ -20,9 +20,10 @@ Every fake, factory, and fixture lives under `tests/Forma.Locali.Tests/Support/`
 
 - Do build translation-file fixtures from `LocalizationFileFakeData` and read them through `LocalizationDocumentTestFactory` rather than inlining JSON, except where the malformation under test *is* the content.
 - Do test a call-site rule through `SourceLinterTestFactory.Lint`, which compiles a class body against the real `IStringLocale` and runs the shipped checkers over the bound compilation; a rule tested against a stub proves nothing about how the semantic finder feeds it.
+- Do test a project rule through `ProjectLinterTestFactory.Check`, which resolves a project's files as the linter does and runs the one rule over them, or over placed files read as the host's folder.
 - Do use `CompilationTestFactory.Unreferenced` for the syntactic path and `Referenced` for the semantic one.
 - Do write on-disk fixtures through `TempDirectory`, which cleans up after the test.
-- Do register a new checker in the matching test factory — `SourceLinterTestFactory.Checkers()` or `SchemaLinterTestFactory` — as well as in `Program.cs`; `LintCodesTests` enforces the catalogue, unique codes, and family ranges over whatever the factories return.
+- Do register a new checker in the matching test factory — `SchemaLinterTestFactory`, `SourceLinterTestFactory.Checkers()`, or `ProjectLinterTestFactory.Checkers()` — as well as in `Program.cs`; `LintCodesTests` enforces the catalogue, unique codes, and family ranges over whatever the factories return.
 - Don't reach into the sibling Forma repository for test support; this project carries its own.
 
 ## What the unit suite cannot see

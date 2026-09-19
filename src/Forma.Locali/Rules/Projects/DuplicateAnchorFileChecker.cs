@@ -1,17 +1,31 @@
-namespace Forma.Locali.Sources;
+namespace Forma.Locali.Rules.Projects;
 
 using Forma.Locali.Diagnostics;
+using Forma.Locali.Sources;
 
 /// <summary>Checks that no two files of one source stand for one anchor in one culture.</summary>
-public sealed class DuplicateAnchorFileLinter : IDuplicateAnchorFileLinter
+public sealed class DuplicateAnchorFileChecker : IProjectRuleChecker
 {
     /// <inheritdoc />
-    public IReadOnlyList<LintingDiagnostic> Lint(IReadOnlyList<PlacedLocaleFile> files)
+    public LintingCode Code
+        => LintingCodes.DuplicateAnchorFile;
+
+    /// <inheritdoc />
+    public void Check(ProjectContext context)
     {
-        ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(context);
 
-        var diagnostics = new List<LintingDiagnostic>();
+        // The host's folder is a source of its own, checked first because placing the embedded files can meet a config the runtime refuses.
+        Check(context, context.HostFiles);
 
+        if (context.Localization is { } localization)
+        {
+            Check(context, localization.GetPlacedFiles());
+        }
+    }
+
+    private void Check(ProjectContext context, IReadOnlyList<PlacedLocaleFile> files)
+    {
         // A file placed at several anchors takes part at each of them, and is reported once per anchor it shares.
         var placements = files
             .SelectMany(file => file.AnchorNames.Select(anchorName => (file, anchorName)))
@@ -29,16 +43,11 @@ public sealed class DuplicateAnchorFileLinter : IDuplicateAnchorFileLinter
             foreach (var file in sharing)
             {
                 var others = string.Join(" and ", sharing.Where(other => other != file).Select(other => $"'{other.Path}'"));
-                diagnostics.Add(new LintingDiagnostic(
+                context.Report(
+                    Code,
                     file.Path,
-                    1,
-                    1,
-                    LintingCodes.DuplicateAnchorFile.DefaultSeverity,
-                    LintingCodes.DuplicateAnchorFile,
-                    $"This file and {others} both stand for '{anchorName}' in '{cultureName}', so both are read and, where they share a key, the file the later path reads wins."));
+                    $"This file and {others} both stand for '{anchorName}' in '{cultureName}', so both are read and, where they share a key, the file the later path reads wins.");
             }
         }
-
-        return diagnostics;
     }
 }

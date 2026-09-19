@@ -2,7 +2,6 @@ namespace Forma.Locali.Linting;
 
 using System.Collections.Concurrent;
 
-using Forma.Framework.Localization.Files;
 using Forma.Locali.Cli;
 using Forma.Locali.Configuration;
 using Forma.Locali.Diagnostics;
@@ -17,10 +16,7 @@ using Microsoft.Extensions.Options;
 /// <param name="loader">Loads the projects the source files belong to.</param>
 /// <param name="localizationFileLinter">Checks one localization file.</param>
 /// <param name="sourcesLinter">Checks the keys written at call sites.</param>
-/// <param name="reachabilityLinter">Checks that a project's locale files can still be found by type.</param>
-/// <param name="coverageLinter">Checks that a project's keys are answered by the locale files it owns.</param>
-/// <param name="duplicateLinter">Checks that no two files of one source stand for one anchor.</param>
-/// <param name="typeFolderLinter">Checks that no folder of a project's locale files is named for a type.</param>
+/// <param name="projectLinter">Checks a project's locale files read whole.</param>
 /// <param name="lintingConfiguration">What the linting configuration's <c>.locali.json</c> files leave out.</param>
 public sealed class LintingService(
     IOptions<LinterOptions> options,
@@ -28,10 +24,7 @@ public sealed class LintingService(
     IProjectLoader loader,
     ILocalizationFileLinter localizationFileLinter,
     ISourceLinter sourcesLinter,
-    IReachabilityLinter reachabilityLinter,
-    ILocalizationCoverageLinter coverageLinter,
-    IDuplicateAnchorFileLinter duplicateLinter,
-    ITypeNamedFolderLinter typeFolderLinter,
+    IProjectLinter projectLinter,
     ILintingConfiguration lintingConfiguration) : ILintingService
 {
     private static readonly IReadOnlySet<LintingCode> NoConfigIgnores = new HashSet<LintingCode>();
@@ -41,10 +34,7 @@ public sealed class LintingService(
     private readonly IProjectLoader _loader = loader ?? throw new ArgumentNullException(nameof(loader));
     private readonly ILocalizationFileLinter _linter = localizationFileLinter ?? throw new ArgumentNullException(nameof(localizationFileLinter));
     private readonly ISourceLinter _sources = sourcesLinter ?? throw new ArgumentNullException(nameof(sourcesLinter));
-    private readonly IReachabilityLinter _reachability = reachabilityLinter ?? throw new ArgumentNullException(nameof(reachabilityLinter));
-    private readonly ILocalizationCoverageLinter _coverage = coverageLinter ?? throw new ArgumentNullException(nameof(coverageLinter));
-    private readonly IDuplicateAnchorFileLinter _duplicates = duplicateLinter ?? throw new ArgumentNullException(nameof(duplicateLinter));
-    private readonly ITypeNamedFolderLinter _typeFolders = typeFolderLinter ?? throw new ArgumentNullException(nameof(typeFolderLinter));
+    private readonly IProjectLinter _projects = projectLinter ?? throw new ArgumentNullException(nameof(projectLinter));
     private readonly ILintingConfiguration _lintingConfiguration = lintingConfiguration ?? throw new ArgumentNullException(nameof(lintingConfiguration));
 
     /// <inheritdoc />
@@ -127,57 +117,9 @@ public sealed class LintingService(
         {
             var sources = _sources.Lint(project, wanted, cancellationToken);
             diagnostics.AddRange(sources.Diagnostics);
-            var localizationFiles = target.LocalizationFilesOf(project.Path);
-            diagnostics.AddRange(LintConfigPlacement(project, localizationFiles));
-
-            // The rules over a project's locale files read the same resolution, so it is made once.
-            if (ProjectLocaleFiles.Resolve(project, localizationFiles) is { } localization)
-            {
-                try
-                {
-                    diagnostics.AddRange(_reachability.Lint(localization));
-                    diagnostics.AddRange(_coverage.Lint(localization, sources.CallSites));
-                    diagnostics.AddRange(_duplicates.Lint(localization.GetPlacedFiles()));
-                    diagnostics.AddRange(_typeFolders.Lint(localization));
-                }
-                catch (LocaleConfigException exception)
-                {
-                    // The runtime refuses every lookup in an assembly whose embedded config it cannot place, so none of its translations can be judged.
-                    diagnostics.Add(new LintingDiagnostic(project.Path, 1, 1, LintingCodes.MalformedLocaleConfig.DefaultSeverity, LintingCodes.MalformedLocaleConfig, exception.Message));
-                }
-            }
-
-            // The host's folder is a source of its own, read after the assembly's, and its two forms of a folder's file stand for one anchor.
-            diagnostics.AddRange(_duplicates.Lint(HostLocaleFiles.Resolve(project, localizationFiles)));
+            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), sources.CallSites));
         }
 
         return diagnostics;
     }
-
-    // An assembly's config file is embedded at its project's root; the runtime reads one embedded elsewhere as the assembly's all the same, and one in a host's folder not at all.
-    private static IEnumerable<LintingDiagnostic> LintConfigPlacement(LoadedProject project, IReadOnlyList<string> localizationFiles)
-    {
-        var projectFolder = Path.GetDirectoryName(Path.GetFullPath(project.Path))!;
-
-        foreach (var file in localizationFiles)
-        {
-            var fullPath = Path.GetFullPath(file);
-            if (!Path.GetFileName(fullPath).Equals(LocaleConfig.FileName, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (project.EmbeddedResourceNames is { } resourceNames && !resourceNames.ContainsKey(fullPath))
-            {
-                yield return DiagnoseConfig(fullPath, "The project does not embed this file, so the runtime never reads it, and a host's folder is never read for config; an assembly's config file is embedded at its project's root.");
-            }
-            else if (!Path.GetDirectoryName(fullPath)!.Equals(projectFolder, StringComparison.OrdinalIgnoreCase))
-            {
-                yield return DiagnoseConfig(fullPath, $"This file sits beneath '{Path.GetRelativePath(projectFolder, Path.GetDirectoryName(fullPath)!)}'; an assembly's config file sits at its project's root, beside '{Path.GetFileName(project.Path)}'.");
-            }
-        }
-    }
-
-    private static LintingDiagnostic DiagnoseConfig(string path, string message)
-        => new(path, 1, 1, LintingCodes.MalformedLocaleConfig.DefaultSeverity, LintingCodes.MalformedLocaleConfig, message);
 }
