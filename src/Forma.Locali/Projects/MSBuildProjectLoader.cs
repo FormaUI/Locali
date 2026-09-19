@@ -1,5 +1,7 @@
 namespace Forma.Locali.Projects;
 
+using Forma.Locali.Cli;
+
 using Microsoft.Build.Exceptions;
 using Microsoft.Build.Execution;
 using Microsoft.Build.Locator;
@@ -7,14 +9,18 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Text;
+using Microsoft.Extensions.Options;
 
 using ProjectCollection = Microsoft.Build.Evaluation.ProjectCollection;
 
 /// <summary>Loads projects through MSBuild, with the Razor generator's C# in each compilation.</summary>
-public sealed class MSBuildProjectLoader : IProjectLoader
+/// <param name="options">What the command line asked for, the properties every project is loaded with among it.</param>
+public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IProjectLoader
 {
     private const string RazorSuffix = "_razor.g.cs";
     private const string PrepareResourceNamesTarget = "PrepareResourceNames";
+
+    private readonly IReadOnlyDictionary<string, string> _properties = options?.Value.Properties ?? throw new ArgumentNullException(nameof(options));
 
     /// <inheritdoc />
     public async ValueTask<IReadOnlyList<LoadedProject>> LoadAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
@@ -27,7 +33,8 @@ public sealed class MSBuildProjectLoader : IProjectLoader
             return [];
         }
 
-        using var workspace = MSBuildWorkspace.Create();
+        // The compilation and the embedded names come from two loads, which the same properties keep to one build.
+        using var workspace = MSBuildWorkspace.Create(new Dictionary<string, string>(_properties));
         var opened = new List<ProjectId>();
 
         foreach (var path in requested)
@@ -79,7 +86,7 @@ public sealed class MSBuildProjectLoader : IProjectLoader
             .Id;
     }
 
-    private static async ValueTask<LoadedProject> ReadAsync(Project project, CancellationToken cancellationToken)
+    private async ValueTask<LoadedProject> ReadAsync(Project project, CancellationToken cancellationToken)
     {
         var file = project.FilePath ?? project.Name;
         var folder = project.FilePath is null ? null : Path.GetDirectoryName(project.FilePath);
@@ -113,14 +120,14 @@ public sealed class MSBuildProjectLoader : IProjectLoader
     }
 
     // Whether a file is embedded or copied beside the application is the project's items to say, and the build's own naming targets say what each is embedded as; no folder's name can.
-    private static Dictionary<string, string>? ReadEmbeddedResourceNames(string? projectPath)
+    private Dictionary<string, string>? ReadEmbeddedResourceNames(string? projectPath)
     {
         if (projectPath is null)
         {
             return null;
         }
 
-        using var collection = new ProjectCollection();
+        using var collection = new ProjectCollection(new Dictionary<string, string>(_properties));
 
         try
         {

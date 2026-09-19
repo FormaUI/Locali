@@ -70,6 +70,7 @@ internal static class Program
                 bound.Path = options.Path;
                 bound.ReportPath = options.ReportPath;
                 bound.Excludes = options.Excludes;
+                bound.Properties = options.Properties;
                 bound.MinimumSeverity = options.MinimumSeverity;
             })
             .Validate(

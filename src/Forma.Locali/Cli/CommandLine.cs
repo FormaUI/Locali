@@ -11,7 +11,7 @@ public static class CommandLine
     public static string Usage
         => """
            Usage: locali --path <file-or-directory> [--report [<path>]] [--exclude <glob>]
-                         [--severity <level>]
+                         [--severity <level>] [--property <name>=<value>]
 
              --path     The file or directory to lint. A directory is searched recursively.
              --report   Write a JSON report. Defaults to localization-report.json in the
@@ -24,6 +24,10 @@ public static class CommandLine
              --severity The lowest severity to report: 'error' or 'warning'. 'warning'
                         includes both warnings and errors. Defaults to 'error'; omitted
                         warnings do not fail the run, and the summary briefs them by rule.
+             --property An MSBuild property every project is loaded with, written as
+                        'Configuration=Release'. May be given more than once. A project
+                        loads as its default build otherwise, so what it compiles or
+                        embeds only under another configuration goes unseen.
            """;
 
     /// <summary>Reads the arguments, reporting the reason rather than throwing when they do not make sense.</summary>
@@ -38,6 +42,7 @@ public static class CommandLine
         string? report = null;
         var wantsReport = false;
         var excludes = new List<string>();
+        var properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var severity = LintingSeverity.Error;
 
         for (var index = 0; index < args.Length; index++)
@@ -97,6 +102,27 @@ public static class CommandLine
 
                     break;
 
+                case "--property":
+                    if (index + 1 >= args.Length || args[index + 1].StartsWith("--", StringComparison.Ordinal))
+                    {
+                        error = "'--property' needs a name and a value, written as 'Configuration=Release'.";
+
+                        return false;
+                    }
+
+                    // A property's name carries no '=', so the first one divides it from a value that may carry more.
+                    var separator = args[++index].IndexOf('=', StringComparison.Ordinal);
+                    if (separator <= 0)
+                    {
+                        error = $"'{args[index]}' is not a property; write a name and a value, as 'Configuration=Release'.";
+
+                        return false;
+                    }
+
+                    properties[args[index][..separator]] = args[index][(separator + 1)..];
+
+                    break;
+
                 default:
                     error = $"'{args[index]}' is not an argument the linter takes.";
 
@@ -116,6 +142,7 @@ public static class CommandLine
             Path = Path.GetFullPath(path),
             ReportPath = wantsReport ? ResolveReport(report) : null,
             Excludes = excludes,
+            Properties = properties,
             MinimumSeverity = severity,
         };
 

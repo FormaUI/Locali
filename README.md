@@ -63,7 +63,7 @@ the linter.
 
 ```text
 Usage: locali --path <file-or-directory> [--report [<path>]] [--exclude <glob>]
-              [--severity <level>]
+              [--severity <level>] [--property <name>=<value>]
 
   --path     The file or directory to lint. A directory is searched recursively.
   --report   Write a JSON report. Defaults to localization-report.json in the
@@ -76,6 +76,10 @@ Usage: locali --path <file-or-directory> [--report [<path>]] [--exclude <glob>]
   --severity The lowest severity to report: 'error' or 'warning'. 'warning'
              includes both warnings and errors. Defaults to 'error'; omitted
              warnings do not fail the run, and the summary briefs them by rule.
+  --property An MSBuild property every project is loaded with, written as
+             'Configuration=Release'. May be given more than once. A project
+             loads as its default build otherwise, so what it compiles or
+             embeds only under another configuration goes unseen.
 ```
 
 `--path` accepts a `.json` file, a `.cs` or `.razor` file, a `.csproj`, a `.sln`/`.slnx`, or a
@@ -90,6 +94,11 @@ rules; [Rules](docs/rules.md) describes both under the linting configuration.
 
 `--severity` decides what counts as a finding. An error is something the runtime will get wrong;
 a warning is something worth changing that still loads.
+
+`--property` names the build being linted. A project is read as MSBuild evaluates it, and
+without a property that is its default build, so a locale file embedded only under `Release`
+reads as one the project does not embed. `--property Configuration=Release` loads the
+compilation and the embedded files alike under that build.
 
 ## Output
 

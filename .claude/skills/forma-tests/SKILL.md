@@ -28,7 +28,7 @@ Every fake, factory, and fixture lives under `tests/Forma.Locali.Tests/Support/`
 
 ## What the unit suite cannot see
 
-`SourceLinterTestFactory` compiles a scratch class, so nothing in it exercises MSBuild loading, the Razor source generator, or the SdkRoslyn binding. A change to `Projects/` or to how call sites are found wants a run of the real tool over the sibling Forma repository as well:
+`SourceLinterTestFactory` compiles a scratch class, so nothing in it exercises MSBuild loading, the Razor source generator, or the SdkRoslyn binding. The test host binds an older `NuGet.Frameworks` than MSBuild takes, so a project cannot be loaded inside it; `LocaliToolRunner` runs the built linter as a process of its own over a scratch project instead, which costs seconds a test, so it is kept for what only a real load can show. A change to `Projects/` or to how call sites are found wants a run of the real tool over the sibling Forma repository as well:
 
 ```powershell
 dotnet run --project src/Forma.Locali -- --path ../Forma/Forma.slnx --exclude "*/Fixtures/*"

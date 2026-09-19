@@ -68,6 +68,47 @@ public sealed class CommandLineTests
     }
 
     [Fact]
+    public void Should_load_projects_with_no_properties_when_the_switch_is_absent()
+    {
+        // Act
+        _ = CommandLine.TryParse(["--path", "x"], out var options, out _);
+
+        // Assert
+        Assert.Empty(options!.Properties);
+    }
+
+    [Fact]
+    public void Should_keep_every_property_the_command_line_repeats()
+    {
+        // Act — a value may carry a '=' of its own, so only the first divides the name from it.
+        _ = CommandLine.TryParse(
+            ["--path", "x", "--property", "Configuration=Release", "--property", "DefineConstants=A=B"],
+            out var options,
+            out _);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("Release", options!.Properties["Configuration"]),
+            () => Assert.Equal("A=B", options!.Properties["DefineConstants"]));
+    }
+
+    [Theory]
+    [InlineData("--property")]
+    [InlineData("--property", "Configuration")]
+    [InlineData("--property", "=Release")]
+    public void Should_reject_a_property_that_is_not_a_name_and_a_value(params string[] property)
+    {
+        // Act
+        var parsed = CommandLine.TryParse(["--path", "x", .. property], out var options, out var error);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.False(parsed),
+            () => Assert.Null(options),
+            () => Assert.Contains("Configuration=Release", error, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Should_report_errors_only_when_no_severity_is_named()
     {
         // Act
