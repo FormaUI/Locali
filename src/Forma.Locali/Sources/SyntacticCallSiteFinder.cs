@@ -161,7 +161,7 @@ public sealed class SyntacticCallsiteFinder : ILocalizerCallsiteFinder
                 var key = QualifiedName(type);
                 if (!declared.TryGetValue(key, out var existing))
                 {
-                    existing = new HashSet<string>(StringComparer.Ordinal);
+                    existing = [with(StringComparer.Ordinal)];
                     declared[key] = existing;
                 }
 

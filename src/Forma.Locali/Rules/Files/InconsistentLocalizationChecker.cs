@@ -28,7 +28,7 @@ public sealed class InconsistentLocalizationChecker : ILocalizationFileRuleCheck
 
             if (!entriesByKey.TryGetValue(entry.Name, out var entriesBySection))
             {
-                entriesBySection = new Dictionary<string, LocalizationEntry>(StringComparer.Ordinal);
+                entriesBySection = [with(StringComparer.Ordinal)];
                 entriesByKey[entry.Name] = entriesBySection;
             }
 

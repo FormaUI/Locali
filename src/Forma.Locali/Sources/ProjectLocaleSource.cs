@@ -5,8 +5,8 @@ using Forma.Framework.Localization.Files;
 /// <summary>A project's translation and config files, read from its source tree and served under the names the build embeds them by, so the runtime's own walk finds them as it would in the built assembly.</summary>
 public sealed class ProjectLocaleSource : LocaleSource
 {
-    private readonly Dictionary<string, ProjectLocaleFile> _files = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, string> _configPaths = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ProjectLocaleFile> _files = [with(StringComparer.Ordinal)];
+    private readonly Dictionary<string, string> _configPaths = [with(StringComparer.Ordinal)];
 
     /// <summary>Indexes the files by the name the build embeds each under.</summary>
     /// <param name="files">The project's locale files.</param>
