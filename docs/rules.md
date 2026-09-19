@@ -208,8 +208,10 @@ runtime's own source, from the root down to the type, for every type the project
 every culture its files carry, under the name the build gives each file, an explicit
 `LogicalName` included, and through the `.locale.json` the project embeds.
 
-**Silent where.** The run did not name the project's files, or the file is one the project does
-not embed — a host's folder, which translates other assemblies' types.
+**Silent where.** The run did not name the project's files; the file is one the project does not
+embed — a host's folder, which translates other assemblies' types; or the project's items could
+not be read and the file sits under a folder the build renames to embed it, such as `my-folder`,
+so its name cannot be told.
 
 ### LOC0113 — A key translated two ways across sections
 

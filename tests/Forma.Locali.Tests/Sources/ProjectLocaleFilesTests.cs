@@ -39,6 +39,23 @@ public sealed class ProjectLocaleFilesTests
         Assert.Equal("Forma.Framework.Emojis..locales.he.json", resolved.Name);
     }
 
+    [Theory]
+    [InlineData("my-folder")]
+    [InlineData("My Folder")]
+    [InlineData("2024")]
+    public void Should_skip_a_file_whose_folder_the_build_renames_when_the_projects_items_were_not_read(string folder)
+    {
+        // Arrange — the SDK embeds such a folder under an identifier only the build knows, so the name cannot be told without the project's items.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(folder, ".locales", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var resolved = Resolve(directory, Compile("namespace Scratch;"), file);
+
+        // Assert
+        Assert.Empty(resolved.Files);
+    }
+
     [Fact]
     public void Should_read_a_file_by_the_name_the_build_gives_it()
     {

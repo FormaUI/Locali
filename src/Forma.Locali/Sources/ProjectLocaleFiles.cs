@@ -50,9 +50,13 @@ public static class ProjectLocaleFiles
 
                 name = resourceName;
             }
+            else if (GetDefaultResourceName(root, projectDirectory, fullPath) is { } defaultName)
+            {
+                name = defaultName;
+            }
             else
             {
-                name = GetDefaultResourceName(root, projectDirectory, fullPath);
+                continue;
             }
 
             // A file that will not read is the file rules' business, and the runtime reads nothing from it.
@@ -84,11 +88,27 @@ public static class ProjectLocaleFiles
     }
 
     // The SDK embeds a file as {RootNamespace}.{RelativeFolderPath}.{FileName}, and the runtime reads a satellite's file back under the same name.
-    private static string GetDefaultResourceName(string root, string projectDirectory, string fullPath)
+    // The SDK rewrites a folder it cannot embed as written into an identifier, by rules only the build knows, so such a file is given no name.
+    private static string? GetDefaultResourceName(string root, string projectDirectory, string fullPath)
     {
         var relative = Path.GetRelativePath(projectDirectory, fullPath);
+        var segments = relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-        return string.Join('.', [root, .. relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)]);
+        return segments[..^1].All(IsEmbeddedAsWritten) ? string.Join('.', [root, .. segments]) : null;
+    }
+
+    // A folder is embedded as written when each part between its dots is empty or an identifier of letters, digits and underscores.
+    private static bool IsEmbeddedAsWritten(string folder)
+    {
+        foreach (var part in folder.Split('.'))
+        {
+            if (part.Length > 0 && (char.IsDigit(part[0]) || !part.All(character => char.IsLetterOrDigit(character) || character == '_')))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static LocaleFile? Read(JsonLocaleFileFormat format, string path, string culture)
