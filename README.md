@@ -189,8 +189,8 @@ linting configuration cannot make a finding disappear without a trace.
 `.locale.json` carries the keys the localization runtime reads and no other: `rootNamespace`, the
 namespace a type's name is completed from; `rootDir`, where the assembly's names begin;
 `localesDir`, the folder locale files are gathered in; and `paths`, the paths the assembly's
-files are read by, written in tokens. It is the assembly's file, embedded with its locale files
-or laid in its folder inside a host's `.locales`, and it applies to every file of the assembly.
+files are read by, written in tokens. It is the assembly's file, embedded at its project's root,
+and it applies to every file of the assembly.
 
 ```json
 {
@@ -230,6 +230,7 @@ sits, and so is one laid in a host's `.locales` folder, which the runtime reads 
 | LOC0115 | Warning | A reserved entry sits after an entry it has to precede |
 | LOC0116 | Error | A key or section is shaped like a reserved entry the runtime does not define |
 | LOC0117 | Error | The `$shared` entry is not an object holding translations alone |
+| LOC0118 | Warning | Two files of one source stand for one anchor in one culture |
 
 LOC0114 is retired with the `$tools` entry it judged, and the number is not reused.
 
@@ -280,6 +281,17 @@ file under the name the build's own naming gives it, an explicit `LogicalName` i
 with the `.locale.json` the project embeds, and names generic and nested types as the
 runtime does. A file no path in force places is reported as well, and every report names the
 anchors the runtime places the file at.
+
+LOC0118 reads the same placement and reports two files of one source standing for one anchor
+in one culture: the runtime reads both, in the order of the paths that place them, so where
+the two share a key the file the later path reads wins without a word, and a file that was
+meant to be moved rather than copied keeps answering from where it was. Each file of the pair
+is reported, naming the other, since either may be the stray one. The rule reads a project's
+embedded files as one source and the host's folder as another: `.locales` at the project's
+root, where the runtime reads a host's files by default, in which a folder's file may sit in
+the folder's own `.locales` or directly in the folder, the two forms standing for one anchor.
+It is a warning because both files load; only a key the two share reads one way rather than
+the other.
 
 LOC0109 catches the silent case: `"Stored {stored}."` translated as `"…{stord}…"` renders
 `{stord}` literally. A name may be written as a brace hole or as a plural expression's
@@ -456,7 +468,8 @@ Nothing at the call site decides these, so there is nothing to judge:
   application, translates other assemblies' types, which the runtime reads from that folder
   rather than from the assembly. LOC0112 and LOC0209 read the files a project's own
   `EmbeddedResource` items embed, whatever folder they sit in, so a root `.locales` folder a
-  library embeds is read and a host's copied one is not; the file rules still read every file.
+  library embeds is read and a host's copied one is not; the file rules still read every file,
+  and LOC0118 reads the host's `.locales` folder at the project's root as a source of its own.
 
 ## Contributing
 

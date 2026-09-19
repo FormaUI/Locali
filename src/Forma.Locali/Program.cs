@@ -113,6 +113,7 @@ internal static class Program
         builder.Services.AddSingleton<ISourceLinter, SourceLinter>();
         builder.Services.AddSingleton<IReachabilityLinter, ReachabilityLinter>();
         builder.Services.AddSingleton<ILocalizationCoverageLinter, LocalizationCoverageLinter>();
+        builder.Services.AddSingleton<IDuplicateAnchorFileLinter, DuplicateAnchorFileLinter>();
         builder.Services.AddSingleton<ILintingService, LintingService>();
 
         builder.Services.AddSingleton<IDiagnosticReporter>(_ => new ConsoleDiagnosticReporter(Console.Out));

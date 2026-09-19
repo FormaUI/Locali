@@ -350,4 +350,71 @@ public sealed class LintingServiceTests
             () => Assert.Contains("does not embed", diagnostic.Message, StringComparison.Ordinal),
             () => Assert.Contains("never reads it", diagnostic.Message, StringComparison.Ordinal));
     }
+
+    [Fact]
+    public async Task Should_report_two_embedded_files_standing_for_one_anchor()
+    {
+        // Arrange — the config puts a second form in force beside the default, and one type's file is written in both.
+        using var directory = new TempDirectory();
+        var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var config = directory.Write(".locale.json", """{ "paths": ["$RootDir/$AnchorName/$LocalesDir/$Culture$Extension", "$RootDir/$AnchorName.$Culture$Extension"] }""");
+        var first = directory.Write(Path.Combine("Components", "Widget", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var second = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string>
+        {
+            [Path.GetFullPath(config)] = "Scratch..locale.json",
+            [Path.GetFullPath(first)] = "Scratch.Components.Widget..locales.he.json",
+            [Path.GetFullPath(second)] = "Scratch.Components.Widget.he.json",
+        };
+        var compilation = CompilationTestFactory.Unreferenced("namespace Scratch.Components; public sealed class Widget;");
+        var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: resourceNames));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal([LintingCodes.DuplicateAnchorFile, LintingCodes.DuplicateAnchorFile], result.Diagnostics.Codes()),
+            () => Assert.Equal([second, first], result.Diagnostics.Select(diagnostic => diagnostic.Path)),
+            () => Assert.Contains("'Scratch.Components.Widget' in 'he'", result.Diagnostics[0].Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_report_a_hosts_file_written_in_both_forms()
+    {
+        // Arrange — the host's folder reads a folder's file directly in the folder and in the folder's own .locales as one anchor.
+        using var directory = new TempDirectory();
+        var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var nested = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var flat = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Unreferenced("namespace Scratch; public sealed class Widget;");
+        var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: new Dictionary<string, string>()));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal([LintingCodes.DuplicateAnchorFile, LintingCodes.DuplicateAnchorFile], result.Diagnostics.Codes()),
+            () => Assert.Equal([nested, flat], result.Diagnostics.Select(diagnostic => diagnostic.Path)),
+            () => Assert.Contains("'Contoso.Widgets.Bars' in 'he'", result.Diagnostics[0].Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_leave_a_hosts_file_written_once_alone()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+        directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", ".locales", "es.json"), LocalizationFileFakeData.Valid.Replace("Culture: he;", "Culture: es;", StringComparison.Ordinal));
+        var compilation = CompilationTestFactory.Unreferenced("namespace Scratch; public sealed class Widget;");
+        var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: new Dictionary<string, string>()));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(result.Diagnostics);
+    }
 }

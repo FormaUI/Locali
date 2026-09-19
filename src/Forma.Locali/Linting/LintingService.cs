@@ -19,6 +19,7 @@ using Microsoft.Extensions.Options;
 /// <param name="sourcesLinter">Checks the keys written at call sites.</param>
 /// <param name="reachabilityLinter">Checks that a project's locale files can still be found by type.</param>
 /// <param name="coverageLinter">Checks that a project's keys are answered by the locale files it owns.</param>
+/// <param name="duplicateLinter">Checks that no two files of one source stand for one anchor.</param>
 /// <param name="lintingConfiguration">What the linting configuration's <c>.locali.json</c> files leave out.</param>
 public sealed class LintingService(
     IOptions<LinterOptions> options,
@@ -28,6 +29,7 @@ public sealed class LintingService(
     ISourceLinter sourcesLinter,
     IReachabilityLinter reachabilityLinter,
     ILocalizationCoverageLinter coverageLinter,
+    IDuplicateAnchorFileLinter duplicateLinter,
     ILintingConfiguration lintingConfiguration) : ILintingService
 {
     private static readonly IReadOnlySet<LintingCode> NoConfigIgnores = new HashSet<LintingCode>();
@@ -39,6 +41,7 @@ public sealed class LintingService(
     private readonly ISourceLinter _sources = sourcesLinter ?? throw new ArgumentNullException(nameof(sourcesLinter));
     private readonly IReachabilityLinter _reachability = reachabilityLinter ?? throw new ArgumentNullException(nameof(reachabilityLinter));
     private readonly ILocalizationCoverageLinter _coverage = coverageLinter ?? throw new ArgumentNullException(nameof(coverageLinter));
+    private readonly IDuplicateAnchorFileLinter _duplicates = duplicateLinter ?? throw new ArgumentNullException(nameof(duplicateLinter));
     private readonly ILintingConfiguration _lintingConfiguration = lintingConfiguration ?? throw new ArgumentNullException(nameof(lintingConfiguration));
 
     /// <inheritdoc />
@@ -124,13 +127,14 @@ public sealed class LintingService(
             var localizationFiles = target.LocalizationFilesOf(project.Path);
             diagnostics.AddRange(LintConfigPlacement(project, localizationFiles));
 
-            // Both rules over a project's locale files read the same resolution, so it is made once.
+            // The rules over a project's locale files read the same resolution, so it is made once.
             if (ProjectLocaleFiles.Resolve(project, localizationFiles) is { } localization)
             {
                 try
                 {
                     diagnostics.AddRange(_reachability.Lint(localization));
                     diagnostics.AddRange(_coverage.Lint(localization, sources.CallSites));
+                    diagnostics.AddRange(_duplicates.Lint(localization.GetPlacedFiles()));
                 }
                 catch (LocaleConfigException exception)
                 {
@@ -138,6 +142,9 @@ public sealed class LintingService(
                     diagnostics.Add(new LintingDiagnostic(project.Path, 1, 1, LintingCodes.MalformedLocaleConfig.DefaultSeverity, LintingCodes.MalformedLocaleConfig, exception.Message));
                 }
             }
+
+            // The host's folder is a source of its own, read after the assembly's, and its two forms of a folder's file stand for one anchor.
+            diagnostics.AddRange(_duplicates.Lint(HostLocaleFiles.Resolve(project, localizationFiles)));
         }
 
         return diagnostics;

@@ -29,6 +29,7 @@ public static class LintingCodes
             ReservedEntryOutOfOrder,
             ReservedShapedKey,
             MalformedShared,
+            DuplicateAnchorFile,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
@@ -164,6 +165,12 @@ public static class LintingCodes
         "LOC0117",
         LintingSeverity.Error,
         "A shared entry is not an object, or nests a section, so the file does not load; a shared section holds translations alone.");
+
+    /// <summary>Two files of one source stand for one anchor in one culture.</summary>
+    public static LintingCode DuplicateAnchorFile { get; } = new(
+        "LOC0118",
+        LintingSeverity.Warning,
+        "Two files of one source stand for one anchor in one culture, so both are read and, where they share a key, the file the later path reads wins.");
 
     /// <summary>An expression names an argument the lookup never supplies.</summary>
     public static LintingCode UnsuppliedPluralArgument { get; } = new(

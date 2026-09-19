@@ -31,6 +31,7 @@ public static class LintingServiceTestFactory
             new SourceLinter(new SemanticCallSiteFinder(), new SyntacticCallSiteFinder(), SourceLinterTestFactory.Checkers()),
             new ReachabilityLinter(),
             new LocalizationCoverageLinter(),
+            new DuplicateAnchorFileLinter(),
             lintingConfiguration);
     }
 }

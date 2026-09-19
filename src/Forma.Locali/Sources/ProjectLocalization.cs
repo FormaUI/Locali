@@ -49,6 +49,10 @@ public sealed class ProjectLocalization
     public IReadOnlyList<string> GetAnchorNames(ProjectLocaleFile file)
         => Source.GetAnchorNames(AssemblyName, file);
 
+    /// <summary>Every file with the anchors the runtime places it at.</summary>
+    public IReadOnlyList<PlacedLocaleFile> GetPlacedFiles()
+        => [.. Files.Select(file => new PlacedLocaleFile(file.Path, file.Culture.Name, GetAnchorNames(file)))];
+
     /// <summary>What the runtime reads for a type in one culture, anchor by anchor from the root down to the type.</summary>
     /// <param name="typeName">The type's name, as the runtime resolves it.</param>
     /// <param name="culture">The culture.</param>
