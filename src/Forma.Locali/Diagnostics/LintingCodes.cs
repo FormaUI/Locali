@@ -71,7 +71,7 @@ public static class LintingCodes
     public static LintingCode RootNamespaceWithoutTypes { get; } = new(
         "LOC0023",
         LintingSeverity.Warning,
-        "The root namespace the runtime counts a type's name from, the config file's or the assembly's name, holds none of the project's types, so a host laying the assembly's files out by it reaches no type.");
+        "The root namespace the runtime counts a type's name from, the config file's or the assembly's name, holds none of the project's types, so a host or a pack laying the assembly's files out by it reaches no type.");
 
     /// <summary>A locale pack's folder names an assembly the solution neither builds nor references.</summary>
     public static LintingCode UnknownLocalePackAssembly { get; } = new(

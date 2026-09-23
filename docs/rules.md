@@ -80,13 +80,14 @@ read the project's files through it, as the runtime does.
 **Reports.** The root namespace the runtime counts a type's name from, `rootNamespace` in the
 project's `.locale.json` or the assembly's name where none is declared, when no type of the
 project is under it. A declared one is reported at the config file; an undeclared one at the
-project, and only where the project embeds locale files.
+project, and only where the project embeds locale files or a locale pack places a file for it
+under the root and nowhere else.
 
 **Why it matters.** A project's `RootNamespace` and its config's `rootNamespace` drift apart when
 one is renamed without the other, or when a project whose root namespace is not its assembly's
 name never declares it. The runtime then reads every type by its full name, so the embedded
-files still load, but a host laying the assembly's files out by the root namespace reaches no
-type, without a word.
+files still load, but a host's folder or a locale pack laying the assembly's files out by the
+root namespace reaches no type, without a word.
 
 **What fixes it.** Declare the namespace the project's types share as `rootNamespace`; the
 report names the project's own `RootNamespace` where the types sit under it.
@@ -94,7 +95,8 @@ report names the project's own `RootNamespace` where the types sit under it.
 **Silent where.** A type of the project is under the root namespace, whatever the project's
 `RootNamespace` says, since the runtime never reads that; the project declares no types, or did
 not compile; the project's items could not be read, so no config file is known to be embedded;
-or the config file will not read, which is LOC0022's.
+a locale pack's folder for the project spells full type names rather than the root, which the
+runtime reads for a type outside it; or the config file will not read, which is LOC0022's.
 
 ### LOC0024 — A pack folder names an assembly the solution does not have
 

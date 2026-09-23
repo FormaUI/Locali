@@ -48,6 +48,42 @@ public sealed class RootNamespaceWithoutTypesCheckerTests
     }
 
     [Fact]
+    public void Should_report_an_assembly_name_no_type_is_under_where_a_pack_alone_localizes_the_project()
+    {
+        // Arrange — the project embeds no file of its own, and the pack lays its folder out by the assembly's name, under which no type sits.
+        using var directory = new TempDirectory();
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(Widget), false, false, "Contoso.Widgets", new Dictionary<string, string>());
+        var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Scratch", "Bars", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var pack = LocalePackTestFactory.Resolve(directory, project, packFile);
+
+        // Act
+        var diagnostic = Assert.Single(ProjectLinterTestFactory.Check(new RootNamespaceWithoutTypesChecker(), project, [], packs: [pack]));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.RootNamespaceWithoutTypes, diagnostic.Code),
+            () => Assert.Equal(project.Path, diagnostic.Path),
+            () => Assert.Contains("'Scratch', the assembly's name", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains("a host or a pack", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Should_leave_a_pack_laid_out_by_full_names_alone()
+    {
+        // Arrange — a pack may spell a type's full name beneath the assembly's folder, which the runtime reads for a type outside the root, so nothing is stranded.
+        using var directory = new TempDirectory();
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(Widget), false, false, "Contoso.Widgets", new Dictionary<string, string>());
+        var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Scratch", "Contoso.Widgets.Bars", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var pack = LocalePackTestFactory.Resolve(directory, project, packFile);
+
+        // Act
+        var diagnostics = ProjectLinterTestFactory.Check(new RootNamespaceWithoutTypesChecker(), project, [], packs: [pack]);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_leave_a_declared_root_namespace_the_types_are_under_alone()
     {
         // Arrange

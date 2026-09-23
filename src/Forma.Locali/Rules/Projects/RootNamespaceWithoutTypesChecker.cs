@@ -2,6 +2,7 @@ namespace Forma.Locali.Rules.Projects;
 
 using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
+using Forma.Locali.Sources;
 
 /// <summary>Checks that the root namespace the runtime counts a type's name from holds a type of the project.</summary>
 public sealed class RootNamespaceWithoutTypesChecker : IProjectRuleChecker
@@ -44,13 +45,20 @@ public sealed class RootNamespaceWithoutTypesChecker : IProjectRuleChecker
 
         if (declared is not null)
         {
-            context.Report(Code, configPath!, $"'{LocaleConfig.RootNamespaceKey}' names '{rootNamespace}', which none of the project's types is under, so the runtime counts no type's name from it and a host laying the assembly's files out by it reaches no type{suggestion}.");
+            context.Report(Code, configPath!, $"'{LocaleConfig.RootNamespaceKey}' names '{rootNamespace}', which none of the project's types is under, so the runtime counts no type's name from it and a host or a pack laying the assembly's files out by it reaches no type{suggestion}.");
         }
-        else if (localization.EmbeddedFiles.Count > 0)
+        else if (localization.EmbeddedFiles.Count > 0 || IsAnyPackFilePlacedUnderRootAlone(localization, rootNamespace))
         {
-            context.Report(Code, context.Project.Path, $"None of the project's types is under '{rootNamespace}', the assembly's name, which the runtime counts a type's name from where no '{LocaleConfig.FileName}' declares '{LocaleConfig.RootNamespaceKey}', so a host laying the assembly's files out by it reaches no type{suggestion}.");
+            context.Report(Code, context.Project.Path, $"None of the project's types is under '{rootNamespace}', the assembly's name, which the runtime counts a type's name from where no '{LocaleConfig.FileName}' declares '{LocaleConfig.RootNamespaceKey}', so a host or a pack laying the assembly's files out by it reaches no type{suggestion}.");
         }
     }
+
+    // The runtime places a file spelling a full name outside the root there as well, and reads it for a type outside the root; a file placed under the root alone reaches nothing when no type is there.
+    private static bool IsAnyPackFilePlacedUnderRootAlone(ProjectLocalization localization, string rootNamespace)
+        => localization.Packs
+            .SelectMany(pack => pack.Files)
+            .Select(localization.GetAnchorNames)
+            .Any(anchorNames => anchorNames.Count > 0 && anchorNames.All(anchorName => anchorName == rootNamespace || IsUnder(anchorName, rootNamespace)));
 
     // A type outside any namespace belongs to the root, as the runtime has it.
     private static bool IsUnder(string typeName, string rootNamespace)
