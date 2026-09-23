@@ -16,7 +16,7 @@ public sealed class MSBuildProjectLoaderTests
         </Project>
         """;
 
-    // A pack embeds every locale file under its path, as the runtime's build does, for an assembly the pack itself never declares.
+    // A pack embeds every locale file under its path, as the runtime's build does, for an assembly the pack itself never declares; this one's folder names no project, which only a solution run can tell.
     private const string LocalePack = """
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
@@ -26,7 +26,7 @@ public sealed class MSBuildProjectLoaderTests
             <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
           </PropertyGroup>
           <ItemGroup>
-            <EmbeddedResource Include="Contoso.Widgets\Bars\he.json" WithCulture="false" LogicalName="Contoso.Widgets.Bars.he.json" />
+            <EmbeddedResource Include="Contoso.Widgetz\Bars\he.json" WithCulture="false" LogicalName="Contoso.Widgetz.Bars.he.json" />
           </ItemGroup>
         </Project>
         """;
@@ -36,8 +36,7 @@ public sealed class MSBuildProjectLoaderTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(Path.Combine("Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
-        var project = directory.Write("Contoso.Widgets.Locales.Hebrew.csproj", LocalePack);
+        var project = WritePack(directory);
 
         // Act
         var (exitCode, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", project);
@@ -46,6 +45,57 @@ public sealed class MSBuildProjectLoaderTests
         Assert.Multiple(
             () => Assert.Equal(0, exitCode),
             () => Assert.DoesNotContain(LintingCodes.UnreachableLocalization.Id, output, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_report_a_pack_folder_naming_no_project_of_a_solution()
+    {
+        // Arrange — the solution lists the pack alone, so the folder names an assembly built nowhere it reaches.
+        using var directory = new TempDirectory();
+        WritePack(directory);
+        var solution = directory.Write("Scratch.slnx", """
+            <Solution>
+              <Project Path="Contoso.Widgets.Locales.Hebrew.csproj" />
+            </Solution>
+            """);
+
+        // Act
+        var (exitCode, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", solution);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(1, exitCode),
+            () => Assert.Contains(LintingCodes.UnknownLocalePackAssembly.Id, output, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_stand_a_project_in_another_language_in_for_what_it_builds()
+    {
+        // Arrange — a Visual Basic project may build the assembly the folder names, and the linter cannot read it to say.
+        using var directory = new TempDirectory();
+        WritePack(directory);
+        directory.Write(Path.Combine("Contoso.Widgetz", "Contoso.Widgetz.vbproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var solution = directory.Write("Scratch.slnx", """
+            <Solution>
+              <Project Path="Contoso.Widgets.Locales.Hebrew.csproj" />
+              <Project Path="Contoso.Widgetz/Contoso.Widgetz.vbproj" />
+            </Solution>
+            """);
+
+        // Act
+        var (exitCode, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", solution);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(0, exitCode),
+            () => Assert.DoesNotContain(LintingCodes.UnknownLocalePackAssembly.Id, output, StringComparison.Ordinal));
+    }
+
+    private static string WritePack(TempDirectory directory)
+    {
+        directory.Write(Path.Combine("Contoso.Widgetz", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+
+        return directory.Write("Contoso.Widgets.Locales.Hebrew.csproj", LocalePack);
     }
 
     [Fact]

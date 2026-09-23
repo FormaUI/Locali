@@ -48,6 +48,13 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            // A project in another language is one the linter cannot read, and stands in the run as one that did not load, so what it builds is not taken for absent.
+            if (!Path.GetExtension(path).Equals(ProjectExtension, StringComparison.OrdinalIgnoreCase))
+            {
+                loaded.Add(new LoadedProject(path, null, HasGeneratedSources: false, HasRazorMarkup: false));
+                continue;
+            }
+
             if (Evaluate(path, evaluated, cancellationToken) is { } project)
             {
                 loaded.Add(project.Loaded);
@@ -62,7 +69,6 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             ? SolutionFile.Parse(Path.GetFullPath(path)).ProjectsInOrder
                 .Where(project => project.ProjectType == SolutionProjectType.KnownToBeMSBuildFormat)
                 .Select(project => project.AbsolutePath)
-                .Where(project => Path.GetExtension(project).Equals(ProjectExtension, StringComparison.OrdinalIgnoreCase))
             : [path];
 
     // One evaluation answers for the compilation and the embedded names alike, so the two never describe different builds.

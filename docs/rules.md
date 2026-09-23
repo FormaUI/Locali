@@ -111,9 +111,10 @@ language without a word.
 the namespace its types share.
 
 **Silent where.** The run named a project or a directory rather than a solution, since only a
-solution lists every project a folder could name; a project of the solution did not compile, so
-its assembly's name cannot be told; the folder names an assembly a project references from a
-package, whose types are out of reach; or the pack's items could not be read.
+solution lists every project a folder could name; a project of the solution did not compile, or
+is written in a language the linter does not read, so its assembly's name cannot be told; the
+folder names an assembly a project references from a package, whose types are out of reach; or
+the pack's items could not be read.
 
 ## Locale files (LOC0100–LOC0199)
 
