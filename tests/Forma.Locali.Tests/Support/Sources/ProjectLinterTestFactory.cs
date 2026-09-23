@@ -10,7 +10,8 @@ using Forma.Locali.Sources;
 public static class ProjectLinterTestFactory
 {
     /// <summary>Every project rule the linter ships with.</summary>
-    public static IReadOnlyList<IProjectRuleChecker> Checkers()
+    /// <param name="lintingConfiguration">The linting configuration the rules that read one are given, a fresh one over the file system unless given.</param>
+    public static IReadOnlyList<IProjectRuleChecker> Checkers(ILintingConfiguration? lintingConfiguration = null)
         =>
         [
             new LocaleConfigPlacementChecker(),
@@ -21,6 +22,7 @@ public static class ProjectLinterTestFactory
             new TypeNamedFolderChecker(),
             new CultureCoverageChecker(),
             new LocalePackFolderChecker(),
+            new LocaleSourceChecker(lintingConfiguration ?? new LintingConfiguration()),
         ];
 
     /// <summary>What one project rule reports over a project's files, resolved as the linter resolves them.</summary>

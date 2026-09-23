@@ -10,6 +10,7 @@ public sealed class LocaliConfigFile
 {
     private const string IgnoreDiagnosticsKey = "ignoreDiagnostics";
     private const string ExcludeFilesKey = "excludeFiles";
+    private const string LocaleSourcesKey = "localeSources";
 
     private static readonly JsonReaderOptions ReaderOptions = new()
     {
@@ -22,12 +23,14 @@ public sealed class LocaliConfigFile
         TextMap map,
         IReadOnlyList<ConfigIgnoreDiagnostic> ignoreDiagnostics,
         IReadOnlyList<ConfigExcludeFile> excludeFiles,
+        ConfigLocaleSources? localeSources,
         IReadOnlyList<ConfigMalformedValue> malformedValues)
     {
         Path = path;
         Map = map;
         IgnoreDiagnostics = ignoreDiagnostics;
         ExcludeFiles = excludeFiles;
+        LocaleSources = localeSources;
         MalformedValues = malformedValues;
     }
 
@@ -42,6 +45,9 @@ public sealed class LocaliConfigFile
 
     /// <summary>Every glob the file's <c>excludeFiles</c> entry names.</summary>
     public IReadOnlyList<ConfigExcludeFile> ExcludeFiles { get; }
+
+    /// <summary>The file's <c>localeSources</c> entry, or null when it names none.</summary>
+    public ConfigLocaleSources? LocaleSources { get; }
 
     /// <summary>Every value in the file that does not follow the shape it is read for.</summary>
     public IReadOnlyList<ConfigMalformedValue> MalformedValues { get; }
@@ -67,6 +73,7 @@ public sealed class LocaliConfigFile
         var ignoreDiagnostics = new List<ConfigIgnoreDiagnostic>();
         var excludeFiles = new List<ConfigExcludeFile>();
         var malformedValues = new List<ConfigMalformedValue>();
+        ConfigLocaleSources? localeSources = null;
 
         try
         {
@@ -78,7 +85,7 @@ public sealed class LocaliConfigFile
                 return false;
             }
 
-            ReadRoot(ref reader, ignoreDiagnostics, excludeFiles, malformedValues);
+            ReadRoot(ref reader, ignoreDiagnostics, excludeFiles, ref localeSources, malformedValues);
         }
         catch (JsonException exception)
         {
@@ -87,7 +94,7 @@ public sealed class LocaliConfigFile
             return false;
         }
 
-        document = new LocaliConfigFile(path, new TextMap(utf8), ignoreDiagnostics, excludeFiles, malformedValues);
+        document = new LocaliConfigFile(path, new TextMap(utf8), ignoreDiagnostics, excludeFiles, localeSources, malformedValues);
 
         return true;
     }
@@ -105,7 +112,7 @@ public sealed class LocaliConfigFile
         return new LintingDiagnostic(Path, line, column, code.DefaultSeverity, code, message);
     }
 
-    private static void ReadRoot(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnostic> ignoreDiagnostics, List<ConfigExcludeFile> excludeFiles, List<ConfigMalformedValue> malformedValues)
+    private static void ReadRoot(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnostic> ignoreDiagnostics, List<ConfigExcludeFile> excludeFiles, ref ConfigLocaleSources? localeSources, List<ConfigMalformedValue> malformedValues)
     {
         while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
         {
@@ -125,6 +132,9 @@ public sealed class LocaliConfigFile
                 case ExcludeFilesKey:
                     ReadExcludeFiles(ref reader, excludeFiles, malformedValues);
                     break;
+                case LocaleSourcesKey:
+                    localeSources = ReadLocaleSources(ref reader, malformedValues);
+                    break;
                 default:
                     malformedValues.Add(new ConfigMalformedValue(nameOffset, $"'{name}' is not an entry this file defines; it reads {FormatKeys()}."));
                     reader.Skip();
@@ -134,7 +144,7 @@ public sealed class LocaliConfigFile
     }
 
     private static string FormatKeys()
-        => string.Join(", ", new[] { IgnoreDiagnosticsKey, ExcludeFilesKey }.Select(key => $"'{key}'"));
+        => string.Join(", ", new[] { IgnoreDiagnosticsKey, ExcludeFilesKey, LocaleSourcesKey }.Select(key => $"'{key}'"));
 
     private static void ReadIgnoreDiagnostics(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnostic> ignoreDiagnostics, List<ConfigMalformedValue> malformedValues)
     {
@@ -187,6 +197,43 @@ public sealed class LocaliConfigFile
         }
 
         return entries;
+    }
+
+    // A source is spelled as the runtime names it, lowercase, and an unknown one is reported without stopping the list.
+    private static ConfigLocaleSources? ReadLocaleSources(ref Utf8JsonReader reader, List<ConfigMalformedValue> malformedValues)
+    {
+        if (reader.TokenType != JsonTokenType.StartArray)
+        {
+            malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{LocaleSourcesKey}' is not a list of text; it lists sources."));
+            reader.Skip();
+
+            return null;
+        }
+
+        var offset = (int)reader.TokenStartIndex;
+        LocaleSources allowed = default;
+
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+        {
+            if (reader.TokenType != JsonTokenType.String)
+            {
+                malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, "a source is not text."));
+                reader.Skip();
+                continue;
+            }
+
+            var text = reader.GetString() ?? string.Empty;
+            if (LocaleSourceNames.Parse(text) is { } source)
+            {
+                allowed |= source;
+            }
+            else
+            {
+                malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{text}' is not a source; the sources are {string.Join(", ", LocaleSourceNames.All.Select(name => $"'{name}'"))}."));
+            }
+        }
+
+        return new ConfigLocaleSources(allowed, offset);
     }
 
     private static void ReadExcludeFiles(ref Utf8JsonReader reader, List<ConfigExcludeFile> excludeFiles, List<ConfigMalformedValue> malformedValues)

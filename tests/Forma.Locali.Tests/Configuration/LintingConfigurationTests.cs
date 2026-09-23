@@ -54,6 +54,84 @@ public sealed class LintingConfigurationTests
     }
 
     [Fact]
+    public void Should_let_the_nearest_locale_sources_win()
+    {
+        // Arrange — an allow list cannot be merged by union, so the nearer file restates the policy for its own tree.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": ["pack", "host"] }""");
+        directory.Write(Path.Combine("Showcase", ".locali.json"), """{ "localeSources": ["embedded", "pack", "host"] }""");
+        var nested = directory.Write(Path.Combine("Showcase", "Pages", "he.json"), "{}");
+        var outer = directory.Write(Path.Combine("Widgets", "he.json"), "{}");
+
+        // Act
+        var configuration = new LintingConfiguration();
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(LocaleSources.Embedded | LocaleSources.Pack | LocaleSources.Host, configuration.GetLocaleSources(nested)),
+            () => Assert.Equal(LocaleSources.Pack | LocaleSources.Host, configuration.GetLocaleSources(outer)));
+    }
+
+    [Fact]
+    public void Should_report_a_locale_sources_entry_no_file_resolved_to()
+    {
+        // Arrange — the nearer file restates the list for the only folder holding a locale file, so the root's entry governs nothing.
+        using var directory = new TempDirectory();
+        var root = directory.Write(".locali.json", """{ "localeSources": ["pack"] }""");
+        directory.Write(Path.Combine("Showcase", ".locali.json"), """{ "localeSources": ["embedded"] }""");
+        var file = directory.Write(Path.Combine("Showcase", "he.json"), "{}");
+        var configuration = new LintingConfiguration();
+        _ = configuration.GetLocaleSources(file);
+
+        // Act
+        var diagnostics = configuration.GetDiagnostics();
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.StaleConfigurationEntry, diagnostic.Code),
+            () => Assert.Equal(root, diagnostic.Path),
+            () => Assert.Contains("'localeSources'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Should_leave_a_locale_sources_entry_a_file_resolved_to_unreported()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": ["pack"] }""");
+        var file = directory.Write("he.json", "{}");
+        var configuration = new LintingConfiguration();
+        _ = configuration.GetLocaleSources(file);
+
+        // Act
+        var diagnostics = configuration.GetDiagnostics();
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_allow_every_locale_source_when_no_configuration_names_them()
+    {
+        // Arrange — a nearer file naming other entries does not unsay a farther one's sources, and none at all leaves the policy unset.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": ["pack"] }""");
+        directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "excludeFiles": [] }""");
+        var governed = directory.Write(Path.Combine("Widgets", "he.json"), "{}");
+        using var bare = new TempDirectory();
+        var ungoverned = bare.Write("he.json", "{}");
+
+        // Act
+        var configuration = new LintingConfiguration();
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(LocaleSources.Pack, configuration.GetLocaleSources(governed)),
+            () => Assert.Null(configuration.GetLocaleSources(ungoverned)));
+    }
+
+    [Fact]
     public void Should_match_a_glob_relative_to_its_own_configurations_directory()
     {
         // Arrange — the glob is written as it would read from where the file sits beside the config.
@@ -107,7 +185,7 @@ public sealed class LintingConfigurationTests
         var diagnostics = configuration.GetDiagnostics();
 
         // Assert
-        Assert.Equal([LintingCodes.StaleConfigurationGlob, LintingCodes.StaleConfigurationGlob], diagnostics.Codes());
+        Assert.Equal([LintingCodes.StaleConfigurationEntry, LintingCodes.StaleConfigurationEntry], diagnostics.Codes());
     }
 
     [Fact]

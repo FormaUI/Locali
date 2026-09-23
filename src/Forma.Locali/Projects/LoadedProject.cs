@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis;
 /// <param name="RootNamespace">The root the project embeds its resources under, or null when it declares none.</param>
 /// <param name="EmbeddedResourceNames">The name the build embeds each file under, keyed by the file's full path, or null when its items were not read, in which case every locale file beneath it is taken as embedded under the name the SDK would give it.</param>
 /// <param name="IsLocalePack">Whether the project declares <c>IsLocalePack</c>, making it a locale pack: an assembly of nothing but locale files for other assemblies' types.</param>
+/// <param name="SatelliteFiles">The full path of every embedded file the build moves into a satellite assembly, or null when its items were not read.</param>
 public sealed record LoadedProject(
     string Path,
     Compilation? Compilation,
@@ -17,4 +18,5 @@ public sealed record LoadedProject(
     bool HasRazorMarkup,
     string? RootNamespace = null,
     IReadOnlyDictionary<string, string>? EmbeddedResourceNames = null,
-    bool IsLocalePack = false);
+    bool IsLocalePack = false,
+    IReadOnlySet<string>? SatelliteFiles = null);

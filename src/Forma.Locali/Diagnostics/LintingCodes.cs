@@ -10,10 +10,11 @@ public static class LintingCodes
         =>
         [
             MalformedConfiguration,
-            StaleConfigurationGlob,
+            StaleConfigurationEntry,
             MalformedLocaleConfig,
             RootNamespaceWithoutTypes,
             UnknownLocalePackAssembly,
+            DisallowedLocaleSource,
             InvalidJson,
             MissingMarker,
             MarkerNotFirst,
@@ -56,11 +57,11 @@ public static class LintingCodes
         LintingSeverity.Error,
         "The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define.");
 
-    /// <summary>A glob in the linting configuration matched no file the run linted.</summary>
-    public static LintingCode StaleConfigurationGlob { get; } = new(
+    /// <summary>An entry in the linting configuration applied to no file the run reached.</summary>
+    public static LintingCode StaleConfigurationEntry { get; } = new(
         "LOC0021",
         LintingSeverity.Warning,
-        "A glob in the linting configuration matched no file the run linted, so it no longer excludes or leaves anything out.");
+        "An entry in the linting configuration applied to no file the run reached, so it excludes, leaves out, or governs nothing.");
 
     /// <summary>The runtime's config file is not readable JSON, names a key the runtime does not read, gives a value the runtime would refuse, is one of two for an assembly, sits anywhere but its project's root, or sits in a locale pack.</summary>
     public static LintingCode MalformedLocaleConfig { get; } = new(
@@ -79,6 +80,12 @@ public static class LintingCodes
         "LOC0024",
         LintingSeverity.Error,
         "A locale pack's folder names an assembly the solution neither builds nor references, so the runtime reads nothing from it and the types it was written for render in the source language.");
+
+    /// <summary>A locale file comes from a source the linting configuration in force over it does not allow.</summary>
+    public static LintingCode DisallowedLocaleSource { get; } = new(
+        "LOC0025",
+        LintingSeverity.Warning,
+        "A locale file comes from a source the linting configuration in force over it does not allow, embedded, satellite, pack or host; the runtime reads it all the same, so translations are kept in a place the repository said they are not.");
 
     /// <summary>The file is not readable JSON.</summary>
     public static LintingCode InvalidJson { get; } = new(

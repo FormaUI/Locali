@@ -69,7 +69,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
                 foreach (var diagnostic in entry.Entries)
                 {
                     // A rule judging the linting configuration cannot be excused by that same configuration.
-                    if (Resolve(diagnostic.Id) is { } known && known != LintingCodes.MalformedConfiguration && known != LintingCodes.StaleConfigurationGlob)
+                    if (Resolve(diagnostic.Id) is { } known && known != LintingCodes.MalformedConfiguration && known != LintingCodes.StaleConfigurationEntry)
                     {
                         ignored.Add(known);
                     }
@@ -78,6 +78,25 @@ public sealed class LintingConfiguration : ILintingConfiguration
         }
 
         return ignored;
+    }
+
+    // An allow list cannot be widened or narrowed by union, so the nearest file naming one speaks for the tree beneath it.
+    /// <inheritdoc />
+    public LocaleSources? GetLocaleSources(string file)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(file);
+
+        foreach (var (tracked, _) in Ancestry(file))
+        {
+            if (tracked.File?.LocaleSources is { } localeSources)
+            {
+                tracked.UsedLocaleSources.TryAdd(localeSources.Offset, true);
+
+                return localeSources.Allowed;
+            }
+        }
+
+        return null;
     }
 
     /// <inheritdoc />
@@ -130,7 +149,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
             {
                 diagnostics.Add(config.Diagnose(
                     entry.Offset,
-                    LintingCodes.StaleConfigurationGlob,
+                    LintingCodes.StaleConfigurationEntry,
                     $"'{entry.Glob}' matched no file the run linted, so the rules it lists apply nowhere."));
             }
         }
@@ -141,9 +160,18 @@ public sealed class LintingConfiguration : ILintingConfiguration
             {
                 diagnostics.Add(config.Diagnose(
                     entry.Offset,
-                    LintingCodes.StaleConfigurationGlob,
+                    LintingCodes.StaleConfigurationEntry,
                     $"'{entry.Glob}' matched no file the run reached, so it excludes nothing."));
             }
+        }
+
+        // A restated list outlives the files it was written for, or is shadowed by every nearer file, and either way governs nothing.
+        if (config.LocaleSources is { } localeSources && !tracked.UsedLocaleSources.ContainsKey(localeSources.Offset))
+        {
+            diagnostics.Add(config.Diagnose(
+                localeSources.Offset,
+                LintingCodes.StaleConfigurationEntry,
+                "'localeSources' governs no locale file the run reached, so it allows and forbids nothing."));
         }
     }
 
@@ -219,5 +247,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
         public ConcurrentDictionary<int, bool> UsedIgnore { get; } = new();
 
         public ConcurrentDictionary<int, bool> UsedExclude { get; } = new();
+
+        public ConcurrentDictionary<int, bool> UsedLocaleSources { get; } = new();
     }
 }

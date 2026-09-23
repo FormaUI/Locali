@@ -18,6 +18,7 @@ runtime's own reader and never writes a key of its own into.
 
 ```json
 {
+  "localeSources": ["pack", "host"],
   "ignoreDiagnostics": {
     "**/Forma.Blazor.Showcase/**/LocalizationPage.razor": ["LOC0207"]
   },
@@ -33,6 +34,15 @@ spanning separators, and read relative to the folder the file sits in. Comments 
 commas are allowed, as in a locale file. Leaving a diagnostic out is never silent: it is counted
 in `suppressedCount` and named in the console brief.
 
+`localeSources` names the places a locale file under the configuration may come from, any of
+`embedded`, a file the assembly embeds in itself; `satellite`, one the build moves into a
+satellite assembly; `pack`, one a locale pack carries; and `host`, one laid in the host's
+`.locales` folder. It is the one entry the nearer file does not add to but replaces, since an
+allow list cannot be widened or narrowed by union: the nearest `.locali.json` naming it speaks
+for the whole tree beneath, and a folder that keeps its files elsewhere restates the list in a
+file of its own. Left out of every file, it allows all four. LOC0025 reports a file it does
+not allow, and LOC0021 an entry no locale file beneath it resolved to.
+
 ### LOC0020 — The linting configuration cannot be read
 
 **Reports.** A `.locali.json` that is not readable JSON, does not follow its shape, or names a
@@ -44,18 +54,23 @@ is refused instead. The rule over `.locali.json` itself can never be named in it
 
 **What fixes it.** Correct the file; the message names the key or the identifier it refused.
 
-### LOC0021 — A glob matched nothing
+### LOC0021 — An entry applied to nothing
 
 **Reports.** A glob in `ignoreDiagnostics` or `excludeFiles` that matched no file the run
-reached.
+reached, or a `localeSources` entry that no locale file the run reached resolved to, because
+none sits beneath it or every nearer file restates it.
 
 **Why it matters.** A file moved out of the tree is exactly when its exceptions go stale, and an
-exception that names nothing sits unnoticed until it excuses the wrong file.
+exception that names nothing sits unnoticed until it excuses the wrong file. A restated
+`localeSources` outlives the strings it was written for the same way, and then reads as a
+policy the folder no longer has.
 
 **What fixes it.** Delete the entry, or point it at the file's new place.
 
-**Silent where.** The run did not reach the folder the glob names: a narrower `--path` leaves
-globs for the rest of the tree unjudged. It is a warning for that reason.
+**Silent where.** The run did not reach the folder the entry governs: a narrower `--path`
+leaves entries for the rest of the tree unjudged. A `localeSources` entry counts as applied for
+every locale file beneath it, whether or not the file's source could be told. It is a warning
+for that reason.
 
 ### LOC0022 — The runtime's config file is wrong or misplaced
 
@@ -119,6 +134,29 @@ solution lists every project a folder could name; a project of the solution did 
 is written in a language the linter does not read, so its assembly's name cannot be told; the
 folder names an assembly a project references from a package, whose types are out of reach; or
 the pack's items could not be read.
+
+### LOC0025 — A locale file from a source the configuration does not allow
+
+**Reports.** A culture-named locale file that comes from a source the `localeSources` in force
+over it does not name: embedded in the assembly, moved into a satellite assembly, carried by a
+locale pack, or laid in a host's `.locales` folder. It is reported at the file, naming the
+source it comes from and the sources the configuration allows.
+
+**Why it matters.** The runtime reads every source it finds, so a repository that keeps its
+translations in packs cannot tell from a build that someone embedded a Hebrew file in an
+assembly again: both load, the pack wins where they share a key, and the stray file answers
+alone where they do not. The rule turns the repository's choice of where translations live
+into something the gate holds it to.
+
+**What fixes it.** Move the file to a source the configuration allows, or restate
+`localeSources` in a nearer `.locali.json` for the tree that keeps its files there, as an
+application does for the strings it embeds itself.
+
+**Silent where.** No `.locali.json` in the file's ancestry names `localeSources`, since the
+policy is the repository's to declare; the file is not named for a culture; the project's items
+could not be read, so whether it embeds the file cannot be told; or the project neither embeds
+the file nor keeps it in its host folder, so the runtime never reads it and no source answers
+for it. It is a warning because the file loads.
 
 ## Locale files (LOC0100–LOC0199)
 

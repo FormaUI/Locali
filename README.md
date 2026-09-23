@@ -94,8 +94,9 @@ Source files are linted through the project that owns them, found by walking up 
 
 `--exclude` is what makes a test tree lintable: a fixture that is malformed on purpose reports
 what it exists to prove. A `.locali.json` file's `excludeFiles` entry does the same without a
-flag on every invocation, and its `ignoreDiagnostics` entry leaves a named file out of named
-rules; [Rules](docs/rules.md) describes both under the linting configuration.
+flag on every invocation, its `ignoreDiagnostics` entry leaves a named file out of named
+rules, and its `localeSources` entry says where the tree beneath it keeps its translations;
+[Rules](docs/rules.md) describes all three under the linting configuration.
 
 `--severity` decides what counts as a finding. An error is something the runtime will get wrong;
 a warning is something worth changing that still loads.
@@ -163,10 +164,11 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | Code | Severity | Reports |
 |------|----------|---------|
 | LOC0020 | Error | The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define |
-| LOC0021 | Warning | A glob in the linting configuration matched no file the run reached |
+| LOC0021 | Warning | An entry in the linting configuration applied to no file the run reached |
 | LOC0022 | Error | The runtime's `.locale.json` is not readable, names a key the runtime does not read, gives a value it would refuse, is one of two for an assembly, sits anywhere but its project's root, or sits in a locale pack |
 | LOC0023 | Warning | The root namespace the runtime counts a type's name from holds none of the project's types |
 | LOC0024 | Error | A locale pack's folder names an assembly the solution neither builds nor references |
+| LOC0025 | Warning | A locale file comes from a source the configuration's `localeSources` does not allow |
 | LOC0100 | Error | The file is not readable JSON |
 | LOC0101 | Error | The file carries no `$localization` entry |
 | LOC0102 | Warning | The metadata entry is not the file's first property |

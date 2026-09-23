@@ -201,7 +201,7 @@ public sealed class LintingServiceTests
         // Assert
         Assert.Multiple(
             () => Assert.Empty(errorsOnly.Diagnostics),
-            () => Assert.Equal([LintingCodes.StaleConfigurationGlob], warnings.Diagnostics.Codes()));
+            () => Assert.Equal([LintingCodes.StaleConfigurationEntry], warnings.Diagnostics.Codes()));
     }
 
     [Fact]

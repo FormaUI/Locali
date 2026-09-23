@@ -33,6 +33,54 @@ public sealed class LocaliConfigFileTests
     }
 
     [Fact]
+    public void Should_read_the_locale_sources_combined()
+    {
+        // Arrange
+        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": ["pack", "host"] }""");
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(LocaleSources.Pack | LocaleSources.Host, document.LocaleSources!.Value.Allowed),
+            () => Assert.Empty(document.MalformedValues));
+    }
+
+    [Fact]
+    public void Should_read_no_locale_sources_when_the_file_names_none()
+    {
+        // Arrange
+        var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": [] }""");
+
+        // Assert
+        Assert.Null(document.LocaleSources);
+    }
+
+    [Fact]
+    public void Should_flag_a_locale_source_the_linter_does_not_define()
+    {
+        // Arrange — the known sources still count, so the list is read to its end.
+        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": ["embedded", "package"] }""");
+
+        // Assert
+        var malformedValue = Assert.Single(document.MalformedValues);
+        Assert.Multiple(
+            () => Assert.Contains("'package'", malformedValue.Reason, StringComparison.Ordinal),
+            () => Assert.Equal(LocaleSources.Embedded, document.LocaleSources!.Value.Allowed));
+    }
+
+    [Fact]
+    public void Should_flag_locale_sources_that_are_not_a_list()
+    {
+        // Arrange
+        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": "pack" }""");
+
+        // Assert
+        var malformedValue = Assert.Single(document.MalformedValues);
+        Assert.Multiple(
+            () => Assert.Contains("'localeSources'", malformedValue.Reason, StringComparison.Ordinal),
+            () => Assert.Null(document.LocaleSources));
+    }
+
+    [Fact]
     public void Should_read_more_than_one_glob_under_ignore_diagnostics()
     {
         // Arrange
@@ -204,7 +252,7 @@ public sealed class LocaliConfigFileTests
         var entry = Assert.Single(document.IgnoreDiagnostics);
 
         // Act
-        var diagnostic = document.Diagnose(entry.Offset, LintingCodes.StaleConfigurationGlob, "test");
+        var diagnostic = document.Diagnose(entry.Offset, LintingCodes.StaleConfigurationEntry, "test");
 
         // Assert
         Assert.Equal(2, diagnostic.Line);

@@ -117,8 +117,8 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
 
         // Each target answers for itself, so a project that does not compile may still name what it embeds, and the reverse.
         _ = instance.Build(Targets, loggers: null, out var results);
-        var resourceNames = results.TryGetValue(PrepareResourceNamesTarget, out var naming) && naming.ResultCode == TargetResultCode.Success
-            ? GetResourceNames(instance)
+        var resources = results.TryGetValue(PrepareResourceNamesTarget, out var naming) && naming.ResultCode == TargetResultCode.Success
+            ? GetResources(instance)
             : null;
 
         var arguments = instance.GetItems("CscCommandLineArgs").Select(item => item.EvaluatedInclude).ToArray();
@@ -129,7 +129,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             ? null
             : CompilerCommandLine.Compile(arguments, Path.GetDirectoryName(path)!, GetProjectReferences(instance, arguments, evaluated, cancellationToken), cancellationToken);
 
-        var loaded = Read(path, compilation, rootNamespace, resourceNames, isLocalePack, cancellationToken);
+        var loaded = Read(path, compilation, rootNamespace, resources?.Names, resources?.SatelliteFiles, isLocalePack, cancellationToken);
 
         return evaluated[path] = new EvaluatedProject(loaded, instance.GetPropertyValue("TargetPath"), instance.GetPropertyValue("TargetRefPath"));
     }
@@ -176,55 +176,63 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         Compilation? compilation,
         string? rootNamespace,
         IReadOnlyDictionary<string, string>? resourceNames,
+        IReadOnlySet<string>? satelliteFiles,
         bool isLocalePack,
         CancellationToken cancellationToken)
     {
         var markup = HasMarkup(path);
         if (compilation is null)
         {
-            return new LoadedProject(path, null, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack);
+            return new LoadedProject(path, null, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
         }
 
         // The generator ran with the compilation, in the compiler it was built against, which needs nothing on disk.
         if (compilation.SyntaxTrees.Any(tree => tree.FilePath.EndsWith(RazorSuffix, StringComparison.OrdinalIgnoreCase)))
         {
-            return new LoadedProject(path, compilation, HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack);
+            return new LoadedProject(path, compilation, HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
         }
 
         var emitted = Emitted(Path.GetDirectoryName(path)!);
         if (emitted.Count == 0)
         {
-            return new LoadedProject(path, compilation, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack);
+            return new LoadedProject(path, compilation, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
         }
 
         var parseOptions = compilation.SyntaxTrees.FirstOrDefault()?.Options as CSharpParseOptions;
 
-        return new LoadedProject(path, compilation.AddSyntaxTrees(Parse(emitted, parseOptions, cancellationToken)), HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack);
+        return new LoadedProject(path, compilation.AddSyntaxTrees(Parse(emitted, parseOptions, cancellationToken)), HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
     }
 
     private static bool HasMarkup(string path)
         => Path.GetDirectoryName(path) is { } folder && Directory.EnumerateFiles(folder, "*.razor", SearchOption.AllDirectories).Any();
 
-    // Whether a file is embedded or copied beside the application is the project's items to say, and the build's own naming targets say what each is embedded as; no folder's name can.
-    private static Dictionary<string, string> GetResourceNames(ProjectInstance instance)
+    // Whether a file is embedded or copied beside the application is the project's items to say, and the build's own naming targets say what each is embedded as; and where; no folder's name can.
+    private static EmbeddedResources GetResources(ProjectInstance instance)
     {
         var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var satelliteFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in instance.GetItems("EmbeddedResource"))
         {
-            names[Path.GetFullPath(item.GetMetadataValue("FullPath"))] = GetResourceName(item);
+            var fullPath = Path.GetFullPath(item.GetMetadataValue("FullPath"));
+            names[fullPath] = GetResourceName(item, out var isSatellite);
+            if (isSatellite)
+            {
+                satelliteFiles.Add(fullPath);
+            }
         }
 
-        return names;
+        return new EmbeddedResources(names, satelliteFiles);
     }
 
     // A file the build moves into a satellite assembly is named there without its culture, which the runtime reads back in just before the extension.
-    private static string GetResourceName(ProjectItemInstance item)
+    private static string GetResourceName(ProjectItemInstance item, out bool isSatellite)
     {
         var logicalName = item.GetMetadataValue("LogicalName");
         var name = logicalName.Length > 0 ? logicalName : item.GetMetadataValue("ManifestResourceName");
         var culture = item.GetMetadataValue("Culture");
 
-        if (culture.Length == 0 || item.GetMetadataValue("WithCulture").Equals("false", StringComparison.OrdinalIgnoreCase))
+        isSatellite = culture.Length > 0 && !item.GetMetadataValue("WithCulture").Equals("false", StringComparison.OrdinalIgnoreCase);
+        if (!isSatellite)
         {
             return name;
         }
@@ -258,4 +266,6 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
     }
 
     private sealed record EvaluatedProject(LoadedProject Loaded, string? TargetPath, string? TargetRefPath);
+
+    private sealed record EmbeddedResources(IReadOnlyDictionary<string, string> Names, IReadOnlySet<string> SatelliteFiles);
 }

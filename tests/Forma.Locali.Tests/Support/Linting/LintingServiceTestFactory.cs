@@ -29,7 +29,7 @@ public static class LintingServiceTestFactory
             projectLoader ?? new StubProjectLoader(),
             new LocalizationFileLinter(SchemaLinterTestFactory.Create()),
             new SourceLinter(new SemanticCallsiteFinder(), new SyntacticCallsiteFinder(), SourceLinterTestFactory.Checkers()),
-            new ProjectLinter(ProjectLinterTestFactory.Checkers()),
+            new ProjectLinter(ProjectLinterTestFactory.Checkers(lintingConfiguration)),
             lintingConfiguration);
     }
 }
