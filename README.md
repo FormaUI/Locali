@@ -164,7 +164,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 |------|----------|---------|
 | LOC0020 | Error | The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define |
 | LOC0021 | Warning | A glob in the linting configuration matched no file the run reached |
-| LOC0022 | Error | The runtime's `.locale.json` is not readable, names a key the runtime does not read, gives a value it would refuse, is one of two for an assembly, or sits anywhere but its project's root |
+| LOC0022 | Error | The runtime's `.locale.json` is not readable, names a key the runtime does not read, gives a value it would refuse, is one of two for an assembly, sits anywhere but its project's root, or sits in a locale pack |
 | LOC0023 | Warning | The root namespace the runtime counts a type's name from holds none of the project's types |
 | LOC0024 | Error | A locale pack's folder names an assembly the solution neither builds nor references |
 | LOC0100 | Error | The file is not readable JSON |

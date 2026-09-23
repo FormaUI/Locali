@@ -61,16 +61,18 @@ globs for the rest of the tree unjudged. It is a warning for that reason.
 
 **Reports.** A `.locale.json` that is not readable JSON, names a key the runtime does not read,
 gives a value the runtime would refuse, is one of two embedded for an assembly, is embedded
-anywhere but the project's root, or sits in a host's `.locales` folder.
+anywhere but the project's root, sits in a host's `.locales` folder, or sits anywhere in a
+locale pack.
 
 **Why it matters.** The runtime passes over a key it does not read, so a misspelled one steers
 nothing; it refuses every lookup in an assembly that embeds two config files; it reads a file
 embedded beneath the root as the assembly's all the same, so the one place it may sit is stated
-at lint time; and it reads no config from a host's folder at all.
+at lint time; and it reads no config from a host's folder or a locale pack at all, laying each
+of their folders out by the root namespace the assembly it names declares for itself.
 
 **What fixes it.** Keep the keys to `rootNamespace`, `rootDir`, `localesDir` and `paths`, each
 as the runtime spells it; a malformed path is reported at the token that is wrong. Embed one
-file, at the project's root, and lay none in a host's folder.
+file, at the project's root, and lay none in a host's folder or a locale pack.
 
 **Silent where.** The file reads cleanly and sits where it belongs. The type-bound rules then
 read the project's files through it, as the runtime does.

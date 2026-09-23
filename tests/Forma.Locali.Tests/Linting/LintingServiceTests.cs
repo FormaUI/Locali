@@ -331,6 +331,27 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
+    public async Task Should_report_a_locale_config_inside_a_locale_pack()
+    {
+        // Arrange — a pack's build embeds every JSON file beneath it, and the runtime reads no config from a pack, so the file is embedded and ignored.
+        using var directory = new TempDirectory();
+        var pack = directory.Write(Path.Combine("Packs", "Contoso.Widgets.Locales.Hebrew.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var config = directory.Write(Path.Combine("Packs", ".locale.json"), """{ "rootNamespace": "Contoso" }""");
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(config)] = ".locale.json" };
+        var loader = new StubProjectLoader(new LoadedProject(pack, CompilationTestFactory.Building("Contoso.Widgets.Locales.Hebrew"), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MalformedLocaleConfig, diagnostic.Code),
+            () => Assert.Equal(config, diagnostic.Path),
+            () => Assert.Contains("A locale pack carries no config", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Should_report_a_locale_config_at_the_projects_root_that_the_project_does_not_embed()
     {
         // Arrange — the file sits where it belongs, but a project that embeds only some folders leaves it out of the assembly.
