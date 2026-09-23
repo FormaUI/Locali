@@ -7,7 +7,7 @@ using Forma.Locali.Sources;
 /// <summary>What a project rule reads, and what it reports through.</summary>
 /// <param name="project">The project being checked.</param>
 /// <param name="localizationFiles">The locale files the project owns, which the target attributed.</param>
-/// <param name="localization">The project's embedded locale files resolved against its types, or null when the project did not compile.</param>
+/// <param name="localization">The project's embedded locale files resolved against its types, or null when the project did not compile or is a locale pack.</param>
 /// <param name="callsites">The callsites the source pass found.</param>
 /// <param name="hostFiles">The files of the host's folder at the project's root, with the anchors the runtime places them at.</param>
 public sealed class ProjectContext(
@@ -25,7 +25,7 @@ public sealed class ProjectContext(
     /// <summary>The locale files the project owns, which the target attributed.</summary>
     public IReadOnlyList<string> LocalizationFiles { get; } = localizationFiles ?? throw new ArgumentNullException(nameof(localizationFiles));
 
-    /// <summary>The project's embedded locale files resolved against its types, or null when the project did not compile.</summary>
+    /// <summary>The project's embedded locale files resolved against its types, or null when the project did not compile or is a locale pack.</summary>
     public ProjectLocalization? Localization { get; } = localization;
 
     /// <summary>The callsites the source pass found.</summary>

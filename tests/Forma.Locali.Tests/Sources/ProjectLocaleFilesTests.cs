@@ -166,6 +166,22 @@ public sealed class ProjectLocaleFilesTests
         Assert.Null(resolved);
     }
 
+    [Fact]
+    public void Should_resolve_nothing_for_a_locale_pack()
+    {
+        // Arrange — a pack embeds its files for the assemblies its folders are named for, and declares no type to read them.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgets.Bars.he.json" };
+        var project = new LoadedProject(Path.Combine(directory.Root, "Contoso.Widgets.Locales.Hebrew.csproj"), Compile(string.Empty), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true);
+
+        // Act
+        var resolved = ProjectLocaleFiles.Resolve(project, [file]);
+
+        // Assert
+        Assert.Null(resolved);
+    }
+
     private static Compilation Compile(string source)
         => CompilationTestFactory.Unreferenced(source);
 

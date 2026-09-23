@@ -230,9 +230,10 @@ every culture its files carry, under the name the build gives each file, an expl
 `LogicalName` included, and through the `.locale.json` the project embeds.
 
 **Silent where.** The run did not name the project's files; the file is one the project does not
-embed — a host's folder, which translates other assemblies' types; or the project's items could
-not be read and the file sits under a folder the build renames to embed it, such as `my-folder`,
-so its name cannot be told.
+embed — a host's folder, which translates other assemblies' types; the project is a locale pack,
+whose every file is another assembly's; or the project's items could not be read and the file
+sits under a folder the build renames to embed it, such as `my-folder`, so its name cannot be
+told.
 
 ### LOC0113 — A key translated two ways across sections
 
@@ -290,6 +291,8 @@ keeps answering from where it was left.
 host's `.locales` folder at the project's root as another, in which a file may sit in a folder's
 own `.locales` or directly in the folder. It is a warning because both files load.
 
+**Silent where.** A locale pack, whose embedded files are other assemblies'.
+
 ### LOC0118 — A folder named for a type
 
 **Reports.** A file named for its culture alone whose folder is named for a type of the project,
@@ -302,8 +305,8 @@ same.
 **What fixes it.** Name the file for the type among its namespace folder's locale files,
 `Components/.locales/Widget.he.json`.
 
-**Silent where.** A host's folder, which names other assemblies' types the compilation cannot
-tell from namespaces.
+**Silent where.** A host's folder or a locale pack, which name other assemblies' types the
+compilation cannot tell from namespaces.
 
 ## Callsites (LOC0200–LOC0299)
 
@@ -409,8 +412,8 @@ genuinely missing cannot use it, and the warning is the honest answer there.
 
 **Silent where.** The type has no translations at all, since it is unlocalized rather than
 under-translated; the lookup is through the unbound `IStringLocale`, which names no type; a
-parent culture answers, since `es-419` reads `es` for what it does not declare; or the run did
-not name the project's files.
+parent culture answers, since `es-419` reads `es` for what it does not declare; the project is a
+locale pack, whose files are other assemblies'; or the run did not name the project's files.
 
 ### LOC0208 — A lookup writes its key as an expression
 

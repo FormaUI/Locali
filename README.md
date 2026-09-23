@@ -56,8 +56,9 @@ application, laid out by the type's name, the file directly in its folder:
 The rules that read a type's files, LOC0112 and LOC0207 among them, read a project's own
 embedded files, whatever folder they sit in; a host's folder translates other assemblies' types,
 so the file rules read it and the type-bound rules do not, and LOC0117 reads it as a source of
-its own. `Forma.Framework.Localization`'s README walks the whole layout; this document covers
-the linter.
+its own. A locale pack, a project declaring `IsLocalePack`, is a host's folder that ships as an
+assembly, so the file rules read its files and the type-bound rules do not.
+`Forma.Framework.Localization`'s README walks the whole layout; this document covers the linter.
 
 ## Options
 

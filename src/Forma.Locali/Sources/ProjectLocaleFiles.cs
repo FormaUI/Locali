@@ -10,7 +10,7 @@ using Forma.Locali.Projects;
 /// <summary>Resolves a project's locale files against the types the runtime finds them by.</summary>
 public static class ProjectLocaleFiles
 {
-    /// <summary>Every readable culture-named file the project embeds, resolved against the compilation, or null when the project would not load.</summary>
+    /// <summary>Every readable culture-named file the project embeds, resolved against the compilation, or null when the project would not load or is a locale pack, whose files are other assemblies'.</summary>
     /// <param name="project">The project the files belong to.</param>
     /// <param name="localizationFiles">The locale files this project owns, which the target attributed.</param>
     public static ProjectLocalization? Resolve(LoadedProject project, IReadOnlyCollection<string> localizationFiles)
@@ -18,7 +18,8 @@ public static class ProjectLocaleFiles
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
-        if (project.Compilation is not { AssemblyName.Length: > 0 } compilation)
+        // A pack embeds its files for the assemblies its folders are named for, and declares no type of its own to read them.
+        if (project.IsLocalePack || project.Compilation is not { AssemblyName.Length: > 0 } compilation)
         {
             return null;
         }

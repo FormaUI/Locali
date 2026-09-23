@@ -118,11 +118,12 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         var arguments = instance.GetItems("CscCommandLineArgs").Select(item => item.EvaluatedInclude).ToArray();
 
         var rootNamespace = instance.GetPropertyValue("RootNamespace") is { Length: > 0 } declared ? declared : null;
+        var isLocalePack = instance.GetPropertyValue("IsLocalePack").Equals("true", StringComparison.OrdinalIgnoreCase);
         var compilation = arguments.Length == 0
             ? null
             : CompilerCommandLine.Compile(arguments, Path.GetDirectoryName(path)!, GetProjectReferences(instance, arguments, evaluated, cancellationToken), cancellationToken);
 
-        var loaded = Read(path, compilation, rootNamespace, resourceNames, cancellationToken);
+        var loaded = Read(path, compilation, rootNamespace, resourceNames, isLocalePack, cancellationToken);
 
         return evaluated[path] = new EvaluatedProject(loaded, instance.GetPropertyValue("TargetPath"), instance.GetPropertyValue("TargetRefPath"));
     }
@@ -169,29 +170,30 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         Compilation? compilation,
         string? rootNamespace,
         IReadOnlyDictionary<string, string>? resourceNames,
+        bool isLocalePack,
         CancellationToken cancellationToken)
     {
         var markup = HasMarkup(path);
         if (compilation is null)
         {
-            return new LoadedProject(path, null, HasGeneratedSources: false, markup, rootNamespace, resourceNames);
+            return new LoadedProject(path, null, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack);
         }
 
         // The generator ran with the compilation, in the compiler it was built against, which needs nothing on disk.
         if (compilation.SyntaxTrees.Any(tree => tree.FilePath.EndsWith(RazorSuffix, StringComparison.OrdinalIgnoreCase)))
         {
-            return new LoadedProject(path, compilation, HasGeneratedSources: true, markup, rootNamespace, resourceNames);
+            return new LoadedProject(path, compilation, HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack);
         }
 
         var emitted = Emitted(Path.GetDirectoryName(path)!);
         if (emitted.Count == 0)
         {
-            return new LoadedProject(path, compilation, HasGeneratedSources: false, markup, rootNamespace, resourceNames);
+            return new LoadedProject(path, compilation, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack);
         }
 
         var parseOptions = compilation.SyntaxTrees.FirstOrDefault()?.Options as CSharpParseOptions;
 
-        return new LoadedProject(path, compilation.AddSyntaxTrees(Parse(emitted, parseOptions, cancellationToken)), HasGeneratedSources: true, markup, rootNamespace, resourceNames);
+        return new LoadedProject(path, compilation.AddSyntaxTrees(Parse(emitted, parseOptions, cancellationToken)), HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack);
     }
 
     private static bool HasMarkup(string path)
