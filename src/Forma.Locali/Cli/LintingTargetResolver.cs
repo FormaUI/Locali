@@ -133,7 +133,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
         var folder = Path.GetDirectoryName(Path.GetFullPath(solution))!;
         var target = FromFiles(Walk(folder), excludes);
 
-        return target with { Projects = [solution] };
+        return target with { Projects = [solution], IsSolution = true };
     }
 
     // A glob from the command line and one from a file's own .locali.json carry the same weight.

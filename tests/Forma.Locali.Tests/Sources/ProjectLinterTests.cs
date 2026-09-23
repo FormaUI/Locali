@@ -14,7 +14,7 @@ public sealed class ProjectLinterTests
         var flat = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
 
         // Act
-        var diagnostics = new ProjectLinter(ProjectLinterTestFactory.Checkers()).Lint(project, [nested, flat], []);
+        var diagnostics = new ProjectLinter(ProjectLinterTestFactory.Checkers()).Lint(project, [nested, flat], [], new LoadedProjects([project], IsWholeSolution: false));
 
         // Assert
         Assert.Equal([LintingCodes.DuplicateAnchorFile, LintingCodes.DuplicateAnchorFile], diagnostics.Codes());
@@ -38,7 +38,7 @@ public sealed class ProjectLinterTests
         var project = new LoadedProject(projectPath, CompilationTestFactory.Unreferenced("namespace Scratch.Components; public sealed class Widget;"), false, false, EmbeddedResourceNames: resourceNames);
 
         // Act
-        var diagnostics = new ProjectLinter(ProjectLinterTestFactory.Checkers()).Lint(project, [first, second, file], []);
+        var diagnostics = new ProjectLinter(ProjectLinterTestFactory.Checkers()).Lint(project, [first, second, file], [], new LoadedProjects([project], IsWholeSolution: false));
 
         // Assert
         Assert.Multiple(

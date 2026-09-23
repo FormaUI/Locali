@@ -417,4 +417,45 @@ public sealed class LintingServiceTests
         // Assert
         Assert.Empty(result.Diagnostics);
     }
+
+    [Fact]
+    public async Task Should_report_a_pack_folder_naming_no_assembly_of_the_solution()
+    {
+        // Arrange — the solution lists every project, so a folder matching none of them and nothing they reference names an assembly built nowhere.
+        using var directory = new TempDirectory();
+        var solution = directory.Write("Scratch.slnx", "<Solution />");
+        var pack = directory.Write(Path.Combine("Packs", "Contoso.Widgets.Locales.Hebrew.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var file = directory.Write(Path.Combine("Packs", "Contoso.Widgetz", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgetz.he.json" };
+        var loader = new StubProjectLoader(
+            new LoadedProject(pack, CompilationTestFactory.Building("Contoso.Widgets.Locales.Hebrew"), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true),
+            new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Widgets; public sealed class Widget;"), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(solution, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.UnknownLocalePackAssembly, diagnostic.Code),
+            () => Assert.Equal(pack, diagnostic.Path),
+            () => Assert.Contains("'Contoso.Widgetz'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_leave_a_pack_folder_alone_when_the_run_named_a_directory()
+    {
+        // Arrange — a directory lists no project but what sits beneath it, so the assembly may be built elsewhere.
+        using var directory = new TempDirectory();
+        var pack = directory.Write(Path.Combine("Packs", "Contoso.Widgets.Locales.Hebrew.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var file = directory.Write(Path.Combine("Packs", "Contoso.Widgetz", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgetz.he.json" };
+        var loader = new StubProjectLoader(new LoadedProject(pack, CompilationTestFactory.Building("Contoso.Widgets.Locales.Hebrew"), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(result.Diagnostics);
+    }
 }

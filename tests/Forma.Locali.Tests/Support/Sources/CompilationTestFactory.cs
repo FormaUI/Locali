@@ -24,6 +24,19 @@ public static class CompilationTestFactory
             sources.Select(source => CSharpSyntaxTree.ParseText(source)));
     }
 
+    /// <summary>A compilation carrying no references, building the assembly named, so the projects of a run can be told apart by name.</summary>
+    /// <param name="assemblyName">The name of the assembly the compilation builds.</param>
+    /// <param name="sources">The C# sources to parse.</param>
+    public static Compilation Building(string assemblyName, params string[] sources)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(assemblyName);
+        ArgumentNullException.ThrowIfNull(sources);
+
+        return CSharpCompilation.Create(
+            assemblyName,
+            sources.Select(source => CSharpSyntaxTree.ParseText(source)));
+    }
+
     /// <summary>A compilation carrying everything the test run loaded, so the localizer contract binds.</summary>
     /// <param name="sources">The C# sources to parse.</param>
     public static Compilation Referenced(params string[] sources)

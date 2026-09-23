@@ -19,6 +19,7 @@ public static class ProjectLinterTestFactory
             new LocalizationCoverageChecker(),
             new DuplicateAnchorFileChecker(),
             new TypeNamedFolderChecker(),
+            new LocalePackFolderChecker(),
         ];
 
     /// <summary>What one project rule reports over a project's files, resolved as the linter resolves them.</summary>
@@ -26,17 +27,19 @@ public static class ProjectLinterTestFactory
     /// <param name="project">The project the files belong to.</param>
     /// <param name="localizationFiles">The locale files the project owns.</param>
     /// <param name="callsites">The callsites the source pass found, none unless given.</param>
+    /// <param name="projects">Every project the run loaded, the project alone as no solution unless given.</param>
     public static IReadOnlyList<LintingDiagnostic> Check(
         IProjectRuleChecker checker,
         LoadedProject project,
         IReadOnlyList<string> localizationFiles,
-        IReadOnlyList<LocalizerLookup>? callsites = null)
+        IReadOnlyList<LocalizerLookup>? callsites = null,
+        LoadedProjects? projects = null)
     {
         ArgumentNullException.ThrowIfNull(checker);
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
-        return new ProjectLinter([checker]).Lint(project, localizationFiles, callsites ?? []);
+        return new ProjectLinter([checker]).Lint(project, localizationFiles, callsites ?? [], projects ?? new LoadedProjects([project], IsWholeSolution: false));
     }
 
     /// <summary>What one project rule reports over files already placed, read as the host's folder.</summary>

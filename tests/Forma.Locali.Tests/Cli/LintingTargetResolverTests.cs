@@ -117,7 +117,27 @@ public sealed class LintingTargetResolverTests
         // Assert
         Assert.Multiple(
             () => Assert.Equal([project], target.Projects),
-            () => Assert.Single(target.SourceFiles));
+            () => Assert.Single(target.SourceFiles),
+            () => Assert.False(target.IsSolution));
+    }
+
+    [Fact]
+    public void Should_read_a_solution_as_the_one_that_lists_every_project()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var solution = directory.Write("Scratch.slnx", "<Solution />");
+        directory.Write(Path.Combine("Scratch", "Scratch.csproj"), "<Project />");
+        directory.Write(Path.Combine("Scratch", "Widget.cs"), "class Widget;");
+
+        // Act
+        var target = new LintingTargetResolver(new LintingConfiguration()).Resolve(solution);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal([solution], target.Projects),
+            () => Assert.Single(target.SourceFiles),
+            () => Assert.True(target.IsSolution));
     }
 
     [Fact]

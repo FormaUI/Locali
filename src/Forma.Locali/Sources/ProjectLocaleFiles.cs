@@ -112,8 +112,16 @@ public static class ProjectLocaleFiles
         return true;
     }
 
-    private static LocaleFile? Read(JsonLocaleFileFormat format, string path, string culture)
+    /// <summary>The file as the runtime reads it, or null when it cannot be opened or will not read, which is the file rules' business.</summary>
+    /// <param name="format">The format the file is written in.</param>
+    /// <param name="path">The file, as a full path.</param>
+    /// <param name="culture">The culture the file's own name gives it.</param>
+    public static LocaleFile? Read(ILocaleFileFormat format, string path, string culture)
     {
+        ArgumentNullException.ThrowIfNull(format);
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        ArgumentException.ThrowIfNullOrEmpty(culture);
+
         try
         {
             using var stream = File.OpenRead(path);

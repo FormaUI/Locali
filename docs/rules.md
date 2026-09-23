@@ -96,6 +96,25 @@ report names the project's own `RootNamespace` where the types sit under it.
 not compile; the project's items could not be read, so no config file is known to be embedded;
 or the config file will not read, which is LOC0022's.
 
+### LOC0024 — A pack folder names an assembly the solution does not have
+
+**Reports.** A top-level folder of a locale pack, a project declaring `IsLocalePack`, whose name
+is no assembly a project of the solution builds or references. It is reported at the pack's
+project file, naming the folder.
+
+**Why it matters.** A pack's folders are the only thing that says which assemblies it localizes,
+and the runtime matches a folder to an assembly by name and nothing else. A misspelled folder
+loads with the pack, answers no lookup, and every type it was written for renders in the source
+language without a word.
+
+**What fixes it.** Name the folder for the assembly exactly, `Forma.Blazor.Composer` rather than
+the namespace its types share.
+
+**Silent where.** The run named a project or a directory rather than a solution, since only a
+solution lists every project a folder could name; a project of the solution did not compile, so
+its assembly's name cannot be told; the folder names an assembly a project references from a
+package, whose types are out of reach; or the pack's items could not be read.
+
 ## Locale files (LOC0100–LOC0199)
 
 A locale file opens with `$localization`, then `$shared` where it carries one, then its
