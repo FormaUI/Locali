@@ -67,6 +67,62 @@ public sealed class CultureCoverageCheckerTests
     }
 
     [Fact]
+    public void Should_report_a_type_whose_only_entry_is_a_shared_one_in_its_own_section()
+    {
+        // Arrange — a shared block inside the type's own section answers for the type itself, so the type is translated for Hebrew and not for Spanish.
+        using var directory = new TempDirectory();
+        var target = Target(directory);
+        var heFile = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.WithSharedSection("Widget", "Today", "היום"));
+        var esFile = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "es.json"), LocalizationFileFakeData.ForCulture("es", "Today", "hoy"));
+        var hePack = LocalePackTestFactory.Resolve(directory, "Hebrew", target, heFile);
+        var esPack = LocalePackTestFactory.Resolve(directory, "Spanish", target, esFile);
+
+        // Act
+        var diagnostic = Assert.Single(ProjectLinterTestFactory.Check(new CultureCoverageChecker(), target, [], packs: [hePack, esPack]));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MissingCultureCoverage, diagnostic.Code),
+            () => Assert.Equal(heFile, diagnostic.Path));
+    }
+
+    [Fact]
+    public void Should_report_a_type_whose_only_entry_is_the_shared_one_of_its_own_file()
+    {
+        // Arrange — a shared block at the top of the type's own file is the type's own, since the file's root is the type.
+        using var directory = new TempDirectory();
+        var target = Target(directory);
+        var heFile = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "Widget.he.json"), LocalizationFileFakeData.WithReservedOrder("$localization", "$shared"));
+        var esFile = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "es.json"), LocalizationFileFakeData.ForCulture("es", "Today", "hoy"));
+        var hePack = LocalePackTestFactory.Resolve(directory, "Hebrew", target, heFile);
+        var esPack = LocalePackTestFactory.Resolve(directory, "Spanish", target, esFile);
+
+        // Act
+        var diagnostic = Assert.Single(ProjectLinterTestFactory.Check(new CultureCoverageChecker(), target, [], packs: [hePack, esPack]));
+
+        // Assert
+        Assert.Equal(heFile, diagnostic.Path);
+    }
+
+    [Fact]
+    public void Should_leave_a_type_answered_only_by_its_folders_shared_entry_alone()
+    {
+        // Arrange — the folder's shared block reaches Widget in Hebrew without anyone translating Widget, so Widget is unlocalized in both rather than uneven.
+        using var directory = new TempDirectory();
+        var target = Target(directory);
+        var heFile = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.WithSharedAndSection("Edit", "עריכה", "Gadget", "Today", "היום"));
+        var esFile = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "es.json"), LocalizationFileFakeData.WithSection("es", "Gadget", "Today", "hoy"));
+        var hePack = LocalePackTestFactory.Resolve(directory, "Hebrew", target, heFile);
+        var esPack = LocalePackTestFactory.Resolve(directory, "Spanish", target, esFile);
+
+        // Act
+        var diagnostics = ProjectLinterTestFactory.Check(new CultureCoverageChecker(), target, [], packs: [hePack, esPack]);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_stay_silent_with_only_one_culture_family_known()
     {
         // Arrange — Spanish never localizes this project at all, so there is nothing to compare Hebrew against.

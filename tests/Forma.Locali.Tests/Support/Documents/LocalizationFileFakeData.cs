@@ -98,6 +98,33 @@ public static class LocalizationFileFakeData
             }
             """;
 
+    /// <summary>A schema-following file holding one section, for the type named, whose only content is a shared block with one translation.</summary>
+    /// <param name="section">The section, which completes a type's name.</param>
+    /// <param name="key">The key the shared translation is written under.</param>
+    /// <param name="text">The translation itself.</param>
+    public static string WithSharedSection(string section, string key, string text)
+        => $$"""
+            {
+              "{{LocalizationSchema.Marker}}": "SchemaVersion: {{LocalizationSchema.CurrentVersion}}; Culture: he;",
+              "{{section}}": { "{{LocalizationSchema.SharedKey}}": { "{{key}}": "{{text}}" } }
+            }
+            """;
+
+    /// <summary>A schema-following file whose shared block at the top answers for every type the file reaches, beside one section for one type.</summary>
+    /// <param name="sharedKey">The key the shared translation is written under.</param>
+    /// <param name="sharedText">The shared translation itself.</param>
+    /// <param name="section">The section, which completes a type's name.</param>
+    /// <param name="key">The key the section's translation is written under.</param>
+    /// <param name="text">The section's translation itself.</param>
+    public static string WithSharedAndSection(string sharedKey, string sharedText, string section, string key, string text)
+        => $$"""
+            {
+              "{{LocalizationSchema.Marker}}": "SchemaVersion: {{LocalizationSchema.CurrentVersion}}; Culture: he;",
+              "{{LocalizationSchema.SharedKey}}": { "{{sharedKey}}": "{{sharedText}}" },
+              "{{section}}": { "{{key}}": "{{text}}" }
+            }
+            """;
+
     /// <summary>A schema-following file holding one section per type named, each with one translation.</summary>
     /// <param name="sections">The sections, each with the key and translation it holds.</param>
     public static string WithSections(params (string Section, string Key, string Text)[] sections)

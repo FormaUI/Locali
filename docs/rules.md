@@ -351,9 +351,10 @@ source language there.
 **Silent where.** The project's files and packs carry only one culture family; the type has no
 translations in any family, since it is unlocalized rather than uneven; a regional culture,
 `es-419` among them, answers where its neutral culture, `es`, does not, and the reverse, since
-one stands for the family; or the only entry a culture carries for the type is a `$shared` one,
-since `$shared` answers for every type a file reaches and so is never itself a deliberate
-translation of one.
+one stands for the family; or the only entries a culture carries for the type come from a
+`$shared` block above it, a folder's or an outer type's, which answers for every type beneath
+and says nothing about this one. A `$shared` block in the type's own section or file is the
+type's own and counts.
 
 ## Callsites (LOC0200–LOC0299)
 
