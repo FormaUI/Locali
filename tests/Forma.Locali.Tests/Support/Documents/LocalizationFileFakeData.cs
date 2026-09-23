@@ -85,6 +85,19 @@ public static class LocalizationFileFakeData
     public static string WithSection(string section, string key, string text)
         => WithSections((section, key, text));
 
+    /// <summary>A schema-following file for the culture named, holding one section, for the type named, with one translation.</summary>
+    /// <param name="culture">The culture the file declares and is named for.</param>
+    /// <param name="section">The section, which completes a type's name.</param>
+    /// <param name="key">The key the translation is written under.</param>
+    /// <param name="text">The translation itself.</param>
+    public static string WithSection(string culture, string section, string key, string text)
+        => $$"""
+            {
+              "{{LocalizationSchema.Marker}}": "SchemaVersion: {{LocalizationSchema.CurrentVersion}}; Culture: {{culture}};",
+              "{{section}}": { "{{key}}": "{{text}}" }
+            }
+            """;
+
     /// <summary>A schema-following file holding one section per type named, each with one translation.</summary>
     /// <param name="sections">The sections, each with the key and translation it holds.</param>
     public static string WithSections(params (string Section, string Key, string Text)[] sections)

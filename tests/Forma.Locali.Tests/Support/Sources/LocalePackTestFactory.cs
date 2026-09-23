@@ -14,8 +14,17 @@ public static class LocalePackTestFactory
     /// <param name="target">The project the pack's folders may name.</param>
     /// <param name="files">The pack's locale files, as full paths under the pack's folder.</param>
     public static LocalePack Resolve(TempDirectory directory, LoadedProject target, params string[] files)
+        => Resolve(directory, "Hebrew", target, files);
+
+    /// <summary>A pack of the files written under <see cref="Folder"/>, named for the culture given rather than Hebrew, embedded as the runtime's build embeds them, resolved against the target and itself as a whole solution.</summary>
+    /// <param name="directory">The test's directory.</param>
+    /// <param name="packName">What the pack's own assembly is named, distinguishing it from a sibling pack of another culture in the same test.</param>
+    /// <param name="target">The project the pack's folders may name.</param>
+    /// <param name="files">The pack's locale files, as full paths under the pack's folder.</param>
+    public static LocalePack Resolve(TempDirectory directory, string packName, LoadedProject target, params string[] files)
     {
         ArgumentNullException.ThrowIfNull(directory);
+        ArgumentException.ThrowIfNullOrEmpty(packName);
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(files);
 
@@ -28,8 +37,8 @@ public static class LocalePackTestFactory
             StringComparer.OrdinalIgnoreCase);
 
         var pack = new LoadedProject(
-            Path.Combine(packDirectory, "Contoso.Locales.Hebrew.csproj"),
-            CompilationTestFactory.Building("Contoso.Locales.Hebrew"),
+            Path.Combine(packDirectory, $"Contoso.Locales.{packName}.csproj"),
+            CompilationTestFactory.Building($"Contoso.Locales.{packName}"),
             false,
             false,
             EmbeddedResourceNames: resourceNames,

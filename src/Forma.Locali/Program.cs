@@ -117,6 +117,7 @@ internal static class Program
         builder.Services.AddSingleton<IProjectRuleChecker, LocalizationCoverageChecker>();
         builder.Services.AddSingleton<IProjectRuleChecker, DuplicateAnchorFileChecker>();
         builder.Services.AddSingleton<IProjectRuleChecker, TypeNamedFolderChecker>();
+        builder.Services.AddSingleton<IProjectRuleChecker, CultureCoverageChecker>();
         builder.Services.AddSingleton<IProjectRuleChecker, LocalePackFolderChecker>();
 
         builder.Services.AddSingleton<ISchemaLinter, SchemaLinter>();

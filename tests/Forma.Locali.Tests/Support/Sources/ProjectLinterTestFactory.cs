@@ -19,6 +19,7 @@ public static class ProjectLinterTestFactory
             new LocalizationCoverageChecker(),
             new DuplicateAnchorFileChecker(),
             new TypeNamedFolderChecker(),
+            new CultureCoverageChecker(),
             new LocalePackFolderChecker(),
         ];
 

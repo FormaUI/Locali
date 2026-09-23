@@ -334,6 +334,27 @@ same.
 tell from namespaces; a locale pack's folder is read for the project it names, and held to that
 project's types.
 
+### LOC0119 — A type answered in one culture family and left out of another
+
+**Reports.** A type with entries for one culture family among the project's files and packs,
+none at all in another family the project's files or packs also carry: once per type per family
+missing it, at a file that does answer the type.
+
+**Why it matters.** A type's translations used to sit beside each other, one file per culture,
+where a language falling behind was visible by eye. Split across packs, a type Hebrew answers
+and Spanish never received loads correctly and falls back to the source language for every
+Spanish reader, with every other check staying green.
+
+**What fixes it.** Translate the type for the missing family, or accept that it renders in the
+source language there.
+
+**Silent where.** The project's files and packs carry only one culture family; the type has no
+translations in any family, since it is unlocalized rather than uneven; a regional culture,
+`es-419` among them, answers where its neutral culture, `es`, does not, and the reverse, since
+one stands for the family; or the only entry a culture carries for the type is a `$shared` one,
+since `$shared` answers for every type a file reaches and so is never itself a deliberate
+translation of one.
+
 ## Callsites (LOC0200–LOC0299)
 
 Callsites are found semantically where the compilation binds `IStringLocale`, and syntactically

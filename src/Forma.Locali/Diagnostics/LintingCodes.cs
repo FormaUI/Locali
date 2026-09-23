@@ -33,6 +33,7 @@ public static class LintingCodes
             MalformedShared,
             DuplicateAnchorFile,
             TypeNamedFolder,
+            MissingCultureCoverage,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
@@ -192,6 +193,12 @@ public static class LintingCodes
         "LOC0118",
         LintingSeverity.Warning,
         "A folder of locale files is named for a type, which lays the type out as a namespace; a type's own file is named for the type among its namespace folder's locale files.");
+
+    /// <summary>A type is translated in one culture family the project's files or packs carry and left out of another.</summary>
+    public static LintingCode MissingCultureCoverage { get; } = new(
+        "LOC0119",
+        LintingSeverity.Warning,
+        "A type is translated in one culture family the project's files or packs carry and left out of another, so it renders in the source language for every reader of the missing one.");
 
     /// <summary>An expression names an argument the lookup never supplies.</summary>
     public static LintingCode UnsuppliedPluralArgument { get; } = new(
