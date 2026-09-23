@@ -227,6 +227,41 @@ public sealed class UnreachableLocalizationCheckerTests
     }
 
     [Fact]
+    public void Should_report_a_pack_section_naming_no_type()
+    {
+        // Arrange — a pack's file is read for the assembly its folder names, so its sections are held to that assembly's types.
+        using var directory = new TempDirectory();
+        var target = new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Widgets.Bars; public sealed class Widget;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>());
+        var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.WithSections(("Widget", "Today", "היום"), ("Gadget", "Today", "היום")));
+        var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
+
+        // Act
+        var diagnostic = Assert.Single(ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), target, [], packs: [pack]));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.UnreachableLocalization, diagnostic.Code),
+            () => Assert.Equal(packFile, diagnostic.Path),
+            () => Assert.Contains("'Gadget'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Should_leave_a_pack_file_a_type_reads_alone()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var target = new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Widgets.Bars; public sealed class Widget;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>());
+        var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
+
+        // Act
+        var diagnostics = ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), target, [], packs: [pack]);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_report_nothing_when_the_project_owns_no_locale_files()
     {
         // Arrange

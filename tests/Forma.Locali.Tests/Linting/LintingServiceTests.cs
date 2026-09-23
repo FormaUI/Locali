@@ -443,6 +443,29 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
+    public async Task Should_read_a_pack_for_the_project_its_folder_names()
+    {
+        // Arrange — the pack's file is held to the target's types, and reported where it sits.
+        using var directory = new TempDirectory();
+        var pack = directory.Write(Path.Combine("Packs", "Contoso.Widgets.Locales.Hebrew.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var file = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.WithSections(("Widget", "Today", "היום"), ("Gadget", "Today", "היום")));
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgets.he.json" };
+        var loader = new StubProjectLoader(
+            new LoadedProject(pack, CompilationTestFactory.Building("Contoso.Widgets.Locales.Hebrew"), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true),
+            new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Widgets; public sealed class Widget;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>()));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.UnreachableLocalization, diagnostic.Code),
+            () => Assert.Equal(file, diagnostic.Path),
+            () => Assert.Contains("'Gadget'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Should_leave_a_pack_folder_alone_when_the_run_named_a_directory()
     {
         // Arrange — a directory lists no project but what sits beneath it, so the assembly may be built elsewhere.

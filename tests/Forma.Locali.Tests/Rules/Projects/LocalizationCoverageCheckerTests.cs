@@ -31,6 +31,40 @@ public sealed class LocalizationCoverageCheckerTests
     }
 
     [Fact]
+    public void Should_report_a_key_a_pack_leaves_out()
+    {
+        // Arrange — the type is translated by a pack alone, so a key the pack's file leaves out renders in the source language.
+        using var directory = new TempDirectory();
+        var compilation = CompilationTestFactory.Referenced("""
+            using Forma.Framework.Localization;
+
+            namespace Contoso.Widgets;
+
+            public sealed class Widget
+            {
+                private IStringLocale<Widget> L { get; } = default!;
+
+                public void Show() => _ = L["Tomorrow"];
+            }
+            """).WithAssemblyName("Contoso.Widgets");
+        var target = new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), compilation, false, false, EmbeddedResourceNames: new Dictionary<string, string>());
+        var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
+        var sites = new SourceLinter(new SemanticCallsiteFinder(), new SyntacticCallsiteFinder(), SourceLinterTestFactory.Checkers())
+            .Lint(target, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)], TestContext.Current.CancellationToken)
+            .Callsites;
+
+        // Act
+        var diagnostic = Assert.Single(ProjectLinterTestFactory.Check(new LocalizationCoverageChecker(), target, [], sites, [pack]));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MissingLocalization, diagnostic.Code),
+            () => Assert.Contains("'Tomorrow'", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "he.json"), diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Should_leave_a_key_the_file_answers_alone()
     {
         // Arrange

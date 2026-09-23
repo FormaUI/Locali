@@ -91,6 +91,50 @@ public sealed class MSBuildProjectLoaderTests
             () => Assert.DoesNotContain(LintingCodes.UnknownLocalePackAssembly.Id, output, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Should_hold_a_packs_file_to_the_types_of_the_project_its_folder_names()
+    {
+        // Arrange — the pack names a project of the solution, so its file's sections are held to that project's types.
+        using var directory = new TempDirectory();
+        directory.Write(Path.Combine("Widgets", "Widget.cs"), "namespace Contoso.Widgets; public sealed class Widget;");
+        directory.Write(Path.Combine("Widgets", "Contoso.Widgets.csproj"), """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+              </PropertyGroup>
+            </Project>
+            """);
+        var file = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.WithSections(("Widget", "Today", "היום"), ("Gadget", "Today", "היום")));
+        directory.Write(Path.Combine("Packs", "Contoso.Widgets.Locales.Hebrew.csproj"), """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+                <IsLocalePack>true</IsLocalePack>
+                <LocalePackCulture>he</LocalePackCulture>
+                <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+              </PropertyGroup>
+              <ItemGroup>
+                <EmbeddedResource Include="Contoso.Widgets\he.json" WithCulture="false" LogicalName="Contoso.Widgets.he.json" />
+              </ItemGroup>
+            </Project>
+            """);
+        var solution = directory.Write("Scratch.slnx", """
+            <Solution>
+              <Project Path="Widgets/Contoso.Widgets.csproj" />
+              <Project Path="Packs/Contoso.Widgets.Locales.Hebrew.csproj" />
+            </Solution>
+            """);
+
+        // Act
+        var (exitCode, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", solution);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(1, exitCode),
+            () => Assert.Contains($"{file}(1,1): error {LintingCodes.UnreachableLocalization.Id}: Section 'Gadget'", output, StringComparison.Ordinal),
+            () => Assert.DoesNotContain(LintingCodes.UnknownLocalePackAssembly.Id, output, StringComparison.Ordinal));
+    }
+
     private static string WritePack(TempDirectory directory)
     {
         directory.Write(Path.Combine("Contoso.Widgetz", "Bars", "he.json"), LocalizationFileFakeData.Valid);

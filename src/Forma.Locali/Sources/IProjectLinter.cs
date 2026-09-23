@@ -10,6 +10,6 @@ public interface IProjectLinter
     /// <param name="project">The project being checked.</param>
     /// <param name="localizationFiles">The locale files the project owns, which the target attributed.</param>
     /// <param name="callsites">The callsites the source pass found.</param>
-    /// <param name="projects">Every project the run loaded, which a locale pack's folders are resolved against.</param>
-    IReadOnlyList<LintingDiagnostic> Lint(LoadedProject project, IReadOnlyList<string> localizationFiles, IReadOnlyList<LocalizerLookup> callsites, LoadedProjects projects);
+    /// <param name="packs">Every locale pack of the run, resolved against its projects: the project's own among them where it is one, and the folders naming it where it is localized by one.</param>
+    IReadOnlyList<LintingDiagnostic> Lint(LoadedProject project, IReadOnlyList<string> localizationFiles, IReadOnlyList<LocalizerLookup> callsites, IReadOnlyList<LocalePack> packs);
 }

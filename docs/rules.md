@@ -247,13 +247,15 @@ section strands its translations while every other check stays green.
 the file's position, or from the assembly's root with a leading `@.`. The rule reads through the
 runtime's own source, from the root down to the type, for every type the project declares and
 every culture its files carry, under the name the build gives each file, an explicit
-`LogicalName` included, and through the `.locale.json` the project embeds.
+`LogicalName` included, and through the `.locale.json` the project embeds. A locale pack's
+folder for the project is read the same way, laid out by the project's root namespace, so a
+pack's file is reported where it sits in the pack.
 
 **Silent where.** The run did not name the project's files; the file is one the project does not
-embed — a host's folder, which translates other assemblies' types; the project is a locale pack,
-whose every file is another assembly's; or the project's items could not be read and the file
-sits under a folder the build renames to embed it, such as `my-folder`, so its name cannot be
-told.
+embed — a host's folder, which translates other assemblies' types; the file is a locale pack's
+whose folder names no project of the run, which LOC0024 reports; or the project's items could
+not be read and the file sits under a folder the build renames to embed it, such as `my-folder`,
+so its name cannot be told.
 
 ### LOC0113 — A key translated two ways across sections
 
@@ -307,11 +309,10 @@ paths or through a host's two forms of a file. Each file is reported, naming the
 they share a key the later wins without a word, and a file meant to be moved rather than copied
 keeps answering from where it was left.
 
-**What fixes it.** Keep one. The rule reads a project's embedded files as one source and the
-host's `.locales` folder at the project's root as another, in which a file may sit in a folder's
-own `.locales` or directly in the folder. It is a warning because both files load.
-
-**Silent where.** A locale pack, whose embedded files are other assemblies'.
+**What fixes it.** Keep one. The rule reads a project's embedded files as one source, the
+host's `.locales` folder at the project's root as another, and each locale pack's folder for the
+project as another, in which a file may sit in a folder's own `.locales` or directly in the
+folder. It is a warning because both files load.
 
 ### LOC0118 — A folder named for a type
 
@@ -325,8 +326,9 @@ same.
 **What fixes it.** Name the file for the type among its namespace folder's locale files,
 `Components/.locales/Widget.he.json`.
 
-**Silent where.** A host's folder or a locale pack, which name other assemblies' types the
-compilation cannot tell from namespaces.
+**Silent where.** A host's folder, which names other assemblies' types the compilation cannot
+tell from namespaces; a locale pack's folder is read for the project it names, and held to that
+project's types.
 
 ## Callsites (LOC0200–LOC0299)
 
@@ -419,7 +421,8 @@ build gate.
 ### LOC0207 — A key is not answered in a culture its type is translated for
 
 **Reports.** A key written at a callsite that a culture translating its type leaves out, once
-per key per culture, at the first callsite writing it.
+per key per culture, at the first callsite writing it. The cultures translating a type are read
+from the project's own files and from every locale pack's folder for it alike.
 
 **Why it matters.** Falling back to the key is exactly what the runtime is defined to do, so the
 string renders in English and every other rule stays green; adding `L["Details columns"]` to a
@@ -432,8 +435,8 @@ genuinely missing cannot use it, and the warning is the honest answer there.
 
 **Silent where.** The type has no translations at all, since it is unlocalized rather than
 under-translated; the lookup is through the unbound `IStringLocale`, which names no type; a
-parent culture answers, since `es-419` reads `es` for what it does not declare; the project is a
-locale pack, whose files are other assemblies'; or the run did not name the project's files.
+parent culture answers, since `es-419` reads `es` for what it does not declare; or the run did
+not name the project's files.
 
 ### LOC0208 — A lookup writes its key as an expression
 

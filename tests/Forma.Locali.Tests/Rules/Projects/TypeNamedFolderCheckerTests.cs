@@ -57,6 +57,25 @@ public sealed class TypeNamedFolderCheckerTests
         Assert.Empty(diagnostics);
     }
 
+    [Fact]
+    public void Should_report_a_pack_folder_named_for_a_type()
+    {
+        // Arrange — a pack's folders are namespaces of the assembly they name, as a project's own are.
+        using var directory = new TempDirectory();
+        var target = new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Widgets.Components; public sealed class Widget;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>());
+        var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Components", "Widget", "he.json"), LocalizationFileFakeData.Valid);
+        var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
+
+        // Act
+        var diagnostic = Assert.Single(ProjectLinterTestFactory.Check(new TypeNamedFolderChecker(), target, [], packs: [pack]));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.TypeNamedFolder, diagnostic.Code),
+            () => Assert.Equal(packFile, diagnostic.Path),
+            () => Assert.Contains("'Contoso.Widgets.Components.Widget'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
     private static IReadOnlyList<LintingDiagnostic> Lint(TempDirectory directory, string source, params string[] files)
     {
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(source), false, false);

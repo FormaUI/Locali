@@ -51,7 +51,7 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
                     continue;
                 }
 
-                var filePath = localization.Source.GetFile(entries[^1].FileName) is { } file
+                var filePath = localization.GetFile(entries[^1].FileName) is { } file
                     ? FormatFilePath(site.Key.Location.Path, file.Path)
                     : entries[^1].FileName;
 

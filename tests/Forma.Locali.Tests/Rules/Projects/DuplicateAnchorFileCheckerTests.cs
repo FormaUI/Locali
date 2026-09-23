@@ -1,5 +1,6 @@
 namespace Forma.Locali.Tests.Rules.Projects;
 
+using Forma.Locali.Projects;
 using Forma.Locali.Rules.Projects;
 
 public sealed class DuplicateAnchorFileCheckerTests
@@ -35,6 +36,26 @@ public sealed class DuplicateAnchorFileCheckerTests
 
         // Assert
         Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_a_pack_file_written_in_both_forms()
+    {
+        // Arrange — a pack is read by the host folder's paths, so a folder's file directly in the folder and in the folder's own .locales stand for one anchor.
+        using var directory = new TempDirectory();
+        var target = new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Widgets.Bars; public sealed class Widget;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>());
+        var flat = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+        var nested = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var pack = LocalePackTestFactory.Resolve(directory, target, flat, nested);
+
+        // Act
+        var diagnostics = ProjectLinterTestFactory.Check(new DuplicateAnchorFileChecker(), target, [], packs: [pack]);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal([LintingCodes.DuplicateAnchorFile, LintingCodes.DuplicateAnchorFile], diagnostics.Codes()),
+            () => Assert.Equal([flat, nested], diagnostics.Select(diagnostic => diagnostic.Path)),
+            () => Assert.Contains("'Contoso.Widgets.Bars' in 'he'", diagnostics[0].Message, StringComparison.Ordinal));
     }
 
     [Fact]

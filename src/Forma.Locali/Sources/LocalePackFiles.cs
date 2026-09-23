@@ -84,9 +84,24 @@ public static class LocalePackFiles
         }
 
         return new LocalePack(
+            project,
             [.. folders
                 .OrderBy(folder => folder.Key, StringComparer.Ordinal)
                 .Select(folder => new LocalePackFolder(folder.Key, folder.Value, built.GetValueOrDefault(folder.Key), referenced.Contains(folder.Key)))],
             projects.IsWholeSolution && projects.All.All(candidate => candidate.Compilation is not null));
+    }
+
+    /// <summary>Every locale pack of the run, each resolved against the run's projects.</summary>
+    /// <param name="projects">Every project the run loaded.</param>
+    /// <param name="localizationFilesOf">The locale files a project owns, by the project's path.</param>
+    public static IReadOnlyList<LocalePack> ResolveAll(LoadedProjects projects, Func<string, IReadOnlyList<string>> localizationFilesOf)
+    {
+        ArgumentNullException.ThrowIfNull(projects);
+        ArgumentNullException.ThrowIfNull(localizationFilesOf);
+
+        return [.. projects.All
+            .Where(project => project.IsLocalePack)
+            .Select(project => Resolve(project, localizationFilesOf(project.Path), projects))
+            .OfType<LocalePack>()];
     }
 }

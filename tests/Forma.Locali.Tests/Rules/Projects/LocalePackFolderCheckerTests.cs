@@ -107,7 +107,7 @@ public sealed class LocalePackFolderCheckerTests
     }
 
     private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, IReadOnlyList<string> files, LoadedProjects projects)
-        => ProjectLinterTestFactory.Check(new LocalePackFolderChecker(), project, files, projects: projects);
+        => ProjectLinterTestFactory.Check(new LocalePackFolderChecker(), project, files, packs: LocalePackFiles.ResolveAll(projects, _ => files));
 
     private static LoadedProject Pack(TempDirectory directory, params string[] files)
     {

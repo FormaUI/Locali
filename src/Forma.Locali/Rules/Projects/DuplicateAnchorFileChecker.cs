@@ -18,9 +18,17 @@ public sealed class DuplicateAnchorFileChecker : IProjectRuleChecker
         // The host's folder is a source of its own, checked first because placing the embedded files can meet a config the runtime refuses.
         Check(context, context.HostFiles);
 
-        if (context.Localization is { } localization)
+        if (context.Localization is not { } localization)
         {
-            Check(context, localization.GetPlacedFiles());
+            return;
+        }
+
+        Check(context, localization.GetPlacedFiles());
+
+        // Each pack is a source of its own, read for the project by the host folder's paths.
+        foreach (var pack in localization.Packs)
+        {
+            Check(context, pack.GetPlacedFiles(localization.AssemblyName));
         }
     }
 

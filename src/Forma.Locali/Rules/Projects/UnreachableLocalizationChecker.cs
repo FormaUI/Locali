@@ -77,7 +77,7 @@ public sealed class UnreachableLocalizationChecker : IProjectRuleChecker
             {
                 foreach (var entry in localization.Read(typeName, culture))
                 {
-                    if (localization.Source.GetFile(entry.FileName) is { } file)
+                    if (localization.GetFile(entry.FileName) is { } file)
                     {
                         if (!reachable.TryGetValue(file.Path, out var entries))
                         {

@@ -10,10 +10,11 @@ using Forma.Locali.Projects;
 /// <summary>Resolves a project's locale files against the types the runtime finds them by.</summary>
 public static class ProjectLocaleFiles
 {
-    /// <summary>Every readable culture-named file the project embeds, resolved against the compilation, or null when the project would not load or is a locale pack, whose files are other assemblies'.</summary>
+    /// <summary>Every readable culture-named file the project embeds, and every pack folder naming its assembly, resolved against the compilation, or null when the project would not load or is a locale pack, whose files are other assemblies'.</summary>
     /// <param name="project">The project the files belong to.</param>
     /// <param name="localizationFiles">The locale files this project owns, which the target attributed.</param>
-    public static ProjectLocalization? Resolve(LoadedProject project, IReadOnlyCollection<string> localizationFiles)
+    /// <param name="packs">Every locale pack of the run, none unless given.</param>
+    public static ProjectLocalization? Resolve(LoadedProject project, IReadOnlyCollection<string> localizationFiles, IReadOnlyList<LocalePack>? packs = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
@@ -69,8 +70,24 @@ public static class ProjectLocaleFiles
             files.Add(new ProjectLocaleFile(fullPath, CultureInfo.GetCultureInfo(culture), name, read));
         }
 
-        return new ProjectLocalization(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, GetConfigPaths(project), format);
+        var source = new ProjectLocaleSource(files, GetConfigPaths(project), format);
+
+        // A pack is read whole for the project, as the runtime reads it, laid out by the root namespace the project's own config declares.
+        List<PackLocalization> packLocalizations = [];
+        foreach (var pack in packs ?? [])
+        {
+            foreach (var folder in pack.Folders.Where(folder => folder.Target == project))
+            {
+                packLocalizations.Add(new PackLocalization(pack, folder, new PackLocaleSource(GetPackName(pack), pack.Files, source.GetRootNamespace, format)));
+            }
+        }
+
+        return new ProjectLocalization(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, source, packLocalizations);
     }
+
+    // The runtime reports a pack's file under the pack assembly's name, which its project file also spells where it did not compile.
+    private static string GetPackName(LocalePack pack)
+        => pack.Project.Compilation?.AssemblyName is { Length: > 0 } assemblyName ? assemblyName : Path.GetFileNameWithoutExtension(pack.Project.Path);
 
     // The runtime reads the config files an assembly embeds beside its translations, so a folder's own settings decide what is read there.
     private static Dictionary<string, string> GetConfigPaths(LoadedProject project)

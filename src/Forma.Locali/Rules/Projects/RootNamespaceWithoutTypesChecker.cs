@@ -46,7 +46,7 @@ public sealed class RootNamespaceWithoutTypesChecker : IProjectRuleChecker
         {
             context.Report(Code, configPath!, $"'{LocaleConfig.RootNamespaceKey}' names '{rootNamespace}', which none of the project's types is under, so the runtime counts no type's name from it and a host laying the assembly's files out by it reaches no type{suggestion}.");
         }
-        else if (localization.Files.Count > 0)
+        else if (localization.EmbeddedFiles.Count > 0)
         {
             context.Report(Code, context.Project.Path, $"None of the project's types is under '{rootNamespace}', the assembly's name, which the runtime counts a type's name from where no '{LocaleConfig.FileName}' declares '{LocaleConfig.RootNamespaceKey}', so a host laying the assembly's files out by it reaches no type{suggestion}.");
         }

@@ -113,14 +113,15 @@ public sealed class LintingService(
         var wanted = target.SourceFiles.Select(Path.GetFullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var diagnostics = new List<LintingDiagnostic>();
 
-        // Every project is loaded before any is linted, so a locale pack's folders can be resolved against the whole run.
+        // Every project is loaded before any is linted, so a locale pack's folders can be resolved against the whole run and read for the projects they name.
         var projects = new LoadedProjects(await _loader.LoadAsync(target.Projects, cancellationToken).ConfigureAwait(false), target.IsSolution);
+        var packs = LocalePackFiles.ResolveAll(projects, target.LocalizationFilesOf);
 
         foreach (var project in projects.All)
         {
             var sources = _sources.Lint(project, wanted, cancellationToken);
             diagnostics.AddRange(sources.Diagnostics);
-            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), sources.Callsites, projects));
+            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), sources.Callsites, packs));
         }
 
         return diagnostics;
