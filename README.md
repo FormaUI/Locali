@@ -221,7 +221,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | `Rules/Files/` | Rules over a locale file |
 | `Rules/Sources/` | Rules over a callsite |
 | `Rules/Projects/` | Rules over a project's locale files read whole |
-| `Sources/` | Finding callsites, and resolving a project's locale files for the project rules |
+| `Sources/` | Finding callsites, and resolving a project's locale files, and the locale packs carrying files for it, for the project rules |
 
 ### Adding a Rule
 
