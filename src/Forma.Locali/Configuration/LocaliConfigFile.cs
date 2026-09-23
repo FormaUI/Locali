@@ -20,15 +20,15 @@ public sealed class LocaliConfigFile
     private LocaliConfigFile(
         string path,
         TextMap map,
-        IReadOnlyList<ConfigIgnoreDiagnosticsEntry> ignoreDiagnostics,
-        IReadOnlyList<ConfigExcludeFilesEntry> excludeFiles,
-        IReadOnlyList<ConfigMalformedEntry> malformed)
+        IReadOnlyList<ConfigIgnoreDiagnostic> ignoreDiagnostics,
+        IReadOnlyList<ConfigExcludeFile> excludeFiles,
+        IReadOnlyList<ConfigMalformedValue> malformedValues)
     {
         Path = path;
         Map = map;
         IgnoreDiagnostics = ignoreDiagnostics;
         ExcludeFiles = excludeFiles;
-        Malformed = malformed;
+        MalformedValues = malformedValues;
     }
 
     /// <summary>The file the entries were read from.</summary>
@@ -38,13 +38,13 @@ public sealed class LocaliConfigFile
     public TextMap Map { get; }
 
     /// <summary>Every glob the file's <c>ignoreDiagnostics</c> entry names, with the rules it leaves out for what it matches.</summary>
-    public IReadOnlyList<ConfigIgnoreDiagnosticsEntry> IgnoreDiagnostics { get; }
+    public IReadOnlyList<ConfigIgnoreDiagnostic> IgnoreDiagnostics { get; }
 
     /// <summary>Every glob the file's <c>excludeFiles</c> entry names.</summary>
-    public IReadOnlyList<ConfigExcludeFilesEntry> ExcludeFiles { get; }
+    public IReadOnlyList<ConfigExcludeFile> ExcludeFiles { get; }
 
-    /// <summary>Every place the file does not follow the shape it is read for.</summary>
-    public IReadOnlyList<ConfigMalformedEntry> Malformed { get; }
+    /// <summary>Every value in the file that does not follow the shape it is read for.</summary>
+    public IReadOnlyList<ConfigMalformedValue> MalformedValues { get; }
 
     /// <summary>Reads a file's entries, reporting the reason rather than throwing when it is not readable JSON.</summary>
     /// <param name="path">The file the bytes were read from.</param>
@@ -64,9 +64,9 @@ public sealed class LocaliConfigFile
             ? content[3..]
             : content;
 
-        var ignoreDiagnostics = new List<ConfigIgnoreDiagnosticsEntry>();
-        var excludeFiles = new List<ConfigExcludeFilesEntry>();
-        var malformed = new List<ConfigMalformedEntry>();
+        var ignoreDiagnostics = new List<ConfigIgnoreDiagnostic>();
+        var excludeFiles = new List<ConfigExcludeFile>();
+        var malformedValues = new List<ConfigMalformedValue>();
 
         try
         {
@@ -78,7 +78,7 @@ public sealed class LocaliConfigFile
                 return false;
             }
 
-            ReadRoot(ref reader, ignoreDiagnostics, excludeFiles, malformed);
+            ReadRoot(ref reader, ignoreDiagnostics, excludeFiles, malformedValues);
         }
         catch (JsonException exception)
         {
@@ -87,7 +87,7 @@ public sealed class LocaliConfigFile
             return false;
         }
 
-        document = new LocaliConfigFile(path, new TextMap(utf8), ignoreDiagnostics, excludeFiles, malformed);
+        document = new LocaliConfigFile(path, new TextMap(utf8), ignoreDiagnostics, excludeFiles, malformedValues);
 
         return true;
     }
@@ -105,7 +105,7 @@ public sealed class LocaliConfigFile
         return new LintingDiagnostic(Path, line, column, code.DefaultSeverity, code, message);
     }
 
-    private static void ReadRoot(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnosticsEntry> ignoreDiagnostics, List<ConfigExcludeFilesEntry> excludeFiles, List<ConfigMalformedEntry> malformed)
+    private static void ReadRoot(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnostic> ignoreDiagnostics, List<ConfigExcludeFile> excludeFiles, List<ConfigMalformedValue> malformedValues)
     {
         while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
         {
@@ -120,13 +120,13 @@ public sealed class LocaliConfigFile
             switch (name)
             {
                 case IgnoreDiagnosticsKey:
-                    ReadIgnoreDiagnostics(ref reader, ignoreDiagnostics, malformed);
+                    ReadIgnoreDiagnostics(ref reader, ignoreDiagnostics, malformedValues);
                     break;
                 case ExcludeFilesKey:
-                    ReadExcludeFiles(ref reader, excludeFiles, malformed);
+                    ReadExcludeFiles(ref reader, excludeFiles, malformedValues);
                     break;
                 default:
-                    malformed.Add(new ConfigMalformedEntry(nameOffset, $"'{name}' is not an entry this file defines; it reads {FormatKeys()}."));
+                    malformedValues.Add(new ConfigMalformedValue(nameOffset, $"'{name}' is not an entry this file defines; it reads {FormatKeys()}."));
                     reader.Skip();
                     break;
             }
@@ -136,11 +136,11 @@ public sealed class LocaliConfigFile
     private static string FormatKeys()
         => string.Join(", ", new[] { IgnoreDiagnosticsKey, ExcludeFilesKey }.Select(key => $"'{key}'"));
 
-    private static void ReadIgnoreDiagnostics(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnosticsEntry> ignoreDiagnostics, List<ConfigMalformedEntry> malformed)
+    private static void ReadIgnoreDiagnostics(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnostic> ignoreDiagnostics, List<ConfigMalformedValue> malformedValues)
     {
         if (reader.TokenType != JsonTokenType.StartObject)
         {
-            malformed.Add(new ConfigMalformedEntry((int)reader.TokenStartIndex, $"'{IgnoreDiagnosticsKey}' is not an object; it pairs a glob with the rules it leaves out."));
+            malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{IgnoreDiagnosticsKey}' is not an object; it pairs a glob with the rules it leaves out."));
             reader.Skip();
 
             return;
@@ -158,42 +158,42 @@ public sealed class LocaliConfigFile
 
             if (reader.TokenType != JsonTokenType.StartArray)
             {
-                malformed.Add(new ConfigMalformedEntry((int)reader.TokenStartIndex, $"'{glob}' is not a list of text; it lists rule identifiers."));
+                malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{glob}' is not a list of text; it lists rule identifiers."));
                 reader.Skip();
 
                 continue;
             }
 
-            ignoreDiagnostics.Add(new ConfigIgnoreDiagnosticsEntry(glob, globOffset, ReadCodes(ref reader, malformed)));
+            ignoreDiagnostics.Add(new ConfigIgnoreDiagnostic(glob, globOffset, ReadEntries(ref reader, malformedValues)));
         }
     }
 
     // An array is read through to its end either way, so a malformed item is skipped rather than abandoning the rest.
-    private static List<ConfigCodeEntry> ReadCodes(ref Utf8JsonReader reader, List<ConfigMalformedEntry> malformed)
+    private static List<ConfigIgnoreDiagnosticEntry> ReadEntries(ref Utf8JsonReader reader, List<ConfigMalformedValue> malformedValues)
     {
-        var codes = new List<ConfigCodeEntry>();
+        var entries = new List<ConfigIgnoreDiagnosticEntry>();
 
         while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
         {
             if (reader.TokenType == JsonTokenType.String)
             {
-                codes.Add(new ConfigCodeEntry(reader.GetString() ?? string.Empty, (int)reader.TokenStartIndex));
+                entries.Add(new ConfigIgnoreDiagnosticEntry(reader.GetString() ?? string.Empty, (int)reader.TokenStartIndex));
             }
             else
             {
-                malformed.Add(new ConfigMalformedEntry((int)reader.TokenStartIndex, "a rule identifier is not text."));
+                malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, "a rule identifier is not text."));
                 reader.Skip();
             }
         }
 
-        return codes;
+        return entries;
     }
 
-    private static void ReadExcludeFiles(ref Utf8JsonReader reader, List<ConfigExcludeFilesEntry> excludeFiles, List<ConfigMalformedEntry> malformed)
+    private static void ReadExcludeFiles(ref Utf8JsonReader reader, List<ConfigExcludeFile> excludeFiles, List<ConfigMalformedValue> malformedValues)
     {
         if (reader.TokenType != JsonTokenType.StartArray)
         {
-            malformed.Add(new ConfigMalformedEntry((int)reader.TokenStartIndex, $"'{ExcludeFilesKey}' is not a list of text; it lists globs."));
+            malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{ExcludeFilesKey}' is not a list of text; it lists globs."));
             reader.Skip();
 
             return;
@@ -203,11 +203,11 @@ public sealed class LocaliConfigFile
         {
             if (reader.TokenType == JsonTokenType.String)
             {
-                excludeFiles.Add(new ConfigExcludeFilesEntry(reader.GetString() ?? string.Empty, (int)reader.TokenStartIndex));
+                excludeFiles.Add(new ConfigExcludeFile(reader.GetString() ?? string.Empty, (int)reader.TokenStartIndex));
             }
             else
             {
-                malformed.Add(new ConfigMalformedEntry((int)reader.TokenStartIndex, "a glob is not text."));
+                malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, "a glob is not text."));
                 reader.Skip();
             }
         }

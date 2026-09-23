@@ -13,7 +13,7 @@ public sealed class LocaleConfigFileTests
     [InlineData("""{ "paths": ["$RootDir/$AnchorName.$Culture$Extension"] }""")]
     [InlineData("{}")]
     public void Should_read_a_key_the_runtime_reads_without_complaint(string json)
-        => Assert.Empty(LocaleConfigFileTestFactory.Read(json).Malformed);
+        => Assert.Empty(LocaleConfigFileTestFactory.Read(json).MalformedValues);
 
     [Theory]
     [InlineData("""{ "rootNamespace": "Contoso..Widgets" }""", "not a namespace")]
@@ -31,8 +31,8 @@ public sealed class LocaleConfigFileTests
         var file = LocaleConfigFileTestFactory.Read(json);
 
         // Assert
-        var malformed = Assert.Single(file.Malformed);
-        Assert.Contains(expected, malformed.Reason, StringComparison.Ordinal);
+        var malformedValue = Assert.Single(file.MalformedValues);
+        Assert.Contains(expected, malformedValue.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -42,11 +42,11 @@ public sealed class LocaleConfigFileTests
         var file = LocaleConfigFileTestFactory.Read("""{ "rootNamespce": "Contoso.Widgets" }""");
 
         // Assert
-        var malformed = Assert.Single(file.Malformed);
+        var malformedValue = Assert.Single(file.MalformedValues);
 
         Assert.All(
             ["'rootNamespce'", "'rootNamespace'", "'rootDir'", "'localesDir'", "'paths'"],
-            key => Assert.Contains(key, malformed.Reason, StringComparison.Ordinal));
+            key => Assert.Contains(key, malformedValue.Reason, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -60,16 +60,16 @@ public sealed class LocaleConfigFileTests
             }
             """);
 
-        var malformed = Assert.Single(file.Malformed);
+        var malformedValue = Assert.Single(file.MalformedValues);
 
         // Act
-        var diagnostic = file.Diagnose(malformed.Offset, LintingCodes.MalformedLocaleConfig, malformed.Reason);
+        var diagnostic = file.Diagnose(malformedValue.Offset, LintingCodes.MalformedLocaleConfig, malformedValue.Reason);
 
         // Assert
         Assert.Multiple(
             () => Assert.Equal(2, diagnostic.Line),
             () => Assert.Equal(23, diagnostic.Column),
-            () => Assert.Contains("'$Folder'", malformed.Reason, StringComparison.Ordinal));
+            () => Assert.Contains("'$Folder'", malformedValue.Reason, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -83,10 +83,10 @@ public sealed class LocaleConfigFileTests
             }
             """);
 
-        var malformed = Assert.Single(file.Malformed);
+        var malformedValue = Assert.Single(file.MalformedValues);
 
         // Act
-        var diagnostic = file.Diagnose(malformed.Offset, LintingCodes.MalformedLocaleConfig, malformed.Reason);
+        var diagnostic = file.Diagnose(malformedValue.Offset, LintingCodes.MalformedLocaleConfig, malformedValue.Reason);
 
         // Assert
         Assert.Equal(29, diagnostic.Column);

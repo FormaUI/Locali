@@ -65,7 +65,7 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
             return [new LintingDiagnostic(filePath, 1, 1, LintingCodes.MalformedLocaleConfig.DefaultSeverity, LintingCodes.MalformedLocaleConfig, $"The file is not readable JSON: {error}.")];
         }
 
-        return [.. config!.Malformed.Select(malformed => config.Diagnose(malformed.Offset, LintingCodes.MalformedLocaleConfig, malformed.Reason))];
+        return [.. config!.MalformedValues.Select(malformedValue => config.Diagnose(malformedValue.Offset, LintingCodes.MalformedLocaleConfig, malformedValue.Reason))];
     }
 
     private static bool HasMarker(byte[] content)

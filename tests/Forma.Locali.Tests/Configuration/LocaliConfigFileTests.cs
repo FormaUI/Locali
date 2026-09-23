@@ -17,7 +17,7 @@ public sealed class LocaliConfigFileTests
 
         Assert.Multiple(
             () => Assert.Equal("**/LocalizationPage.razor", entry.Glob),
-            () => Assert.Equal(["LOC0207", "LOC0113"], entry.Codes.Select(code => code.Id)));
+            () => Assert.Equal(["LOC0207", "LOC0113"], entry.Entries.Select(diagnostic => diagnostic.Id)));
     }
 
     [Fact]
@@ -102,8 +102,8 @@ public sealed class LocaliConfigFileTests
         var document = LocaliConfigFileTestFactory.Read("""{ "included": [] }""");
 
         // Assert
-        var malformed = Assert.Single(document.Malformed);
-        Assert.Contains("'included'", malformed.Reason, StringComparison.Ordinal);
+        var malformedValue = Assert.Single(document.MalformedValues);
+        Assert.Contains("'included'", malformedValue.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -113,8 +113,8 @@ public sealed class LocaliConfigFileTests
         var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": ["LOC0113"] }""");
 
         // Assert
-        var malformed = Assert.Single(document.Malformed);
-        Assert.Contains("'ignoreDiagnostics'", malformed.Reason, StringComparison.Ordinal);
+        var malformedValue = Assert.Single(document.MalformedValues);
+        Assert.Contains("'ignoreDiagnostics'", malformedValue.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -124,8 +124,8 @@ public sealed class LocaliConfigFileTests
         var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": "*/Fixtures/*" }""");
 
         // Assert
-        var malformed = Assert.Single(document.Malformed);
-        Assert.Contains("'excludeFiles'", malformed.Reason, StringComparison.Ordinal);
+        var malformedValue = Assert.Single(document.MalformedValues);
+        Assert.Contains("'excludeFiles'", malformedValue.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -136,8 +136,8 @@ public sealed class LocaliConfigFileTests
 
         // Assert
         Assert.Empty(document.IgnoreDiagnostics);
-        var malformed = Assert.Single(document.Malformed);
-        Assert.Contains("'Widget.he.json'", malformed.Reason, StringComparison.Ordinal);
+        var malformedValue = Assert.Single(document.MalformedValues);
+        Assert.Contains("'Widget.he.json'", malformedValue.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -148,8 +148,8 @@ public sealed class LocaliConfigFileTests
 
         // Assert
         var entry = Assert.Single(document.IgnoreDiagnostics);
-        Assert.Equal(["LOC0113"], entry.Codes.Select(code => code.Id));
-        Assert.Single(document.Malformed);
+        Assert.Equal(["LOC0113"], entry.Entries.Select(diagnostic => diagnostic.Id));
+        Assert.Single(document.MalformedValues);
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public sealed class LocaliConfigFileTests
 
         // Assert
         Assert.Equal(["*/Fixtures/*"], document.ExcludeFiles.Select(entry => entry.Glob));
-        Assert.Single(document.Malformed);
+        Assert.Single(document.MalformedValues);
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public sealed class LocaliConfigFileTests
 
         // Assert
         Assert.Multiple(
-            () => Assert.Single(document.Malformed),
+            () => Assert.Single(document.MalformedValues),
             () => Assert.Equal(["Widget.he.json"], document.IgnoreDiagnostics.Select(entry => entry.Glob)));
     }
 
@@ -183,11 +183,11 @@ public sealed class LocaliConfigFileTests
         var document = LocaliConfigFileTestFactory.Read("""{ "layout": [] }""");
 
         // Assert
-        var malformed = Assert.Single(document.Malformed);
+        var malformedValue = Assert.Single(document.MalformedValues);
 
         Assert.All(
             ["'ignoreDiagnostics'", "'excludeFiles'"],
-            key => Assert.Contains(key, malformed.Reason, StringComparison.Ordinal));
+            key => Assert.Contains(key, malformedValue.Reason, StringComparison.Ordinal));
     }
 
     [Fact]

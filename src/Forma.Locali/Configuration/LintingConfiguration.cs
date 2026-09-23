@@ -66,10 +66,10 @@ public sealed class LintingConfiguration : ILintingConfiguration
 
                 tracked.UsedIgnore.TryAdd(entry.Offset, true);
 
-                foreach (var code in entry.Codes)
+                foreach (var diagnostic in entry.Entries)
                 {
                     // A rule judging the linting configuration cannot be excused by that same configuration.
-                    if (Resolve(code.Id) is { } known && known != LintingCodes.MalformedConfiguration && known != LintingCodes.StaleConfigurationGlob)
+                    if (Resolve(diagnostic.Id) is { } known && known != LintingCodes.MalformedConfiguration && known != LintingCodes.StaleConfigurationGlob)
                     {
                         ignored.Add(known);
                     }
@@ -108,21 +108,21 @@ public sealed class LintingConfiguration : ILintingConfiguration
             return;
         }
 
-        foreach (var malformed in config.Malformed)
+        foreach (var malformedValue in config.MalformedValues)
         {
-            diagnostics.Add(config.Diagnose(malformed.Offset, LintingCodes.MalformedConfiguration, malformed.Reason));
+            diagnostics.Add(config.Diagnose(malformedValue.Offset, LintingCodes.MalformedConfiguration, malformedValue.Reason));
         }
 
         foreach (var entry in config.IgnoreDiagnostics)
         {
-            foreach (var code in entry.Codes)
+            foreach (var diagnostic in entry.Entries)
             {
-                if (Resolve(code.Id) is null)
+                if (Resolve(diagnostic.Id) is null)
                 {
                     diagnostics.Add(config.Diagnose(
-                        code.Offset,
+                        diagnostic.Offset,
                         LintingCodes.MalformedConfiguration,
-                        $"'{code.Id}' is not a rule this linter defines, so it leaves nothing out."));
+                        $"'{diagnostic.Id}' is not a rule this linter defines, so it leaves nothing out."));
                 }
             }
 

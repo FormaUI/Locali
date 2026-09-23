@@ -18,11 +18,11 @@ public sealed class LocaleConfigFile
         CommentHandling = JsonCommentHandling.Skip,
     };
 
-    private LocaleConfigFile(string path, TextMap map, IReadOnlyList<ConfigMalformedEntry> malformed)
+    private LocaleConfigFile(string path, TextMap map, IReadOnlyList<ConfigMalformedValue> malformedValues)
     {
         Path = path;
         Map = map;
-        Malformed = malformed;
+        MalformedValues = malformedValues;
     }
 
     /// <summary>The file the entries were read from.</summary>
@@ -31,8 +31,8 @@ public sealed class LocaleConfigFile
     /// <summary>Where each byte offset sits in the text.</summary>
     public TextMap Map { get; }
 
-    /// <summary>Every place the file does not follow the shape the runtime reads it for.</summary>
-    public IReadOnlyList<ConfigMalformedEntry> Malformed { get; }
+    /// <summary>Every value in the file that does not follow the shape the runtime reads it for.</summary>
+    public IReadOnlyList<ConfigMalformedValue> MalformedValues { get; }
 
     /// <summary>Reads a file's entries, reporting the reason rather than throwing when it is not readable JSON.</summary>
     /// <param name="path">The file the bytes were read from.</param>
@@ -52,7 +52,7 @@ public sealed class LocaleConfigFile
             ? content[3..]
             : content;
 
-        var malformed = new List<ConfigMalformedEntry>();
+        var malformedValues = new List<ConfigMalformedValue>();
 
         try
         {
@@ -64,7 +64,7 @@ public sealed class LocaleConfigFile
                 return false;
             }
 
-            ReadRoot(ref reader, malformed);
+            ReadRoot(ref reader, malformedValues);
         }
         catch (JsonException exception)
         {
@@ -73,7 +73,7 @@ public sealed class LocaleConfigFile
             return false;
         }
 
-        file = new LocaleConfigFile(path, new TextMap(utf8), malformed);
+        file = new LocaleConfigFile(path, new TextMap(utf8), malformedValues);
 
         return true;
     }
@@ -92,7 +92,7 @@ public sealed class LocaleConfigFile
     }
 
     // The runtime passes over a key it does not read, so a misspelled one steers nothing; here it is reported.
-    private static void ReadRoot(ref Utf8JsonReader reader, List<ConfigMalformedEntry> malformed)
+    private static void ReadRoot(ref Utf8JsonReader reader, List<ConfigMalformedValue> malformedValues)
     {
         var names = new HashSet<string>(StringComparer.Ordinal);
 
@@ -109,7 +109,7 @@ public sealed class LocaleConfigFile
             // The runtime reads the file with duplicate keys disallowed, so a repeated key leaves the whole file unreadable to it.
             if (!names.Add(name))
             {
-                malformed.Add(new ConfigMalformedEntry(nameOffset, $"'{name}' is written more than once, so the runtime cannot read the file."));
+                malformedValues.Add(new ConfigMalformedValue(nameOffset, $"'{name}' is written more than once, so the runtime cannot read the file."));
                 reader.Skip();
 
                 continue;
@@ -118,15 +118,15 @@ public sealed class LocaleConfigFile
             switch (name)
             {
                 case LocaleConfig.PathsKey:
-                    ReadPaths(ref reader, malformed);
+                    ReadPaths(ref reader, malformedValues);
                     break;
                 case LocaleConfig.RootNamespaceKey:
                 case LocaleConfig.RootDirKey:
                 case LocaleConfig.LocalesDirKey:
-                    ReadSetting(ref reader, name, malformed);
+                    ReadSetting(ref reader, name, malformedValues);
                     break;
                 default:
-                    malformed.Add(new ConfigMalformedEntry(nameOffset, $"'{name}' is not a key the runtime reads; it reads {FormatKeys()}."));
+                    malformedValues.Add(new ConfigMalformedValue(nameOffset, $"'{name}' is not a key the runtime reads; it reads {FormatKeys()}."));
                     reader.Skip();
                     break;
             }
@@ -134,12 +134,12 @@ public sealed class LocaleConfigFile
     }
 
     // The runtime holds a value to one rule, which it states itself, so the two never refuse different files.
-    private static void ReadSetting(ref Utf8JsonReader reader, string key, List<ConfigMalformedEntry> malformed)
+    private static void ReadSetting(ref Utf8JsonReader reader, string key, List<ConfigMalformedValue> malformedValues)
     {
         var offset = (int)reader.TokenStartIndex;
         if (reader.TokenType != JsonTokenType.String)
         {
-            malformed.Add(new ConfigMalformedEntry(offset, $"'{key}' is not text."));
+            malformedValues.Add(new ConfigMalformedValue(offset, $"'{key}' is not text."));
             reader.Skip();
 
             return;
@@ -147,18 +147,18 @@ public sealed class LocaleConfigFile
 
         if (!LocaleConfig.Accepts(key, reader.GetString() ?? string.Empty, out var problem))
         {
-            malformed.Add(new ConfigMalformedEntry(offset, problem));
+            malformedValues.Add(new ConfigMalformedValue(offset, problem));
         }
     }
 
     // A path's diagnostic counts characters into the path, which become bytes past the value's opening quote; a value
     // carrying a JSON escape has no such correspondence, so its diagnostic points at the value.
-    private static void ReadPaths(ref Utf8JsonReader reader, List<ConfigMalformedEntry> malformed)
+    private static void ReadPaths(ref Utf8JsonReader reader, List<ConfigMalformedValue> malformedValues)
     {
         var listOffset = (int)reader.TokenStartIndex;
         if (reader.TokenType != JsonTokenType.StartArray)
         {
-            malformed.Add(new ConfigMalformedEntry(
+            malformedValues.Add(new ConfigMalformedValue(
                 listOffset,
                 $"'{LocaleConfig.PathsKey}' is not a list of text; it lists the paths a locale file sits at."));
             reader.Skip();
@@ -173,7 +173,7 @@ public sealed class LocaleConfigFile
             var offset = (int)reader.TokenStartIndex;
             if (reader.TokenType != JsonTokenType.String)
             {
-                malformed.Add(new ConfigMalformedEntry(offset, "a path is not text."));
+                malformedValues.Add(new ConfigMalformedValue(offset, "a path is not text."));
                 reader.Skip();
 
                 continue;
@@ -186,13 +186,13 @@ public sealed class LocaleConfigFile
                     ? offset
                     : offset + 1 + Encoding.UTF8.GetByteCount(text.AsSpan(0, diagnostic.Span.Start));
 
-                malformed.Add(new ConfigMalformedEntry(place, LocalePath.FormatProblem(text, diagnostic)));
+                malformedValues.Add(new ConfigMalformedValue(place, LocalePath.FormatProblem(text, diagnostic)));
             }
         }
 
         if (count == 0)
         {
-            malformed.Add(new ConfigMalformedEntry(listOffset, $"'{LocaleConfig.PathsKey}' lists no path, which the runtime refuses."));
+            malformedValues.Add(new ConfigMalformedValue(listOffset, $"'{LocaleConfig.PathsKey}' lists no path, which the runtime refuses."));
         }
     }
 
