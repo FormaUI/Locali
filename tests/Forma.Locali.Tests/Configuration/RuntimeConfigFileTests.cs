@@ -4,7 +4,7 @@ using System.Text;
 
 using Forma.Locali.Configuration;
 
-public sealed class LocaleConfigFileTests
+public sealed class RuntimeConfigFileTests
 {
     [Theory]
     [InlineData("""{ "rootNamespace": "Contoso.Widgets" }""")]
@@ -13,7 +13,7 @@ public sealed class LocaleConfigFileTests
     [InlineData("""{ "paths": ["$RootDir/$AnchorName.$Culture$Extension"] }""")]
     [InlineData("{}")]
     public void Should_read_a_key_the_runtime_reads_without_complaint(string json)
-        => Assert.Empty(LocaleConfigFileTestFactory.Read(json).MalformedValues);
+        => Assert.Empty(RuntimeConfigFileTestFactory.Read(json).MalformedValues);
 
     [Theory]
     [InlineData("""{ "rootNamespace": "Contoso..Widgets" }""", "not a namespace")]
@@ -28,7 +28,7 @@ public sealed class LocaleConfigFileTests
     public void Should_flag_a_value_the_runtime_refuses(string json, string expected)
     {
         // Arrange
-        var file = LocaleConfigFileTestFactory.Read(json);
+        var file = RuntimeConfigFileTestFactory.Read(json);
 
         // Assert
         var malformedValue = Assert.Single(file.MalformedValues);
@@ -39,7 +39,7 @@ public sealed class LocaleConfigFileTests
     public void Should_flag_a_key_the_runtime_does_not_read_naming_the_ones_it_does()
     {
         // Arrange — the runtime passes such a key over, so a misspelled one steers nothing.
-        var file = LocaleConfigFileTestFactory.Read("""{ "rootNamespce": "Contoso.Widgets" }""");
+        var file = RuntimeConfigFileTestFactory.Read("""{ "rootNamespce": "Contoso.Widgets" }""");
 
         // Assert
         var malformedValue = Assert.Single(file.MalformedValues);
@@ -53,7 +53,7 @@ public sealed class LocaleConfigFileTests
     public void Should_flag_a_malformed_path_where_its_token_is_written()
     {
         // Arrange
-        var file = LocaleConfigFileTestFactory.Read(
+        var file = RuntimeConfigFileTestFactory.Read(
             """
             {
               "paths": ["$RootDir/$Folder.$Culture$Extension"]
@@ -76,7 +76,7 @@ public sealed class LocaleConfigFileTests
     public void Should_flag_a_malformed_path_where_its_token_is_written_after_text_beyond_ascii()
     {
         // Arrange
-        var file = LocaleConfigFileTestFactory.Read(
+        var file = RuntimeConfigFileTestFactory.Read(
             """
             {
               "paths": ["$RootDir/תרגום/$Folder.$Culture$Extension"]
@@ -96,7 +96,7 @@ public sealed class LocaleConfigFileTests
     public void Should_report_why_a_file_is_not_readable()
     {
         // Act
-        var read = LocaleConfigFile.TryRead(".locale.json", Encoding.UTF8.GetBytes("[]"), out var file, out var error);
+        var read = RuntimeConfigFile.TryRead(".locale.json", Encoding.UTF8.GetBytes("[]"), out var file, out var error);
 
         // Assert
         Assert.Multiple(

@@ -60,7 +60,7 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
     // The runtime refuses a config file it cannot read and passes over a key it does not know; both are reported here.
     private static IReadOnlyList<LintingDiagnostic> LintConfig(string filePath, byte[] content)
     {
-        if (!LocaleConfigFile.TryRead(filePath, content, out var config, out var error))
+        if (!RuntimeConfigFile.TryRead(filePath, content, out var config, out var error))
         {
             return [new LintingDiagnostic(filePath, 1, 1, LintingCodes.MalformedLocaleConfig.DefaultSeverity, LintingCodes.MalformedLocaleConfig, $"The file is not readable JSON: {error}.")];
         }

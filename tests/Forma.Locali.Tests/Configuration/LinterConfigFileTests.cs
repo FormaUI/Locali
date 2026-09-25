@@ -4,13 +4,13 @@ using System.Text;
 
 using Forma.Locali.Configuration;
 
-public sealed class LocaliConfigFileTests
+public sealed class LinterConfigFileTests
 {
     [Fact]
     public void Should_read_a_globs_codes_with_their_offsets()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "**/LocalizationPage.razor": ["LOC0207", "LOC0113"] } }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "**/LocalizationPage.razor": ["LOC0207", "LOC0113"] } }""");
 
         // Assert
         var entry = Assert.Single(document.IgnoreDiagnostics);
@@ -24,7 +24,7 @@ public sealed class LocaliConfigFileTests
     public void Should_read_the_exclude_files_globs_with_their_offsets()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*"] }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*"] }""");
 
         // Assert
         var entry = Assert.Single(document.ExcludeFiles);
@@ -36,7 +36,7 @@ public sealed class LocaliConfigFileTests
     public void Should_read_each_locale_sources_line_in_order_with_its_sources_combined()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": { "**": ["pack", "host"], "src/Forma.AddOns/*": ["embedded"] } }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "localeSources": { "**": ["pack", "host"], "src/Forma.AddOns/*": ["embedded"] } }""");
 
         // Assert
         Assert.Multiple(
@@ -49,7 +49,7 @@ public sealed class LocaliConfigFileTests
     public void Should_read_the_entries_written_after_locale_sources()
     {
         // Arrange — the object is read through to its end, so the entry after it is not lost.
-        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": { "**": ["pack"] }, "excludeFiles": ["*/Fixtures/*"] }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "localeSources": { "**": ["pack"] }, "excludeFiles": ["*/Fixtures/*"] }""");
 
         // Assert
         Assert.Multiple(
@@ -62,7 +62,7 @@ public sealed class LocaliConfigFileTests
     public void Should_read_no_locale_sources_lines_when_the_file_names_none()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": [] }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "excludeFiles": [] }""");
 
         // Assert
         Assert.Empty(document.LocaleSources);
@@ -72,7 +72,7 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_a_locale_source_the_linter_does_not_define()
     {
         // Arrange — the known sources still count, so the list is read to its end.
-        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": { "**": ["embedded", "package"] } }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "localeSources": { "**": ["embedded", "package"] } }""");
 
         // Assert
         var malformedValue = Assert.Single(document.MalformedValues);
@@ -85,7 +85,7 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_locale_sources_that_are_not_an_object()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": ["pack"] }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "localeSources": ["pack"] }""");
 
         // Assert
         var malformedValue = Assert.Single(document.MalformedValues);
@@ -98,7 +98,7 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_a_locale_sources_line_whose_sources_are_not_a_list()
     {
         // Arrange — the line after the bad one is still read.
-        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": { "src/**": "pack", "**": ["host"] } }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "localeSources": { "src/**": "pack", "**": ["host"] } }""");
 
         // Assert
         var malformedValue = Assert.Single(document.MalformedValues);
@@ -111,7 +111,7 @@ public sealed class LocaliConfigFileTests
     public void Should_read_more_than_one_glob_under_ignore_diagnostics()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read(
+        var document = LinterConfigFileTestFactory.Read(
             """{ "ignoreDiagnostics": { "One.he.json": ["LOC0113"], "Two.he.json": ["LOC0207"] } }""");
 
         // Assert
@@ -122,7 +122,7 @@ public sealed class LocaliConfigFileTests
     public void Should_skip_a_comment_in_the_file()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read(
+        var document = LinterConfigFileTestFactory.Read(
             """
             {
               // ignore the showcase page's missing translation on purpose
@@ -138,7 +138,7 @@ public sealed class LocaliConfigFileTests
     public void Should_allow_a_trailing_comma()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*"], }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*"], }""");
 
         // Assert
         Assert.Single(document.ExcludeFiles);
@@ -148,7 +148,7 @@ public sealed class LocaliConfigFileTests
     public void Should_report_a_top_level_that_is_not_an_object()
     {
         // Act
-        var read = LocaliConfigFile.TryRead(".locali.json", Encoding.UTF8.GetBytes("[]"), out var document, out var error);
+        var read = LinterConfigFile.TryRead(".locali.json", Encoding.UTF8.GetBytes("[]"), out var document, out var error);
 
         // Assert
         Assert.Multiple(
@@ -161,7 +161,7 @@ public sealed class LocaliConfigFileTests
     public void Should_report_text_that_is_not_readable_json()
     {
         // Act
-        var read = LocaliConfigFile.TryRead(".locali.json", Encoding.UTF8.GetBytes("{ not json"), out var document, out var error);
+        var read = LinterConfigFile.TryRead(".locali.json", Encoding.UTF8.GetBytes("{ not json"), out var document, out var error);
 
         // Assert
         Assert.Multiple(
@@ -174,7 +174,7 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_an_unknown_top_level_entry()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "included": [] }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "included": [] }""");
 
         // Assert
         var malformedValue = Assert.Single(document.MalformedValues);
@@ -185,7 +185,7 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_an_ignore_diagnostics_entry_that_is_not_an_object()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": ["LOC0113"] }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "ignoreDiagnostics": ["LOC0113"] }""");
 
         // Assert
         var malformedValue = Assert.Single(document.MalformedValues);
@@ -196,7 +196,7 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_an_exclude_files_entry_that_is_not_an_array()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": "*/Fixtures/*" }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "excludeFiles": "*/Fixtures/*" }""");
 
         // Assert
         var malformedValue = Assert.Single(document.MalformedValues);
@@ -207,7 +207,7 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_a_glob_whose_rules_are_not_a_list()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "Widget.he.json": "LOC0113" } }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "Widget.he.json": "LOC0113" } }""");
 
         // Assert
         Assert.Empty(document.IgnoreDiagnostics);
@@ -219,7 +219,7 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_a_rule_identifier_that_is_not_text()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113", 5] } }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113", 5] } }""");
 
         // Assert
         var entry = Assert.Single(document.IgnoreDiagnostics);
@@ -231,7 +231,7 @@ public sealed class LocaliConfigFileTests
     public void Should_flag_a_glob_that_is_not_text()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*", 5] }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*", 5] }""");
 
         // Assert
         Assert.Equal(["*/Fixtures/*"], document.ExcludeFiles.Select(entry => entry.Glob));
@@ -242,7 +242,7 @@ public sealed class LocaliConfigFileTests
     public void Should_recover_after_a_malformed_entry_to_read_what_follows()
     {
         // Arrange — a stray key in the middle should not stop the ignore entry after it from being read.
-        var document = LocaliConfigFileTestFactory.Read(
+        var document = LinterConfigFileTestFactory.Read(
             """{ "stray": 1, "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
 
         // Assert
@@ -255,7 +255,7 @@ public sealed class LocaliConfigFileTests
     public void Should_name_every_entry_the_file_defines_when_one_is_unknown()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "layout": [] }""");
+        var document = LinterConfigFileTestFactory.Read("""{ "layout": [] }""");
 
         // Assert
         var malformedValue = Assert.Single(document.MalformedValues);
@@ -269,7 +269,7 @@ public sealed class LocaliConfigFileTests
     public void Should_locate_a_diagnostic_at_the_offset_given()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read(
+        var document = LinterConfigFileTestFactory.Read(
             """
             {
               "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] }

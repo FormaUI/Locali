@@ -5,8 +5,8 @@ using System.Text.Json;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 
-/// <summary>A run's <c>.locali.json</c> file, read once as ordered entries with the offsets its diagnostics point at.</summary>
-public sealed class LocaliConfigFile
+/// <summary>The linter's own <c>.locali.json</c> file, read once as ordered entries with the offsets its diagnostics point at.</summary>
+public sealed class LinterConfigFile
 {
     private const string IgnoreDiagnosticsKey = "ignoreDiagnostics";
     private const string ExcludeFilesKey = "excludeFiles";
@@ -18,7 +18,7 @@ public sealed class LocaliConfigFile
         CommentHandling = JsonCommentHandling.Skip,
     };
 
-    private LocaliConfigFile(
+    private LinterConfigFile(
         string path,
         TextMap map,
         IReadOnlyList<ConfigIgnoreDiagnostic> ignoreDiagnostics,
@@ -57,7 +57,7 @@ public sealed class LocaliConfigFile
     /// <param name="content">The file's bytes.</param>
     /// <param name="document">The document, when reading succeeded.</param>
     /// <param name="error">Why reading failed, when it did.</param>
-    public static bool TryRead(string path, byte[] content, out LocaliConfigFile? document, out string? error)
+    public static bool TryRead(string path, byte[] content, out LinterConfigFile? document, out string? error)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
         ArgumentNullException.ThrowIfNull(content);
@@ -94,7 +94,7 @@ public sealed class LocaliConfigFile
             return false;
         }
 
-        document = new LocaliConfigFile(path, new TextMap(utf8), ignoreDiagnostics, excludeFiles, localeSources, malformedValues);
+        document = new LinterConfigFile(path, new TextMap(utf8), ignoreDiagnostics, excludeFiles, localeSources, malformedValues);
 
         return true;
     }

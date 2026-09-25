@@ -9,8 +9,8 @@ using Forma.Framework.Localization.Parser;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 
-/// <summary>A <c>.locale.json</c> file as the linter reads it: every key held to the runtime's own rule, with the offsets its diagnostics point at.</summary>
-public sealed class LocaleConfigFile
+/// <summary>The runtime's <c>.locale.json</c> file as the linter reads it, through the runtime's own <c>LocaleConfig</c> rules, with the offsets its diagnostics point at.</summary>
+public sealed class RuntimeConfigFile
 {
     private static readonly JsonReaderOptions ReaderOptions = new()
     {
@@ -18,7 +18,7 @@ public sealed class LocaleConfigFile
         CommentHandling = JsonCommentHandling.Skip,
     };
 
-    private LocaleConfigFile(string path, TextMap map, IReadOnlyList<ConfigMalformedValue> malformedValues)
+    private RuntimeConfigFile(string path, TextMap map, IReadOnlyList<ConfigMalformedValue> malformedValues)
     {
         Path = path;
         Map = map;
@@ -39,7 +39,7 @@ public sealed class LocaleConfigFile
     /// <param name="content">The file's bytes.</param>
     /// <param name="file">The file, when reading succeeded.</param>
     /// <param name="error">Why reading failed, when it did.</param>
-    public static bool TryRead(string path, byte[] content, out LocaleConfigFile? file, out string? error)
+    public static bool TryRead(string path, byte[] content, out RuntimeConfigFile? file, out string? error)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
         ArgumentNullException.ThrowIfNull(content);
@@ -73,7 +73,7 @@ public sealed class LocaleConfigFile
             return false;
         }
 
-        file = new LocaleConfigFile(path, new TextMap(utf8), malformedValues);
+        file = new RuntimeConfigFile(path, new TextMap(utf8), malformedValues);
 
         return true;
     }

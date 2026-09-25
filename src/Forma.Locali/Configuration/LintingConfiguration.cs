@@ -241,17 +241,17 @@ public sealed class LintingConfiguration : ILintingConfiguration
             return new TrackedFile(path, null, exception.Message);
         }
 
-        return LocaliConfigFile.TryRead(path, content, out var file, out var error)
+        return LinterConfigFile.TryRead(path, content, out var file, out var error)
             ? new TrackedFile(path, file, null)
             : new TrackedFile(path, null, error);
     }
 
     // The one file the run reads, with each entry's usage counted across every file the run asks about, from whichever thread asks.
-    private sealed class TrackedFile(string path, LocaliConfigFile? file, string? readError)
+    private sealed class TrackedFile(string path, LinterConfigFile? file, string? readError)
     {
         public string Path { get; } = path;
 
-        public LocaliConfigFile? File { get; } = file;
+        public LinterConfigFile? File { get; } = file;
 
         public string? ReadError { get; } = readError;
 
