@@ -15,7 +15,7 @@ Detailed standards live in `.claude/skills/` and load on demand. Read the matchi
 
 ## Source of truth
 
-- Do use [src/Forma.Locali/README.md](src/Forma.Locali/README.md) for everything about the tool itself: the CLI, every rule and where it stays silent, the source layout, how to add a rule, and how the linter runs on the SDK's compiler. It is the authority; this file only says what the repository around it expects.
+- Do use [README.md](README.md) for everything about the tool itself: the CLI, every rule and where it stays silent, the source layout, how to add a rule, and how the linter runs on the SDK's compiler. It is the authority; this file only says what the repository around it expects.
 - Do read `.editorconfig` before writing C#; it is the authority on style, and the root file and `tests/.editorconfig` differ deliberately.
 - Do treat the sibling **Forma** repository (`c:\Users\eyal\Development\Projects\Forma`) as the reference for how the runtime behaves; a rule is right when it reports exactly what `Forma.Framework.Localization` will get wrong at run time.
 - Don't invent scope, status, or style rules when an authoritative file defines them.
