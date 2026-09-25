@@ -196,7 +196,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", "Broken.he.json"), LocalizationFileFakeData.Unmarked);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root, ["*/Fixtures/*"]);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/Fixtures/*"])).Resolve(directory.Root);
 
         // Assert
         Assert.Equal([kept], target.LocalizationFiles);
@@ -210,7 +210,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", "Broken.he.json"), LocalizationFileFakeData.Unmarked);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root, ["*/fixtures/*"]);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/fixtures/*"])).Resolve(directory.Root);
 
         // Assert
         Assert.Empty(target.LocalizationFiles);
@@ -224,7 +224,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", "Widget.cs"), "class Widget;");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root, ["*/Fixtures/*"]);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/Fixtures/*"])).Resolve(directory.Root);
 
         // Assert
         Assert.Empty(target.SourceFiles);
@@ -254,7 +254,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", "Broken.he.json"), LocalizationFileFakeData.Unmarked);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(project)).Resolve(project, ["*/Fixtures/*"]);
+        var target = new LintingTargetResolver(new LintingConfiguration(project, ["*/Fixtures/*"])).Resolve(project);
 
         // Assert
         Assert.Multiple(
@@ -270,7 +270,7 @@ public sealed class LintingTargetResolverTests
         var file = directory.Write(Path.Combine("Fixtures", "Broken.he.json"), LocalizationFileFakeData.Unmarked);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(file)).Resolve(file, ["*/Fixtures/*"]);
+        var target = new LintingTargetResolver(new LintingConfiguration(file, ["*/Fixtures/*"])).Resolve(file);
 
         // Assert
         Assert.Empty(target.LocalizationFiles);
@@ -347,7 +347,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", ".locali.json"), "not json");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root, ["*/Fixtures/*"]);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/Fixtures/*"])).Resolve(directory.Root);
 
         // Assert
         Assert.Equal([root], target.ConfigurationFiles);

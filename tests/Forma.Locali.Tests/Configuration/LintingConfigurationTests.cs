@@ -197,6 +197,35 @@ public sealed class LintingConfigurationTests
     }
 
     [Fact]
+    public void Should_exclude_a_file_the_command_line_names()
+    {
+        // Arrange — the command line's globs are part of the run's configuration, matched against the full path.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Fixtures", "Widget.he.json"), "{}");
+
+        // Act & Assert
+        Assert.True(new LintingConfiguration(directory.Root, ["*/Fixtures/*"]).IsExcluded(file));
+    }
+
+    [Fact]
+    public void Should_count_a_file_exclude_the_command_line_also_names_as_applied()
+    {
+        // Arrange — the gate command passes the same glob the file holds; the file's entry is asked first and always, so it is not stale.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "excludeFiles": ["*/Fixtures/*"] }""");
+        var file = directory.Write(Path.Combine("Suite", "Fixtures", "Broken.he.json"), "{}");
+        var configuration = new LintingConfiguration(directory.Root, ["*/Fixtures/*"]);
+
+        // Act
+        var excluded = configuration.IsExcluded(file);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.True(excluded),
+            () => Assert.Empty(configuration.GetDiagnostics()));
+    }
+
+    [Fact]
     public void Should_never_let_a_configuration_ignore_the_rule_over_its_own_shape()
     {
         // Arrange

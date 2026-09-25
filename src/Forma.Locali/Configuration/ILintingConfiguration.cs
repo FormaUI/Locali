@@ -2,13 +2,13 @@ namespace Forma.Locali.Configuration;
 
 using Forma.Locali.Diagnostics;
 
-/// <summary>The linting configuration a run applies: the one <c>.locali.json</c> nearest above the path the run was given.</summary>
+/// <summary>The configuration a run applies: the one <c>.locali.json</c> nearest at or above the path the run was given, merged with what the command line excludes.</summary>
 public interface ILintingConfiguration
 {
     /// <summary>The <c>.locali.json</c> the run reads, as a full path, or null when none sits at or above the path it was given.</summary>
     string? FilePath { get; }
 
-    /// <summary>Whether the configuration excludes a file from the run.</summary>
+    /// <summary>Whether the configuration excludes a file from the run, by an entry of its file or a glob of its command line.</summary>
     /// <param name="file">The file, as a full path.</param>
     bool IsExcluded(string file);
 

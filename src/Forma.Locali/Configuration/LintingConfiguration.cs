@@ -5,52 +5,56 @@ using System.Collections.Concurrent;
 using Forma.Locali.Cli;
 using Forma.Locali.Diagnostics;
 
-/// <summary>Reads the one <c>.locali.json</c> that governs a run, the nearest at or above the path the run was given, and holds every entry in it to having applied to something.</summary>
+/// <summary>The configuration a run applies: the one <c>.locali.json</c> nearest at or above the path the run was given, merged with the globs the command line excludes, holding every entry of the file to having applied to something.</summary>
 public sealed class LintingConfiguration : ILintingConfiguration
 {
     /// <summary>The name a linting configuration file is read under.</summary>
     public const string FileName = ".locali.json";
 
     private readonly Lazy<TrackedFile?> _file;
+    private readonly IReadOnlyCollection<string> _commandLineExcludes;
 
-    /// <summary>Finds the configuration for a run.</summary>
+    /// <summary>Finds the configuration for a run and merges the command line into it.</summary>
     /// <param name="path">The path the run was given, a file or a directory.</param>
-    public LintingConfiguration(string path)
+    /// <param name="excludes">The globs the command line excludes, or null when it excludes none.</param>
+    public LintingConfiguration(string path, IReadOnlyCollection<string>? excludes = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
 
         _file = new Lazy<TrackedFile?>(() => Find(path));
+        _commandLineExcludes = excludes ?? [];
     }
 
     /// <inheritdoc />
     public string? FilePath
         => _file.Value?.Path;
 
+    // The file's entries are asked first and always, so one the command line also names still counts as applied.
     /// <inheritdoc />
     public bool IsExcluded(string file)
     {
         ArgumentException.ThrowIfNullOrEmpty(file);
 
-        if (_file.Value is not { File: { } config } tracked)
-        {
-            return false;
-        }
-
-        var relative = Relative(tracked, file);
+        var full = Path.GetFullPath(file);
         var matched = false;
 
-        foreach (var entry in config.ExcludeFiles)
+        if (_file.Value is { File: { } config } tracked)
         {
-            if (!GlobPattern.Matches(entry.Glob, relative))
-            {
-                continue;
-            }
+            var relative = Relative(tracked, full);
 
-            tracked.UsedExclude.TryAdd(entry.Offset, true);
-            matched = true;
+            foreach (var entry in config.ExcludeFiles)
+            {
+                if (!GlobPattern.Matches(entry.Glob, relative))
+                {
+                    continue;
+                }
+
+                tracked.UsedExclude.TryAdd(entry.Offset, true);
+                matched = true;
+            }
         }
 
-        return matched;
+        return matched || _commandLineExcludes.Any(pattern => GlobPattern.Matches(pattern, full));
     }
 
     /// <inheritdoc />

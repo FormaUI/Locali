@@ -3,7 +3,7 @@ namespace Forma.Locali.Cli;
 using Forma.Locali.Configuration;
 
 /// <summary>Reads a path as a solution, a project, a directory or a single file.</summary>
-/// <param name="lintingConfiguration">Leaves out whatever the run's <c>.locali.json</c> excludes.</param>
+/// <param name="lintingConfiguration">Leaves out whatever the run's configuration excludes, from its <c>.locali.json</c> and its command line alike.</param>
 public sealed class LintingTargetResolver(ILintingConfiguration lintingConfiguration) : ILintingTargetResolver
 {
     private static readonly string[] SourceExtensions = [".cs", ".razor"];
@@ -11,15 +11,13 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
     private readonly ILintingConfiguration _lintingConfiguration = lintingConfiguration ?? throw new ArgumentNullException(nameof(lintingConfiguration));
 
     /// <inheritdoc />
-    public LintingTarget Resolve(string path, IReadOnlyCollection<string>? excludes = null)
+    public LintingTarget Resolve(string path)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
 
-        var skip = excludes ?? [];
-
         if (Directory.Exists(path))
         {
-            return FromFiles(Walk(path), skip);
+            return FromFiles(Walk(path));
         }
 
         if (!File.Exists(path))
@@ -29,9 +27,9 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
 
         return Path.GetExtension(path).ToUpperInvariant() switch
         {
-            ".SLN" or ".SLNX" => FromSolution(path, skip),
-            ".CSPROJ" => FromProject(path, skip),
-            _ => FromFiles([path], skip),
+            ".SLN" or ".SLNX" => FromSolution(path),
+            ".CSPROJ" => FromProject(path),
+            _ => FromFiles([path]),
         };
     }
 
@@ -74,7 +72,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
     private static bool IsConfigurationFile(string file)
         => Path.GetFileName(file).Equals(LintingConfiguration.FileName, StringComparison.OrdinalIgnoreCase);
 
-    private LintingTarget FromFiles(IEnumerable<string> files, IReadOnlyCollection<string> excludes)
+    private LintingTarget FromFiles(IEnumerable<string> files)
     {
         var localization = new List<string>();
         var sources = new List<string>();
@@ -84,7 +82,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
 
         foreach (var file in files)
         {
-            if (IsExcluded(file, excludes))
+            if (_lintingConfiguration.IsExcluded(file))
             {
                 continue;
             }
@@ -132,27 +130,19 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
             [.. configurations]);
     }
 
-    private LintingTarget FromProject(string project, IReadOnlyCollection<string> excludes)
+    private LintingTarget FromProject(string project)
     {
         var folder = Path.GetDirectoryName(Path.GetFullPath(project))!;
-        var target = FromFiles(Walk(folder), excludes);
+        var target = FromFiles(Walk(folder));
 
         return target with { Projects = [project] };
     }
 
-    private LintingTarget FromSolution(string solution, IReadOnlyCollection<string> excludes)
+    private LintingTarget FromSolution(string solution)
     {
         var folder = Path.GetDirectoryName(Path.GetFullPath(solution))!;
-        var target = FromFiles(Walk(folder), excludes);
+        var target = FromFiles(Walk(folder));
 
         return target with { Projects = [solution], IsSolution = true };
-    }
-
-    // A glob from the command line and one from a file's own .locali.json carry the same weight.
-    private bool IsExcluded(string file, IReadOnlyCollection<string> excludes)
-    {
-        var path = Path.GetFullPath(file);
-
-        return excludes.Any(pattern => GlobPattern.Matches(pattern, path)) || _lintingConfiguration.IsExcluded(path);
     }
 }

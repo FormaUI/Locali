@@ -40,7 +40,7 @@ public sealed class LintingService(
     /// <inheritdoc />
     public async ValueTask<LintingResult> RunAsync(CancellationToken cancellationToken = default)
     {
-        var target = _resolver.Resolve(_options.Path, _options.Excludes);
+        var target = _resolver.Resolve(_options.Path);
         var diagnostics = new ConcurrentBag<LintingDiagnostic>();
 
         // Each file is read independently, so they overlap rather than queueing behind one another.
