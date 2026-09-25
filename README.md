@@ -15,7 +15,16 @@ Two things go wrong quietly in a localized codebase, and a build catches neither
 
 ## Quick Start
 
-The binary is `locali`. The project is not packable, so run it from source:
+The binary is `locali`, shipped as the dotnet tool `FormaUI.NET-Locali`. A repository pins it in its tool
+manifest and restores it, so every machine runs one version:
+
+```powershell
+dotnet new tool-manifest
+dotnet tool install FormaUI.NET-Locali
+dotnet locali --path <target>
+```
+
+To run it from source instead:
 
 ```powershell
 dotnet run --project src/Forma.Locali -- --path <target>
