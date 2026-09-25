@@ -146,8 +146,9 @@ rather than the severity — and a `diagnostics` array of `path`, `line`, `colum
 ## How Callsites Are Found
 
 Callsites are found semantically where the compilation binds `IStringLocale`, and syntactically
-otherwise. The syntactic path cannot resolve overloads, so the rules that count values stay
-silent for it.
+otherwise. The semantic path reads the operation tree the compiler binds, which has one shape
+for every language it compiles; the syntactic path reads C# syntax, cannot resolve overloads,
+and so leaves the rules that count values silent.
 
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no

@@ -47,7 +47,7 @@ public sealed class SyntacticCallsiteFinder : ILocalizerCallsiteFinder
                 InvocationExpressionSyntax
                 {
                     Expression: MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax name } member,
-                } invocation when member.Name.Identifier.ValueText == CallsiteReader.ResolveMethod
+                } invocation when member.Name.Identifier.ValueText == LocalizerContract.ResolveMethod
                     => (name.Identifier.ValueText, invocation.ArgumentList),
                 _ => (null, null),
             };
@@ -57,17 +57,17 @@ public sealed class SyntacticCallsiteFinder : ILocalizerCallsiteFinder
                 continue;
             }
 
-            if (CallsiteReader.Read(tree, arguments, null, null) is { } site)
+            if (SyntacticCallsiteReader.Read(tree, arguments) is { } site)
             {
                 lookups.Add(site);
             }
-            else if (!LocalizerContract.InsideLocalizer(node))
+            else if (!InsideLocalizer(node))
             {
-                if (CallsiteReader.InterpolatedKey(tree, arguments) is { } key)
+                if (SyntacticCallsiteReader.InterpolatedKey(tree, arguments) is { } key)
                 {
                     interpolated.Add(key);
                 }
-                else if (CallsiteReader.UnreadableKey(tree, arguments) is { } location)
+                else if (SyntacticCallsiteReader.UnreadableKey(tree, arguments) is { } location)
                 {
                     unreadable.Add(location);
                 }
@@ -120,7 +120,7 @@ public sealed class SyntacticCallsiteFinder : ILocalizerCallsiteFinder
             {
                 switch (node)
                 {
-                    case VariableDeclarationSyntax variable when LocalizerContract.Names(variable.Type):
+                    case VariableDeclarationSyntax variable when Names(variable.Type):
                         foreach (var declarator in variable.Variables)
                         {
                             names.Add(declarator.Identifier.ValueText);
@@ -128,7 +128,7 @@ public sealed class SyntacticCallsiteFinder : ILocalizerCallsiteFinder
 
                         break;
 
-                    case ParameterSyntax parameter when LocalizerContract.Names(parameter.Type):
+                    case ParameterSyntax parameter when Names(parameter.Type):
                         names.Add(parameter.Identifier.ValueText);
 
                         break;
@@ -180,12 +180,12 @@ public sealed class SyntacticCallsiteFinder : ILocalizerCallsiteFinder
         {
             switch (member)
             {
-                case PropertyDeclarationSyntax property when LocalizerContract.Names(property.Type):
+                case PropertyDeclarationSyntax property when Names(property.Type):
                     names.Add(property.Identifier.ValueText);
 
                     break;
 
-                case FieldDeclarationSyntax field when LocalizerContract.Names(field.Declaration.Type):
+                case FieldDeclarationSyntax field when Names(field.Declaration.Type):
                     foreach (var declarator in field.Declaration.Variables)
                     {
                         names.Add(declarator.Identifier.ValueText);
@@ -197,6 +197,23 @@ public sealed class SyntacticCallsiteFinder : ILocalizerCallsiteFinder
 
         return names;
     }
+
+    // A qualified spelling still ends in the contract's own name, and a generic one carries it on the name's identifier.
+    private static bool Names(TypeSyntax? type)
+    {
+        var name = type switch
+        {
+            SimpleNameSyntax simple => simple.Identifier.ValueText,
+            QualifiedNameSyntax qualified => qualified.Right.Identifier.ValueText,
+            _ => null,
+        };
+
+        return string.Equals(name, LocalizerContract.TypeName, StringComparison.Ordinal);
+    }
+
+    // A type declaring itself a localizer forwards a key rather than writing one, judged without a model.
+    private static bool InsideLocalizer(SyntaxNode node)
+        => node.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault()?.BaseList?.Types.Any(declared => Names(declared.Type)) == true;
 
     private static string QualifiedName(TypeDeclarationSyntax type)
     {

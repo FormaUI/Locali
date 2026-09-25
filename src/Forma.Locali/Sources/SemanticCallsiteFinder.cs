@@ -1,7 +1,9 @@
 namespace Forma.Locali.Sources;
 
+using System.Collections.Immutable;
+
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Operations;
 
 /// <summary>Finds callsites by binding the receiver to the localizer contract.</summary>
 public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
@@ -25,13 +27,18 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         return contract is null ? LocalizerLookups.Empty : Walk(compilation, tree, contract);
     }
 
-    private static bool Owns(ISymbol? symbol, INamedTypeSymbol contract)
-        => symbol switch
+    // The operation tree is what the compiler bound, in the same shape for every language it reads, so the
+    // walk reads it rather than the syntax; an indexer and a default property are one operation there.
+    private static (IOperation? Receiver, ImmutableArray<IArgumentOperation> Arguments)? Lookup(IOperation operation, INamedTypeSymbol contract)
+        => operation switch
         {
-            IPropertySymbol indexer => LocalizerContract.Implements(indexer.ContainingType, contract),
-            IMethodSymbol method => method.Name == CallsiteReader.ResolveMethod
-                && LocalizerContract.Implements(method.ContainingType, contract),
-            _ => false,
+            IPropertyReferenceOperation { Arguments.Length: > 0 } indexer
+                when LocalizerContract.Implements(indexer.Property.ContainingType, contract)
+                => (indexer.Instance, indexer.Arguments),
+            IInvocationOperation { TargetMethod.Name: LocalizerContract.ResolveMethod } invocation
+                when LocalizerContract.Implements(invocation.TargetMethod.ContainingType, contract)
+                => (invocation.Instance, invocation.Arguments),
+            _ => null,
         };
 
     private static LocalizerLookups Walk(Compilation compilation, SyntaxTree tree, INamedTypeSymbol contract)
@@ -44,36 +51,25 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 
         foreach (var node in tree.GetRoot().DescendantNodes())
         {
-            var arguments = node switch
-            {
-                ElementAccessExpressionSyntax access => access.ArgumentList,
-                InvocationExpressionSyntax invocation => (BaseArgumentListSyntax)invocation.ArgumentList,
-                _ => null,
-            };
-
-            if (arguments is null)
+            // A lookup is read at the node its operation stands on, so a node inside it does not read it again.
+            if (model.GetOperation(node) is not { } operation
+                || operation.Syntax != node
+                || Lookup(operation, contract) is not var (receiver, arguments))
             {
                 continue;
             }
 
-            var symbol = model.GetSymbolInfo(node).Symbol;
-
-            if (!Owns(symbol, contract))
+            if (SemanticCallsiteReader.Read(operation, arguments) is { } site)
             {
-                continue;
+                lookups.Add(site with { ResourceType = Resource(receiver, generic) });
             }
-
-            if (CallsiteReader.Read(tree, arguments, symbol, model) is { } site)
+            else if (!LocalizerContract.InsideLocalizer(model.GetEnclosingSymbol(node.SpanStart), contract))
             {
-                lookups.Add(site with { ResourceType = Resource(model, node, generic) });
-            }
-            else if (!LocalizerContract.InsideLocalizer(node, model, contract))
-            {
-                if (CallsiteReader.InterpolatedKey(tree, arguments) is { } key)
+                if (SemanticCallsiteReader.InterpolatedKey(arguments) is { } key)
                 {
                     interpolated.Add(key);
                 }
-                else if (CallsiteReader.UnreadableKey(tree, arguments) is { } location)
+                else if (SemanticCallsiteReader.UnreadableKey(arguments) is { } location)
                 {
                     unreadable.Add(location);
                 }
@@ -84,21 +80,6 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
     }
 
     // The indexer is declared on the unbound contract, so the type it translates is only on the receiver.
-    private static INamedTypeSymbol? Resource(SemanticModel model, SyntaxNode node, INamedTypeSymbol? generic)
-    {
-        if (generic is null || Receiver(node) is not { } receiver)
-        {
-            return null;
-        }
-
-        return LocalizerContract.ResourceOf(model.GetTypeInfo(receiver).Type, generic);
-    }
-
-    private static ExpressionSyntax? Receiver(SyntaxNode node)
-        => node switch
-        {
-            ElementAccessExpressionSyntax access => access.Expression,
-            InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax member } => member.Expression,
-            _ => null,
-        };
+    private static INamedTypeSymbol? Resource(IOperation? receiver, INamedTypeSymbol? generic)
+        => generic is null || receiver is null ? null : LocalizerContract.ResourceOf(receiver.Type, generic);
 }

@@ -1,7 +1,6 @@
 namespace Forma.Locali.Sources;
 
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 /// <summary>Names the localizer contract the linter recognises.</summary>
 public static class LocalizerContract
@@ -14,6 +13,9 @@ public static class LocalizerContract
 
     /// <summary>The type name as source writes it, without namespace or type arguments.</summary>
     public const string TypeName = "IStringLocale";
+
+    /// <summary>The name a lookup goes through when it is not an indexer.</summary>
+    public const string ResolveMethod = "Resolve";
 
     /// <summary>The type whose translations the receiver reads, or null when it names none.</summary>
     /// <param name="receiver">The type the lookup was made through.</param>
@@ -54,48 +56,17 @@ public static class LocalizerContract
                 SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, contract));
     }
 
-    /// <summary>Whether the type as written names the localizer contract.</summary>
-    /// <param name="type">The type syntax to read.</param>
-    public static bool Names(TypeSyntax? type)
-    {
-        var name = type switch
-        {
-            SimpleNameSyntax simple => simple.Identifier.ValueText,
-            QualifiedNameSyntax qualified => qualified.Right.Identifier.ValueText,
-            _ => null,
-        };
-
-        return string.Equals(name, TypeName, StringComparison.Ordinal);
-    }
-
-    /// <summary>Whether the node sits inside a localizer, whose lookups forward a key rather than write one.</summary>
-    /// <param name="node">The node the lookup was found at.</param>
-    /// <param name="model">The model that bound the node.</param>
+    /// <summary>Whether the symbol sits inside a localizer, whose lookups forward a key rather than write one.</summary>
+    /// <param name="enclosing">The symbol the lookup was found in, or null when it was found in none.</param>
     /// <param name="contract">The contract as the compilation resolved it.</param>
-    public static bool InsideLocalizer(SyntaxNode node, SemanticModel model, INamedTypeSymbol contract)
+    public static bool InsideLocalizer(ISymbol? enclosing, INamedTypeSymbol contract)
     {
-        ArgumentNullException.ThrowIfNull(node);
-        ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(contract);
 
-        return Enclosing(node) is { } type
-            && model.GetDeclaredSymbol(type) is INamedTypeSymbol symbol
-            && Implements(symbol, contract);
-    }
-
-    /// <summary>Whether the node sits inside a type declaring itself a localizer, judged without a model.</summary>
-    /// <param name="node">The node the lookup was found at.</param>
-    public static bool InsideLocalizer(SyntaxNode node)
-    {
-        ArgumentNullException.ThrowIfNull(node);
-
-        return Enclosing(node)?.BaseList?.Types.Any(declared => Names(declared.Type)) == true;
+        // The member holding the lookup belongs to the nearest type, so an outer one says nothing about it.
+        return Implements(enclosing as INamedTypeSymbol ?? enclosing?.ContainingType, contract);
     }
 
     private static bool Closes(INamedTypeSymbol type, INamedTypeSymbol generic)
         => type.IsGenericType && SymbolEqualityComparer.Default.Equals(type.OriginalDefinition, generic);
-
-    // The member holding the lookup belongs to the nearest type, so an outer one says nothing about it.
-    private static TypeDeclarationSyntax? Enclosing(SyntaxNode node)
-        => node.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
 }

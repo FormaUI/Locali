@@ -419,10 +419,12 @@ type's own and counts.
 ## Callsites (LOC0200–LOC0299)
 
 Callsites are found semantically where the compilation binds `IStringLocale`, and syntactically
-otherwise; the syntactic path cannot resolve overloads, so the rules that count values stay
-silent for it. A key written as a constant is folded by the compiler and checked like a literal
-on the semantic path. A lookup inside a type that implements `IStringLocale` is left alone
-throughout, since such a type forwards the key its own caller wrote.
+otherwise; the semantic path reads the operation tree the compiler binds, which has one shape
+for every language it compiles, and the syntactic path reads C# syntax and cannot resolve
+overloads, so the rules that count values stay silent for it. A key written as a constant is
+folded by the compiler and checked like a literal on the semantic path. A lookup inside a type
+that implements `IStringLocale` is left alone throughout, since such a type forwards the key
+its own caller wrote.
 
 Values pair to a key's distinct holes by position, in the order the holes first appear, and a
 plural expression's bracketed argument names a value the way a brace hole does:
