@@ -15,6 +15,7 @@ public static class LintingCodes
             RootNamespaceWithoutTypes,
             UnknownLocalePackAssembly,
             DisallowedLocaleSource,
+            UnreadConfiguration,
             InvalidJson,
             MissingMarker,
             MarkerNotFirst,
@@ -86,6 +87,12 @@ public static class LintingCodes
         "LOC0025",
         LintingSeverity.Warning,
         "A locale file comes from a source the linting configuration in force over it does not allow, embedded, satellite, pack or host; the runtime reads it all the same, so translations are kept in a place the repository said they are not.");
+
+    /// <summary>A <c>.locali.json</c> the run does not read sits beneath the path it was given.</summary>
+    public static LintingCode UnreadConfiguration { get; } = new(
+        "LOC0026",
+        LintingSeverity.Warning,
+        "A .locali.json sits beneath the path the run was given while the run reads only the one nearest above that path, so nothing in it applies.");
 
     /// <summary>The file is not readable JSON.</summary>
     public static LintingCode InvalidJson { get; } = new(

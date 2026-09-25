@@ -21,7 +21,7 @@ public static class LintingServiceTestFactory
         ArgumentException.ThrowIfNullOrEmpty(path);
 
         // One instance so a glob's usage tracked while excluding files is the same tracking read back while ignoring.
-        var lintingConfiguration = new LintingConfiguration();
+        var lintingConfiguration = new LintingConfiguration(path);
 
         return new LintingService(
             Options.Create(new LinterOptions { Path = path, MinimumSeverity = minimumSeverity }),

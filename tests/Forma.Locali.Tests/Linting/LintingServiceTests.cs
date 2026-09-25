@@ -205,6 +205,26 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
+    public async Task Should_report_a_configuration_file_the_run_does_not_read()
+    {
+        // Arrange — the root's file is the one read, so the nested one's exclusion does not apply and the file itself is reported.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "excludeFiles": ["Fixtures/*"] }""");
+        var nested = directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "excludeFiles": ["*.he.json"] }""");
+        directory.Write(Path.Combine("Fixtures", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
+        var file = directory.Write(Path.Combine("Widgets", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal([LintingCodes.UnreadConfiguration, LintingCodes.MissingMarker], result.Diagnostics.Codes().OrderBy(code => code.Id, StringComparer.Ordinal)),
+            () => Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Path == file),
+            () => Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Path == nested && diagnostic.Code == LintingCodes.UnreadConfiguration));
+    }
+
+    [Fact]
     public async Task Should_exclude_a_file_the_runs_own_configuration_names()
     {
         // Arrange

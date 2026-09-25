@@ -5,7 +5,7 @@ using Forma.Locali.Configuration;
 public sealed class LintingConfigurationTests
 {
     [Fact]
-    public void Should_ignore_a_file_a_nearby_configuration_names()
+    public void Should_ignore_a_file_the_configuration_names()
     {
         // Arrange
         using var directory = new TempDirectory();
@@ -13,74 +13,148 @@ public sealed class LintingConfigurationTests
         var file = directory.Write("Widget.he.json", "{}");
 
         // Act
-        var ignored = new LintingConfiguration().GetIgnoredCodes(file);
+        var ignored = new LintingConfiguration(directory.Root).GetIgnoredCodes(file);
 
         // Assert
         Assert.Equal([LintingCodes.InconsistentLocalization], ignored);
     }
 
     [Fact]
-    public void Should_leave_a_file_with_no_configuration_alone()
+    public void Should_leave_a_run_with_no_configuration_alone()
     {
         // Arrange
         using var directory = new TempDirectory();
         var file = directory.Write("Widget.he.json", "{}");
 
         // Act
-        var configuration = new LintingConfiguration();
+        var configuration = new LintingConfiguration(directory.Root);
 
         // Assert
         Assert.Multiple(
+            () => Assert.Null(configuration.FilePath),
             () => Assert.Empty(configuration.GetIgnoredCodes(file)),
-            () => Assert.False(configuration.IsExcluded(file)));
+            () => Assert.False(configuration.IsExcluded(file)),
+            () => Assert.Null(configuration.GetLocaleSources(file)),
+            () => Assert.Empty(configuration.GetDiagnostics()));
     }
 
     [Fact]
-    public void Should_merge_an_ancestors_ignore_diagnostics_with_a_nearer_ones()
+    public void Should_read_the_configuration_nearest_above_the_path_and_no_other()
     {
-        // Arrange — the root leaves out a callsite rule everywhere; the nearer file adds a file rule for its own name.
+        // Arrange — the run is given the root, so the file beneath it is not read, whatever it names.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "**/*.he.json": ["LOC0207"] } }""");
+        var root = directory.Write(".locali.json", """{ "ignoreDiagnostics": { "**/*.he.json": ["LOC0207"] } }""");
         directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
         var file = directory.Write(Path.Combine("Widgets", "Widget.he.json"), "{}");
 
         // Act
-        var ignored = new LintingConfiguration().GetIgnoredCodes(file);
-
-        // Assert
-        Assert.Equal(
-            new[] { LintingCodes.MissingLocalization, LintingCodes.InconsistentLocalization }.OrderBy(code => code.Id, StringComparer.Ordinal),
-            ignored.OrderBy(code => code.Id, StringComparer.Ordinal));
-    }
-
-    [Fact]
-    public void Should_let_the_nearest_locale_sources_win()
-    {
-        // Arrange — an allow list cannot be merged by union, so the nearer file restates the policy for its own tree.
-        using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["pack", "host"] }""");
-        directory.Write(Path.Combine("Showcase", ".locali.json"), """{ "localeSources": ["embedded", "pack", "host"] }""");
-        var nested = directory.Write(Path.Combine("Showcase", "Pages", "he.json"), "{}");
-        var outer = directory.Write(Path.Combine("Widgets", "he.json"), "{}");
-
-        // Act
-        var configuration = new LintingConfiguration();
+        var configuration = new LintingConfiguration(directory.Root);
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal(LocaleSources.Embedded | LocaleSources.Pack | LocaleSources.Host, configuration.GetLocaleSources(nested)),
-            () => Assert.Equal(LocaleSources.Pack | LocaleSources.Host, configuration.GetLocaleSources(outer)));
+            () => Assert.Equal(root, configuration.FilePath),
+            () => Assert.Equal([LintingCodes.MissingLocalization], configuration.GetIgnoredCodes(file)));
     }
 
     [Fact]
-    public void Should_report_a_locale_sources_entry_no_file_resolved_to()
+    public void Should_find_the_configuration_above_a_path_given_as_a_file()
     {
-        // Arrange — the nearer file restates the list for the only folder holding a locale file, so the root's entry governs nothing.
+        // Arrange
         using var directory = new TempDirectory();
-        var root = directory.Write(".locali.json", """{ "localeSources": ["pack"] }""");
-        directory.Write(Path.Combine("Showcase", ".locali.json"), """{ "localeSources": ["embedded"] }""");
+        var root = directory.Write(".locali.json", """{ "excludeFiles": [] }""");
+        var file = directory.Write(Path.Combine("Widgets", "Widget.he.json"), "{}");
+
+        // Act
+        var configuration = new LintingConfiguration(file);
+
+        // Assert
+        Assert.Equal(root, configuration.FilePath);
+    }
+
+    [Fact]
+    public void Should_find_the_configuration_nearest_above_a_deeper_path()
+    {
+        // Arrange — a run given the nested folder reads the nested file and never the root's.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "**/*.he.json": ["LOC0207"] } }""");
+        var nested = directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
+        var file = directory.Write(Path.Combine("Widgets", "Widget.he.json"), "{}");
+
+        // Act
+        var configuration = new LintingConfiguration(Path.Combine(directory.Root, "Widgets"));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(nested, configuration.FilePath),
+            () => Assert.Equal([LintingCodes.InconsistentLocalization], configuration.GetIgnoredCodes(file)));
+    }
+
+    [Fact]
+    public void Should_match_a_glob_relative_to_the_configurations_directory()
+    {
+        // Arrange — the glob is written as it reads from where the configuration sits, whatever the run was given.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widgets/Widget.he.json": ["LOC0113"] } }""");
+        var file = directory.Write(Path.Combine("Widgets", "Widget.he.json"), "{}");
+
+        // Act
+        var ignored = new LintingConfiguration(Path.Combine(directory.Root, "Widgets")).GetIgnoredCodes(file);
+
+        // Assert
+        Assert.Equal([LintingCodes.InconsistentLocalization], ignored);
+    }
+
+    [Fact]
+    public void Should_let_the_last_locale_sources_line_matching_a_file_win()
+    {
+        // Arrange — lines are written general first and specific after, and an allow list cannot merge, so the last match speaks.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """
+            {
+              "localeSources": {
+                "**": ["pack", "host"],
+                "Showcase/**": ["embedded", "pack", "host"],
+                "Showcase/Strict/**": ["embedded"]
+              }
+            }
+            """);
+        var widget = directory.Write(Path.Combine("Widgets", "he.json"), "{}");
+        var page = directory.Write(Path.Combine("Showcase", "Pages", "he.json"), "{}");
+        var strict = directory.Write(Path.Combine("Showcase", "Strict", "he.json"), "{}");
+
+        // Act
+        var configuration = new LintingConfiguration(directory.Root);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(LocaleSources.Pack | LocaleSources.Host, configuration.GetLocaleSources(widget)),
+            () => Assert.Equal(LocaleSources.Embedded | LocaleSources.Pack | LocaleSources.Host, configuration.GetLocaleSources(page)),
+            () => Assert.Equal(LocaleSources.Embedded, configuration.GetLocaleSources(strict)));
+    }
+
+    [Fact]
+    public void Should_leave_a_file_no_locale_sources_line_matches_alone()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "Packs/**": ["pack"] } }""");
+        var file = directory.Write(Path.Combine("Widgets", "he.json"), "{}");
+
+        // Act
+        var allowed = new LintingConfiguration(directory.Root).GetLocaleSources(file);
+
+        // Assert
+        Assert.Null(allowed);
+    }
+
+    [Fact]
+    public void Should_report_a_locale_sources_line_that_is_the_last_match_for_no_file()
+    {
+        // Arrange — the general line comes last, so it claims every file the specific one matches, and the specific one governs nothing.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "Showcase/**": ["pack"], "**": ["embedded"] } }""");
         var file = directory.Write(Path.Combine("Showcase", "he.json"), "{}");
-        var configuration = new LintingConfiguration();
+        var configuration = new LintingConfiguration(directory.Root);
         _ = configuration.GetLocaleSources(file);
 
         // Act
@@ -90,18 +164,17 @@ public sealed class LintingConfigurationTests
         var diagnostic = Assert.Single(diagnostics);
         Assert.Multiple(
             () => Assert.Equal(LintingCodes.StaleConfigurationEntry, diagnostic.Code),
-            () => Assert.Equal(root, diagnostic.Path),
-            () => Assert.Contains("'localeSources'", diagnostic.Message, StringComparison.Ordinal));
+            () => Assert.Contains("'Showcase/**'", diagnostic.Message, StringComparison.Ordinal));
     }
 
     [Fact]
-    public void Should_leave_a_locale_sources_entry_a_file_resolved_to_unreported()
+    public void Should_leave_a_locale_sources_line_a_file_resolved_to_unreported()
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["pack"] }""");
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["pack"] } }""");
         var file = directory.Write("he.json", "{}");
-        var configuration = new LintingConfiguration();
+        var configuration = new LintingConfiguration(directory.Root);
         _ = configuration.GetLocaleSources(file);
 
         // Act
@@ -109,41 +182,6 @@ public sealed class LintingConfigurationTests
 
         // Assert
         Assert.Empty(diagnostics);
-    }
-
-    [Fact]
-    public void Should_allow_every_locale_source_when_no_configuration_names_them()
-    {
-        // Arrange — a nearer file naming other entries does not unsay a farther one's sources, and none at all leaves the policy unset.
-        using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["pack"] }""");
-        directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "excludeFiles": [] }""");
-        var governed = directory.Write(Path.Combine("Widgets", "he.json"), "{}");
-        using var bare = new TempDirectory();
-        var ungoverned = bare.Write("he.json", "{}");
-
-        // Act
-        var configuration = new LintingConfiguration();
-
-        // Assert
-        Assert.Multiple(
-            () => Assert.Equal(LocaleSources.Pack, configuration.GetLocaleSources(governed)),
-            () => Assert.Null(configuration.GetLocaleSources(ungoverned)));
-    }
-
-    [Fact]
-    public void Should_match_a_glob_relative_to_its_own_configurations_directory()
-    {
-        // Arrange — the glob is written as it would read from where the file sits beside the config.
-        using var directory = new TempDirectory();
-        directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
-        var file = directory.Write(Path.Combine("Widgets", "Widget.he.json"), "{}");
-
-        // Act
-        var ignored = new LintingConfiguration().GetIgnoredCodes(file);
-
-        // Assert
-        Assert.Equal([LintingCodes.InconsistentLocalization], ignored);
     }
 
     [Fact]
@@ -155,7 +193,7 @@ public sealed class LintingConfigurationTests
         var file = directory.Write(Path.Combine("Fixtures", "Widget.he.json"), "{}");
 
         // Act & Assert
-        Assert.True(new LintingConfiguration().IsExcluded(file));
+        Assert.True(new LintingConfiguration(directory.Root).IsExcluded(file));
     }
 
     [Fact]
@@ -167,7 +205,7 @@ public sealed class LintingConfigurationTests
         var file = directory.Write("Widget.he.json", "{}");
 
         // Act & Assert
-        Assert.Empty(new LintingConfiguration().GetIgnoredCodes(file));
+        Assert.Empty(new LintingConfiguration(directory.Root).GetIgnoredCodes(file));
     }
 
     [Fact]
@@ -177,7 +215,7 @@ public sealed class LintingConfigurationTests
         using var directory = new TempDirectory();
         directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Nowhere.he.json": ["LOC0113"] }, "excludeFiles": ["Nowhere/*"] }""");
         var file = directory.Write("Widget.he.json", "{}");
-        var configuration = new LintingConfiguration();
+        var configuration = new LintingConfiguration(directory.Root);
         configuration.GetIgnoredCodes(file);
         configuration.IsExcluded(file);
 
@@ -195,7 +233,7 @@ public sealed class LintingConfigurationTests
         using var directory = new TempDirectory();
         directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] }, "excludeFiles": ["Widget.he.json"] }""");
         var file = directory.Write("Widget.he.json", "{}");
-        var configuration = new LintingConfiguration();
+        var configuration = new LintingConfiguration(directory.Root);
         configuration.GetIgnoredCodes(file);
         configuration.IsExcluded(file);
 
@@ -209,11 +247,11 @@ public sealed class LintingConfigurationTests
     [Fact]
     public void Should_report_a_rule_identifier_this_linter_does_not_define()
     {
-        // Arrange — discovery is lazy, so a file has to be consulted before its configuration is read at all.
+        // Arrange
         using var directory = new TempDirectory();
         directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC9999"] } }""");
         var file = directory.Write("Widget.he.json", "{}");
-        var configuration = new LintingConfiguration();
+        var configuration = new LintingConfiguration(directory.Root);
         configuration.GetIgnoredCodes(file);
 
         // Act
@@ -229,35 +267,32 @@ public sealed class LintingConfigurationTests
     [Fact]
     public void Should_report_a_configuration_file_that_is_not_readable_json()
     {
-        // Arrange — discovery is lazy, so a file has to be consulted before its configuration is read at all.
+        // Arrange
         using var directory = new TempDirectory();
         directory.Write(".locali.json", "not json");
-        var file = directory.Write("Widget.he.json", "{}");
-        var configuration = new LintingConfiguration();
-        configuration.GetIgnoredCodes(file);
 
         // Act
-        var diagnostics = configuration.GetDiagnostics();
+        var diagnostics = new LintingConfiguration(directory.Root).GetDiagnostics();
 
         // Assert
         Assert.Equal([LintingCodes.MalformedConfiguration], diagnostics.Codes());
     }
 
     [Fact]
-    public void Should_share_usage_of_the_same_file_discovered_from_two_directories()
+    public void Should_count_a_globs_usage_once_across_every_file_it_matches()
     {
-        // Arrange — two sibling files both walk past the same parent configuration.
+        // Arrange — two files in different folders match one glob, which is then used, not stale.
         using var directory = new TempDirectory();
         directory.Write(".locali.json", """{ "ignoreDiagnostics": { "**/Widget.he.json": ["LOC0113"] } }""");
         var first = directory.Write(Path.Combine("A", "Widget.he.json"), "{}");
         var second = directory.Write(Path.Combine("B", "Widget.he.json"), "{}");
-        var configuration = new LintingConfiguration();
+        var configuration = new LintingConfiguration(directory.Root);
 
         // Act
         configuration.GetIgnoredCodes(first);
         configuration.GetIgnoredCodes(second);
 
-        // Assert — one discovery, matched from both places, so nothing is reported as stale.
+        // Assert
         Assert.Empty(configuration.GetDiagnostics());
     }
 }

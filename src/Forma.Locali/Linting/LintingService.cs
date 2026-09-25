@@ -17,7 +17,7 @@ using Microsoft.Extensions.Options;
 /// <param name="localizationFileLinter">Checks one localization file.</param>
 /// <param name="sourcesLinter">Checks the keys written at callsites.</param>
 /// <param name="projectLinter">Checks a project's locale files read whole.</param>
-/// <param name="lintingConfiguration">What the linting configuration's <c>.locali.json</c> files leave out.</param>
+/// <param name="lintingConfiguration">The one <c>.locali.json</c> the run applies.</param>
 public sealed class LintingService(
     IOptions<LinterOptions> options,
     ILintingTargetResolver resolver,
@@ -69,6 +69,23 @@ public sealed class LintingService(
         foreach (var diagnostic in _lintingConfiguration.GetDiagnostics())
         {
             diagnostics.Add(diagnostic);
+        }
+
+        // The run reads one configuration, so another beneath the path it was given applies to nothing and is told so.
+        foreach (var file in target.ConfigurationFiles)
+        {
+            if (!Path.GetFullPath(file).Equals(_lintingConfiguration.FilePath, StringComparison.OrdinalIgnoreCase))
+            {
+                diagnostics.Add(new LintingDiagnostic(
+                    file,
+                    1,
+                    1,
+                    LintingCodes.UnreadConfiguration.DefaultSeverity,
+                    LintingCodes.UnreadConfiguration,
+                    _lintingConfiguration.FilePath is { } read
+                        ? $"The run reads '{read}' and no other {LintingConfiguration.FileName}, so nothing in this file applies."
+                        : $"The run reads the {LintingConfiguration.FileName} nearest above the path it was given, and none sits there, so nothing in this file applies."));
+            }
         }
 
         var all = diagnostics.ToArray();

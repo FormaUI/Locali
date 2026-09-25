@@ -10,15 +10,20 @@ that still loads. A default run reports errors; `--severity warning` reports bot
 
 ## Linting configuration (LOC0020–LOC0099)
 
-Two files configure two things. `.locali.json` is the linter's own: it cascades like an
-`.editorconfig`, every one found walking up from a file applying together, the nearer adding to
-the farther, and the runtime never reads it. `.locale.json` is the runtime's: one optional file
-per assembly, at its project's root, cascading nowhere, which the linter reads through the
-runtime's own reader and never writes a key of its own into.
+Two files configure two things. `.locali.json` is the linter's own, and a run reads one: the
+nearest found at or above the path the run was given, so the solution, a project, and a single
+file all lint under the same file, and one beneath it is not read and is reported. The runtime
+never reads it. `.locale.json` is the runtime's: one optional file per assembly, at its
+project's root, which the linter reads through the runtime's own reader and never writes a key
+of its own into.
 
 ```json
 {
-  "localeSources": ["pack", "host"],
+  "localeSources": {
+    "**": ["pack", "host"],
+    "src/Forma.AddOns/*": ["embedded"],
+    "src/Forma.Blazor.Showcase/**": ["embedded", "pack", "host"]
+  },
   "ignoreDiagnostics": {
     "**/Forma.Blazor.Showcase/**/LocalizationPage.razor": ["LOC0207"]
   },
@@ -34,14 +39,14 @@ spanning separators, and read relative to the folder the file sits in. Comments 
 commas are allowed, as in a locale file. Leaving a diagnostic out is never silent: it is counted
 in `suppressedCount` and named in the console brief.
 
-`localeSources` names the places a locale file under the configuration may come from, any of
+`localeSources` pairs a glob with the places a locale file it matches may come from, any of
 `embedded`, a file the assembly embeds in itself; `satellite`, one the build moves into a
 satellite assembly; `pack`, one a locale pack carries; and `host`, one laid in the host's
-`.locales` folder. It is the one entry the nearer file does not add to but replaces, since an
-allow list cannot be widened or narrowed by union: the nearest `.locali.json` naming it speaks
-for the whole tree beneath, and a folder that keeps its files elsewhere restates the list in a
-file of its own. Left out of every file, it allows all four. LOC0025 reports a file it does
-not allow, and LOC0021 an entry no locale file beneath it resolved to.
+`.locales` folder. An allow list cannot be merged, so the last line matching a file speaks for
+it: lines are written general first and specific after, and a line that allows nothing,
+`"**": []`, put first, makes every locale file one a later line has to claim. A file no line
+matches has no policy. LOC0025 reports a file from a place its line does not allow, and LOC0021
+a line that is the last match for no file.
 
 ### LOC0020 — The linting configuration cannot be read
 
@@ -57,20 +62,22 @@ is refused instead. The rule over `.locali.json` itself can never be named in it
 ### LOC0021 — An entry applied to nothing
 
 **Reports.** A glob in `ignoreDiagnostics` or `excludeFiles` that matched no file the run
-reached, or a `localeSources` entry that no locale file the run reached resolved to, because
-none sits beneath it or every nearer file restates it.
+reached, or a `localeSources` line that is the last match for no locale file the run reached,
+because none matches it or a later line claims every file it matches.
 
 **Why it matters.** A file moved out of the tree is exactly when its exceptions go stale, and an
-exception that names nothing sits unnoticed until it excuses the wrong file. A restated
-`localeSources` outlives the strings it was written for the same way, and then reads as a
-policy the folder no longer has.
+exception that names nothing sits unnoticed until it excuses the wrong file. A `localeSources`
+line outlives the files it was written for the same way, or is written after a broader line
+that already claims its files, and then reads as a policy nothing is held to.
 
-**What fixes it.** Delete the entry, or point it at the file's new place.
+**What fixes it.** Delete the entry, point it at the file's new place, or move the line after
+the broader one that overrides it.
 
-**Silent where.** The run did not reach the folder the entry governs: a narrower `--path`
-leaves entries for the rest of the tree unjudged. A `localeSources` entry counts as applied for
-every locale file beneath it, whether or not the file's source could be told. It is a warning
-for that reason.
+**Silent where.** Nowhere by design: a narrower `--path` leaves the entries for the rest of
+the tree matching nothing, and they are reported all the same, which is why the rule is a
+warning rather than an error and why a gate lints the whole solution. A `localeSources` line
+counts as applied for every locale file it is the last match for, whether or not the file's
+source could be told.
 
 ### LOC0022 — The runtime's config file is wrong or misplaced
 
@@ -137,10 +144,10 @@ the pack's items could not be read.
 
 ### LOC0025 — A locale file from a source the configuration does not allow
 
-**Reports.** A culture-named locale file that comes from a source the `localeSources` in force
-over it does not name: embedded in the assembly, moved into a satellite assembly, carried by a
-locale pack, or laid in a host's `.locales` folder. It is reported at the file, naming the
-source it comes from and the sources the configuration allows.
+**Reports.** A culture-named locale file that comes from a source the last `localeSources` line
+matching it does not name: embedded in the assembly, moved into a satellite assembly, carried
+by a locale pack, or laid in a host's `.locales` folder. It is reported at the file, naming the
+source it comes from and the sources the line allows.
 
 **Why it matters.** The runtime reads every source it finds, so a repository that keeps its
 translations in packs cannot tell from a build that someone embedded a Hebrew file in an
@@ -148,15 +155,30 @@ assembly again: both load, the pack wins where they share a key, and the stray f
 alone where they do not. The rule turns the repository's choice of where translations live
 into something the gate holds it to.
 
-**What fixes it.** Move the file to a source the configuration allows, or restate
-`localeSources` in a nearer `.locali.json` for the tree that keeps its files there, as an
-application does for the strings it embeds itself.
+**What fixes it.** Move the file to a source its line allows, or add a later `localeSources`
+line for the tree that keeps its files there, as an application does for the strings it embeds
+itself.
 
-**Silent where.** No `.locali.json` in the file's ancestry names `localeSources`, since the
-policy is the repository's to declare; the file is not named for a culture; the project's items
-could not be read, so whether it embeds the file cannot be told; or the project neither embeds
-the file nor keeps it in its host folder, so the runtime never reads it and no source answers
-for it. It is a warning because the file loads.
+**Silent where.** No `localeSources` line matches the file, since the policy is the
+repository's to declare; the file is not named for a culture; the project's items could not be
+read, so whether it embeds the file cannot be told; or the project neither embeds the file nor
+keeps it in its host folder, so the runtime never reads it and no source answers for it. It is
+a warning because the file loads.
+
+### LOC0026 — A `.locali.json` the run does not read
+
+**Reports.** A `.locali.json` found beneath the path the run was given, other than the one the
+run reads. It is reported at that file.
+
+**Why it matters.** A run reads one `.locali.json`, the nearest at or above the path it was
+given, and merges nothing from any other. A second file beneath it was written expecting to
+apply, and every exclusion, exception, and source it names applies to nothing.
+
+**What fixes it.** Move its entries into the file the run reads, with paths written from
+there, and delete it.
+
+**Silent where.** The only `.locali.json` beneath the path is the one read. A run given a
+folder above every configuration reads none, and then reports each it finds.
 
 ## Locale files (LOC0100–LOC0199)
 

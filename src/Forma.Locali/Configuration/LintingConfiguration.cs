@@ -5,39 +5,49 @@ using System.Collections.Concurrent;
 using Forma.Locali.Cli;
 using Forma.Locali.Diagnostics;
 
-/// <summary>Resolves the <c>.locali.json</c> files that govern one run, found the way an <c>.editorconfig</c> is: by walking up from each file the run reads, merging every ancestor's entries into the file's own.</summary>
+/// <summary>Reads the one <c>.locali.json</c> that governs a run, the nearest at or above the path the run was given, and holds every entry in it to having applied to something.</summary>
 public sealed class LintingConfiguration : ILintingConfiguration
 {
     /// <summary>The name a linting configuration file is read under.</summary>
     public const string FileName = ".locali.json";
 
-    private readonly ConcurrentDictionary<string, IReadOnlyList<TrackedFile>> _ancestryByDirectory = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, TrackedFile> _filesByPath = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lazy<TrackedFile?> _file;
+
+    /// <summary>Finds the configuration for a run.</summary>
+    /// <param name="path">The path the run was given, a file or a directory.</param>
+    public LintingConfiguration(string path)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+
+        _file = new Lazy<TrackedFile?>(() => Find(path));
+    }
+
+    /// <inheritdoc />
+    public string? FilePath
+        => _file.Value?.Path;
 
     /// <inheritdoc />
     public bool IsExcluded(string file)
     {
         ArgumentException.ThrowIfNullOrEmpty(file);
 
+        if (_file.Value is not { File: { } config } tracked)
+        {
+            return false;
+        }
+
+        var relative = Relative(tracked, file);
         var matched = false;
 
-        foreach (var (tracked, relative) in Ancestry(file))
+        foreach (var entry in config.ExcludeFiles)
         {
-            if (tracked.File is not { } config)
+            if (!GlobPattern.Matches(entry.Glob, relative))
             {
                 continue;
             }
 
-            foreach (var entry in config.ExcludeFiles)
-            {
-                if (!GlobPattern.Matches(entry.Glob, relative))
-                {
-                    continue;
-                }
-
-                tracked.UsedExclude.TryAdd(entry.Offset, true);
-                matched = true;
-            }
+            tracked.UsedExclude.TryAdd(entry.Offset, true);
+            matched = true;
         }
 
         return matched;
@@ -50,29 +60,28 @@ public sealed class LintingConfiguration : ILintingConfiguration
 
         var ignored = new HashSet<LintingCode>();
 
-        foreach (var (tracked, relative) in Ancestry(file))
+        if (_file.Value is not { File: { } config } tracked)
         {
-            if (tracked.File is not { } config)
+            return ignored;
+        }
+
+        var relative = Relative(tracked, file);
+
+        foreach (var entry in config.IgnoreDiagnostics)
+        {
+            if (!GlobPattern.Matches(entry.Glob, relative))
             {
                 continue;
             }
 
-            foreach (var entry in config.IgnoreDiagnostics)
+            tracked.UsedIgnore.TryAdd(entry.Offset, true);
+
+            foreach (var diagnostic in entry.Entries)
             {
-                if (!GlobPattern.Matches(entry.Glob, relative))
+                // A rule judging the linting configuration cannot be excused by that same configuration.
+                if (Resolve(diagnostic.Id) is { } known && known != LintingCodes.MalformedConfiguration && known != LintingCodes.StaleConfigurationEntry)
                 {
-                    continue;
-                }
-
-                tracked.UsedIgnore.TryAdd(entry.Offset, true);
-
-                foreach (var diagnostic in entry.Entries)
-                {
-                    // A rule judging the linting configuration cannot be excused by that same configuration.
-                    if (Resolve(diagnostic.Id) is { } known && known != LintingCodes.MalformedConfiguration && known != LintingCodes.StaleConfigurationEntry)
-                    {
-                        ignored.Add(known);
-                    }
+                    ignored.Add(known);
                 }
             }
         }
@@ -80,23 +89,36 @@ public sealed class LintingConfiguration : ILintingConfiguration
         return ignored;
     }
 
-    // An allow list cannot be widened or narrowed by union, so the nearest file naming one speaks for the tree beneath it.
+    // An allow list cannot be merged by union, so the last line matching a file speaks for it, and a line is written general first and specific after.
     /// <inheritdoc />
     public LocaleSources? GetLocaleSources(string file)
     {
         ArgumentException.ThrowIfNullOrEmpty(file);
 
-        foreach (var (tracked, _) in Ancestry(file))
+        if (_file.Value is not { File: { } config } tracked)
         {
-            if (tracked.File?.LocaleSources is { } localeSources)
-            {
-                tracked.UsedLocaleSources.TryAdd(localeSources.Offset, true);
+            return null;
+        }
 
-                return localeSources.Allowed;
+        var relative = Relative(tracked, file);
+        ConfigLocaleSource? last = null;
+
+        foreach (var entry in config.LocaleSources)
+        {
+            if (GlobPattern.Matches(entry.Glob, relative))
+            {
+                last = entry;
             }
         }
 
-        return null;
+        if (last is not { } winner)
+        {
+            return null;
+        }
+
+        tracked.UsedLocaleSources.TryAdd(winner.Offset, true);
+
+        return winner.Allowed;
     }
 
     /// <inheritdoc />
@@ -104,7 +126,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
     {
         var diagnostics = new List<LintingDiagnostic>();
 
-        foreach (var tracked in _filesByPath.Values)
+        if (_file.Value is { } tracked)
         {
             DiagnoseFile(tracked, diagnostics);
         }
@@ -165,52 +187,42 @@ public sealed class LintingConfiguration : ILintingConfiguration
             }
         }
 
-        // A restated list outlives the files it was written for, or is shadowed by every nearer file, and either way governs nothing.
-        if (config.LocaleSources is { } localeSources && !tracked.UsedLocaleSources.ContainsKey(localeSources.Offset))
+        // A line matching no locale file, or one every later line overrides for each file it matches, governs nothing.
+        foreach (var entry in config.LocaleSources)
         {
-            diagnostics.Add(config.Diagnose(
-                localeSources.Offset,
-                LintingCodes.StaleConfigurationEntry,
-                "'localeSources' governs no locale file the run reached, so it allows and forbids nothing."));
+            if (!tracked.UsedLocaleSources.ContainsKey(entry.Offset))
+            {
+                diagnostics.Add(config.Diagnose(
+                    entry.Offset,
+                    LintingCodes.StaleConfigurationEntry,
+                    $"'{entry.Glob}' is the last line matching no locale file the run reached, so it allows and forbids nothing."));
+            }
         }
     }
 
     private static LintingCode? Resolve(string identifier)
         => LintingCodes.All.FirstOrDefault(code => code.Id == identifier);
 
-    // Every ancestor's file, paired with the path relative to that ancestor's own directory, so a config
-    // travels with the tree it sits over rather than assuming everyone's absolute layout matches.
-    private IEnumerable<(TrackedFile Tracked, string Relative)> Ancestry(string file)
+    // A file's path relative to the configuration's own directory, so a glob reads as written from where the file sits.
+    private static string Relative(TrackedFile tracked, string file)
+        => GlobPattern.Normalize(Path.GetRelativePath(Path.GetDirectoryName(tracked.Path)!, Path.GetFullPath(file)));
+
+    // The nearest file wins, and a run given a folder above every configuration reads none, since a run is one repository's.
+    private static TrackedFile? Find(string path)
     {
-        var full = Path.GetFullPath(file);
-        var directory = Path.GetDirectoryName(full);
+        var full = Path.GetFullPath(path);
 
-        if (directory is null)
-        {
-            yield break;
-        }
-
-        foreach (var tracked in _ancestryByDirectory.GetOrAdd(directory, BuildAncestry))
-        {
-            yield return (tracked, GlobPattern.Normalize(Path.GetRelativePath(Path.GetDirectoryName(tracked.Path)!, full)));
-        }
-    }
-
-    private IReadOnlyList<TrackedFile> BuildAncestry(string startDirectory)
-    {
-        var found = new List<TrackedFile>();
-
-        for (var folder = new DirectoryInfo(startDirectory); folder is not null; folder = folder.Parent)
+        for (var folder = new DirectoryInfo(Directory.Exists(full) ? full : Path.GetDirectoryName(full)!); folder is not null; folder = folder.Parent)
         {
             var candidate = Path.Combine(folder.FullName, FileName);
 
             if (File.Exists(candidate))
             {
-                found.Add(_filesByPath.GetOrAdd(candidate, Load));
+                return Load(candidate);
             }
         }
 
-        return found;
+        return null;
     }
 
     private static TrackedFile Load(string path)
@@ -234,8 +246,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
             : new TrackedFile(path, null, error);
     }
 
-    // One entry per .locali.json found, shared across every directory whose ancestry reaches it, so a glob's
-    // usage is counted once for the whole run rather than once per directory that happens to walk past it.
+    // The one file the run reads, with each entry's usage counted across every file the run asks about, from whichever thread asks.
     private sealed class TrackedFile(string path, LocaliConfigFile? file, string? readError)
     {
         public string Path { get; } = path;

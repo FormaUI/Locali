@@ -5,16 +5,18 @@ namespace Forma.Locali.Cli;
 /// <param name="SourceFiles">The C# and Razor files whose callsites are checked.</param>
 /// <param name="Projects">The projects the source files belong to.</param>
 /// <param name="LocalizationFilesByProject">The locale files each project owns, keyed by its full path.</param>
+/// <param name="ConfigurationFiles">Every <c>.locali.json</c> the walk found, whether or not the run reads it.</param>
 /// <param name="IsSolution">Whether the path named a solution, which lists every project there is.</param>
 public sealed record LintingTarget(
     IReadOnlyList<string> LocalizationFiles,
     IReadOnlyList<string> SourceFiles,
     IReadOnlyList<string> Projects,
     IReadOnlyDictionary<string, IReadOnlyList<string>> LocalizationFilesByProject,
+    IReadOnlyList<string> ConfigurationFiles,
     bool IsSolution = false)
 {
     /// <summary>A target that names nothing.</summary>
-    public static LintingTarget Empty { get; } = new([], [], [], new Dictionary<string, IReadOnlyList<string>>());
+    public static LintingTarget Empty { get; } = new([], [], [], new Dictionary<string, IReadOnlyList<string>>(), []);
 
     /// <summary>The locale files the project owns, empty when it owns none.</summary>
     /// <param name="projectPath">The project to read, as the loader reports its path.</param>

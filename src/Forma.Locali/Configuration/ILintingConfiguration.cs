@@ -2,21 +2,24 @@ namespace Forma.Locali.Configuration;
 
 using Forma.Locali.Diagnostics;
 
-/// <summary>The linting configuration, read from every <c>.locali.json</c> a linted file's ancestry carries.</summary>
+/// <summary>The linting configuration a run applies: the one <c>.locali.json</c> nearest above the path the run was given.</summary>
 public interface ILintingConfiguration
 {
-    /// <summary>Whether a file's own configuration excludes it from the run.</summary>
+    /// <summary>The <c>.locali.json</c> the run reads, as a full path, or null when none sits at or above the path it was given.</summary>
+    string? FilePath { get; }
+
+    /// <summary>Whether the configuration excludes a file from the run.</summary>
     /// <param name="file">The file, as a full path.</param>
     bool IsExcluded(string file);
 
-    /// <summary>The rules a file's own configuration leaves it out of, empty when it names none.</summary>
+    /// <summary>The rules the configuration leaves a file out of, empty when it names none.</summary>
     /// <param name="file">The file, as a full path.</param>
     IReadOnlySet<LintingCode> GetIgnoredCodes(string file);
 
-    /// <summary>The sources the nearest <c>.locali.json</c> naming them allows a file to come from, or null when none in the file's ancestry names them.</summary>
+    /// <summary>The sources the last <c>localeSources</c> line matching a file allows it to come from, or null when no line matches it.</summary>
     /// <param name="file">The file, as a full path.</param>
     LocaleSources? GetLocaleSources(string file);
 
-    /// <summary>What every discovered <c>.locali.json</c> got wrong, and which of its globs never matched a file the run reached.</summary>
+    /// <summary>What the configuration got wrong, and which of its entries applied to no file the run reached.</summary>
     IReadOnlyList<LintingDiagnostic> GetDiagnostics();
 }

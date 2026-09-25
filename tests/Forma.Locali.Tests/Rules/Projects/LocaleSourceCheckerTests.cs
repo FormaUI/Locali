@@ -10,7 +10,7 @@ public sealed class LocaleSourceCheckerTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["pack", "host"] }""");
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["pack", "host"] } }""");
         var file = directory.Write(Path.Combine("Bars", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var project = Project(directory, embedded: [file]);
 
@@ -30,7 +30,7 @@ public sealed class LocaleSourceCheckerTests
     {
         // Arrange — the build moves the file into a satellite assembly, which the configuration allows nothing but embedding for.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["embedded"] }""");
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["embedded"] } }""");
         var file = directory.Write(Path.Combine("Bars", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
         var project = Project(directory, embedded: [file], satellite: [file]);
 
@@ -46,7 +46,7 @@ public sealed class LocaleSourceCheckerTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["embedded", "pack"] }""");
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["embedded", "pack"] } }""");
         var file = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.Valid);
         var project = Project(directory, embedded: []);
 
@@ -62,7 +62,7 @@ public sealed class LocaleSourceCheckerTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["embedded"] }""");
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["embedded"] } }""");
         var file = directory.Write(Path.Combine("Contoso.Widgets", "he.json"), LocalizationFileFakeData.Valid);
         var pack = new LoadedProject(Path.Combine(directory.Root, "Contoso.Locales.Hebrew.csproj"), CompilationTestFactory.Building("Contoso.Locales.Hebrew"), false, false, EmbeddedResourceNames: Names(directory, file), IsLocalePack: true);
 
@@ -78,7 +78,7 @@ public sealed class LocaleSourceCheckerTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["embedded", "host"] }""");
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["embedded", "host"] } }""");
         var embedded = directory.Write(Path.Combine("Bars", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var host = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.Valid);
         var project = Project(directory, embedded: [embedded]);
@@ -106,12 +106,11 @@ public sealed class LocaleSourceCheckerTests
     }
 
     [Fact]
-    public void Should_let_a_nearer_configuration_restate_the_sources_for_its_own_tree()
+    public void Should_let_a_later_line_restate_the_sources_for_a_subtree()
     {
-        // Arrange — the root allows packs and hosts alone, and the project's own file allows embedding again.
+        // Arrange — the general line allows packs and hosts alone, and the later line for the application allows embedding again.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["pack", "host"] }""");
-        directory.Write(Path.Combine("Showcase", ".locali.json"), """{ "localeSources": ["embedded", "pack", "host"] }""");
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["pack", "host"], "Showcase/**": ["embedded", "pack", "host"] } }""");
         var file = directory.Write(Path.Combine("Showcase", "Pages", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var project = new LoadedProject(Path.Combine(directory.Root, "Showcase", "Showcase.csproj"), CompilationTestFactory.Building("Showcase"), false, false, EmbeddedResourceNames: Names(directory, file));
 
@@ -127,10 +126,10 @@ public sealed class LocaleSourceCheckerTests
     {
         // Arrange — without the items no file is known to be embedded, so where it comes from cannot be told; the entry still governed a file, so it is not stale.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["pack"] }""");
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["pack"] } }""");
         var file = directory.Write(Path.Combine("Bars", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var project = new LoadedProject(Path.Combine(directory.Root, "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets"), false, false);
-        var configuration = new LintingConfiguration();
+        var configuration = new LintingConfiguration(directory.Root);
 
         // Act
         var diagnostics = ProjectLinterTestFactory.Check(new LocaleSourceChecker(configuration), project, [file]);
@@ -146,7 +145,7 @@ public sealed class LocaleSourceCheckerTests
     {
         // Arrange — a locale file the runtime never reads comes from no source at all, and is another rule's to notice.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": ["pack"] }""");
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["pack"] } }""");
         var file = directory.Write(Path.Combine("Bars", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var project = Project(directory, embedded: []);
 
@@ -158,7 +157,7 @@ public sealed class LocaleSourceCheckerTests
     }
 
     private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, params string[] files)
-        => ProjectLinterTestFactory.Check(new LocaleSourceChecker(new LintingConfiguration()), project, files);
+        => ProjectLinterTestFactory.Check(new LocaleSourceChecker(new LintingConfiguration(project.Path)), project, files);
 
     private static LoadedProject Project(TempDirectory directory, IReadOnlyList<string> embedded, IReadOnlyList<string>? satellite = null)
         => new(

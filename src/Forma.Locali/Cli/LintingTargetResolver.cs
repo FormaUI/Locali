@@ -3,7 +3,7 @@ namespace Forma.Locali.Cli;
 using Forma.Locali.Configuration;
 
 /// <summary>Reads a path as a solution, a project, a directory or a single file.</summary>
-/// <param name="lintingConfiguration">Leaves out whatever a file's own <c>.locali.json</c> excludes.</param>
+/// <param name="lintingConfiguration">Leaves out whatever the run's <c>.locali.json</c> excludes.</param>
 public sealed class LintingTargetResolver(ILintingConfiguration lintingConfiguration) : ILintingTargetResolver
 {
     private static readonly string[] SourceExtensions = [".cs", ".razor"];
@@ -61,7 +61,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
     private static IEnumerable<string> Walk(string folder)
         => Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories)
             .Where(static file => !IsBuildOutput(file))
-            .Where(static file => IsLocalizationFile(file) || IsSourceFile(file));
+            .Where(static file => IsLocalizationFile(file) || IsSourceFile(file) || IsConfigurationFile(file));
 
     // The linting configuration file ends in .json like a locale file, but it is never one.
     private static bool IsLocalizationFile(string file)
@@ -71,17 +71,28 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
     private static bool IsSourceFile(string file)
         => SourceExtensions.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase);
 
+    private static bool IsConfigurationFile(string file)
+        => Path.GetFileName(file).Equals(LintingConfiguration.FileName, StringComparison.OrdinalIgnoreCase);
+
     private LintingTarget FromFiles(IEnumerable<string> files, IReadOnlyCollection<string> excludes)
     {
         var localization = new List<string>();
         var sources = new List<string>();
         var projects = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var owned = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var configurations = new List<string>();
 
         foreach (var file in files)
         {
             if (IsExcluded(file, excludes))
             {
+                continue;
+            }
+
+            // A configuration file is listed so the run can say which it does not read; one a fixture folder keeps is excluded like the fixtures around it.
+            if (IsConfigurationFile(file))
+            {
+                configurations.Add(file);
                 continue;
             }
 
@@ -117,7 +128,8 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
             [.. localization],
             [.. sources],
             [.. projects],
-            owned.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.OrdinalIgnoreCase));
+            owned.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.OrdinalIgnoreCase),
+            [.. configurations]);
     }
 
     private LintingTarget FromProject(string project, IReadOnlyCollection<string> excludes)

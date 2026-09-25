@@ -80,7 +80,7 @@ internal static class Program
 
         // One instance for the whole run, so a glob's usage tracked while excluding files is the same
         // tracking read back while deciding what a file's own configuration leaves out.
-        builder.Services.AddSingleton<ILintingConfiguration, LintingConfiguration>();
+        builder.Services.AddSingleton<ILintingConfiguration>(_ => new LintingConfiguration(options.Path));
         builder.Services.AddSingleton<ILintingTargetResolver, LintingTargetResolver>();
         builder.Services.AddSingleton<ILocalizationFileLinter, LocalizationFileLinter>();
         builder.Services.AddSingleton<IProjectLoader, MSBuildProjectLoader>();

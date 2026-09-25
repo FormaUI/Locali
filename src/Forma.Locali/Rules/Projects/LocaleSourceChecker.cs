@@ -49,7 +49,7 @@ public sealed class LocaleSourceChecker(ILintingConfiguration lintingConfigurati
             context.Report(
                 Code,
                 fullPath,
-                $"This file is {Describe(source)}, which the linting configuration in force here does not allow, naming {LocaleSourceNames.Format(allowed)}; the runtime reads it all the same, so translations are kept in a place the repository said they are not.");
+                $"This file is {Describe(source)}, which the last localeSources line matching it does not allow, naming {LocaleSourceNames.Format(allowed)}; the runtime reads it all the same, so translations are kept in a place the repository said they are not.");
         }
     }
 

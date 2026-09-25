@@ -33,51 +33,78 @@ public sealed class LocaliConfigFileTests
     }
 
     [Fact]
-    public void Should_read_the_locale_sources_combined()
+    public void Should_read_each_locale_sources_line_in_order_with_its_sources_combined()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": ["pack", "host"] }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": { "**": ["pack", "host"], "src/Forma.AddOns/*": ["embedded"] } }""");
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal(LocaleSources.Pack | LocaleSources.Host, document.LocaleSources!.Value.Allowed),
+            () => Assert.Equal(["**", "src/Forma.AddOns/*"], document.LocaleSources.Select(entry => entry.Glob)),
+            () => Assert.Equal([LocaleSources.Pack | LocaleSources.Host, LocaleSources.Embedded], document.LocaleSources.Select(entry => entry.Allowed)),
             () => Assert.Empty(document.MalformedValues));
     }
 
     [Fact]
-    public void Should_read_no_locale_sources_when_the_file_names_none()
+    public void Should_read_the_entries_written_after_locale_sources()
+    {
+        // Arrange — the object is read through to its end, so the entry after it is not lost.
+        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": { "**": ["pack"] }, "excludeFiles": ["*/Fixtures/*"] }""");
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Single(document.LocaleSources),
+            () => Assert.Single(document.ExcludeFiles),
+            () => Assert.Empty(document.MalformedValues));
+    }
+
+    [Fact]
+    public void Should_read_no_locale_sources_lines_when_the_file_names_none()
     {
         // Arrange
         var document = LocaliConfigFileTestFactory.Read("""{ "excludeFiles": [] }""");
 
         // Assert
-        Assert.Null(document.LocaleSources);
+        Assert.Empty(document.LocaleSources);
     }
 
     [Fact]
     public void Should_flag_a_locale_source_the_linter_does_not_define()
     {
         // Arrange — the known sources still count, so the list is read to its end.
-        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": ["embedded", "package"] }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": { "**": ["embedded", "package"] } }""");
 
         // Assert
         var malformedValue = Assert.Single(document.MalformedValues);
         Assert.Multiple(
             () => Assert.Contains("'package'", malformedValue.Reason, StringComparison.Ordinal),
-            () => Assert.Equal(LocaleSources.Embedded, document.LocaleSources!.Value.Allowed));
+            () => Assert.Equal(LocaleSources.Embedded, Assert.Single(document.LocaleSources).Allowed));
     }
 
     [Fact]
-    public void Should_flag_locale_sources_that_are_not_a_list()
+    public void Should_flag_locale_sources_that_are_not_an_object()
     {
         // Arrange
-        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": "pack" }""");
+        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": ["pack"] }""");
 
         // Assert
         var malformedValue = Assert.Single(document.MalformedValues);
         Assert.Multiple(
             () => Assert.Contains("'localeSources'", malformedValue.Reason, StringComparison.Ordinal),
-            () => Assert.Null(document.LocaleSources));
+            () => Assert.Empty(document.LocaleSources));
+    }
+
+    [Fact]
+    public void Should_flag_a_locale_sources_line_whose_sources_are_not_a_list()
+    {
+        // Arrange — the line after the bad one is still read.
+        var document = LocaliConfigFileTestFactory.Read("""{ "localeSources": { "src/**": "pack", "**": ["host"] } }""");
+
+        // Assert
+        var malformedValue = Assert.Single(document.MalformedValues);
+        Assert.Multiple(
+            () => Assert.Contains("'src/**'", malformedValue.Reason, StringComparison.Ordinal),
+            () => Assert.Equal(["**"], document.LocaleSources.Select(entry => entry.Glob)));
     }
 
     [Fact]
