@@ -5,7 +5,7 @@ description: The Forma localization format this linter reads — IStringLocale l
 
 # The localization format
 
-The runtime lives in the sibling Forma repository as `Forma.Framework.Localization` and its `.Json` implementation; this linter compiles against it and must never re-implement its parsing. What follows is the shape of the data the rules read. The rule-by-rule authority is `docs/rules.md`.
+The runtime lives in the sibling Forma repository as `Forma.Framework.Localization` and its `.Json` implementation; this linter compiles against it and must never re-implement its parsing. What follows is the shape of the data the rules read. The rule-by-rule authority is `docs/linting-rules.md`.
 
 ## Lookups
 

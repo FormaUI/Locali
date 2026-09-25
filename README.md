@@ -96,7 +96,7 @@ Source files are linted through the project that owns them, found by walking up 
 what it exists to prove. A `.locali.json` file's `excludeFiles` entry does the same without a
 flag on every invocation, its `ignoreDiagnostics` entry leaves a named file out of named
 rules, and its `localeSources` entry says where each part of the tree keeps its translations.
-A run reads one such file, the nearest at or above the path it was given; [Rules](docs/rules.md)
+A run reads one such file, the nearest at or above the path it was given; [Rules](docs/linting-rules.md)
 describes all three entries under the linting configuration.
 
 `--severity` decides what counts as a finding. An error is something the runtime will get wrong;
@@ -158,7 +158,7 @@ SDK's own compiler so that the generator always loads, described under
 
 ## Rules
 
-[docs/rules.md](docs/rules.md) has an entry per rule: what it reports, why it matters at run
+[docs/linting-rules.md](docs/linting-rules.md) has an entry per rule: what it reports, why it matters at run
 time, what fixes it, and where it stays silent on purpose. The linting configuration reports
 under 100, a file rule in the 100s, and a callsite rule in the 200s.
 
@@ -235,7 +235,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
    under `Rules/Files/`, `Rules/Sources/`, or `Rules/Projects/`. Expose the code through `Code`
    and report through the context, which owns the position.
 3. Register it in `Program.cs`, and in the matching test factory under `tests/…/Support/`.
-4. Write its entry in `docs/rules.md` and its row in the table above.
+4. Write its entry in `docs/linting-rules.md` and its row in the table above.
 
 `LintCodesTests` fails if a rule reports under a code missing from the catalogue, if two codes
 share an id, if two rules in the same family report under the same code, or if a file or

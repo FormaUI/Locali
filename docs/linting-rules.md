@@ -1,4 +1,4 @@
-# Rules
+# Linting rules
 
 Every rule `locali` reports, one entry each. An entry says what the rule reports, why it
 matters at run time, what fixes it, and where it deliberately stays silent. The linting
