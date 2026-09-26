@@ -11,6 +11,7 @@ public sealed class LocalizationFileNameTests
     [InlineData("Colocated.zzz.json", null)]
     [InlineData("zzz.json", null)]
     [InlineData("root.json", null)]
+    [InlineData("Root.json", null)]
     [InlineData("Colocated.root.json", null)]
     public void Should_read_the_culture_out_of_a_file_name(string name, string? expected)
     {

@@ -26,8 +26,10 @@ public static class LocalizationFileName
 
         try
         {
-            // 'root' names the invariant culture, which no file is named for.
-            return CultureInfo.GetCultureInfo(name, predefinedOnly: true).Name is { Length: > 0 } culture ? culture : null;
+            var culture = CultureInfo.GetCultureInfo(name, predefinedOnly: true).Name;
+
+            // 'root' names the invariant culture, which no file is named for; Windows resolves it without a name and ICU elsewhere as 'root'.
+            return culture is "" or "root" ? null : culture;
         }
         catch (CultureNotFoundException)
         {
