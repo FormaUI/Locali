@@ -1,8 +1,8 @@
 # locali
 
 A linter for `Forma.Framework.Localization`. It reads locale files against the runtime's own
-rules, and every `IStringLocale` callsite in C# and Razor against what the runtime will do with
-it, and reports what would throw, render wrong, or quietly stay in English.
+rules, and every `IStringLocale` callsite in C#, Visual Basic and Razor against what the runtime
+will do with it, and reports what would throw, render wrong, or quietly stay in English.
 
 Two things go wrong quietly in a localized codebase, and a build catches neither:
 
@@ -96,10 +96,10 @@ Usage: locali --path <file-or-directory> [--report [<path>]] [--exclude <glob>]
              embeds only under another configuration goes unseen.
 ```
 
-`--path` accepts a `.json` file, a `.cs` or `.razor` file, a `.csproj`, a `.sln`/`.slnx`, or a
-directory. A directory is searched for `.json`, `.cs` and `.razor`, skipping `bin` and `obj`.
-Source files are linted through the project that owns them, found by walking up to the nearest
-`.csproj`.
+`--path` accepts a `.json` file, a `.cs`, `.vb` or `.razor` file, a `.csproj` or `.vbproj`, a
+`.sln`/`.slnx`, or a directory. A directory is searched for `.json`, `.cs`, `.vb` and `.razor`,
+skipping `bin` and `obj`. Source files are linted through the project that owns them, found by
+walking up to the nearest `.csproj` or `.vbproj`.
 
 `--exclude` is what makes a test tree lintable: a fixture that is malformed on purpose reports
 what it exists to prove. A `.locali.json` file's `excludeFiles` entry does the same without a
@@ -281,13 +281,13 @@ to load a generator built against a newer compiler than its host: it reports
 It runs on the compiler of the SDK it finds, the one every generator of that SDK is built
 against, so a newer SDK needs nothing changed here.
 
-`SdkCompiler` binds to `Roslyn/bincore` under the SDK, the folder `csc` runs from, in a
+`SdkCompiler` binds to `Roslyn/bincore` under the SDK, the folder `csc` and `vbc` run from, in a
 `[ModuleInitializer]`, since resolution has to be registered before the first Roslyn type loads,
-which is earlier than `Main`. The `Microsoft.CodeAnalysis.CSharp` package carries
-`ExcludeAssets="runtime"` so it stays reference-only, and its version is the oldest Roslyn API the
-linter is written against: a newer compiler runs code built against an older one, as it does for
-every analyzer. When no compiler is found the linter stops with exit code 2 and says where it
-looked.
+which is earlier than `Main`. The `Microsoft.CodeAnalysis.CSharp` and
+`Microsoft.CodeAnalysis.VisualBasic` packages carry `ExcludeAssets="runtime"` so they stay
+reference-only, and their version is the oldest Roslyn API the linter is written against: a
+newer compiler runs code built against an older one, as it does for every analyzer. When no
+compiler is found the linter stops with exit code 2 and says where it looked.
 
 A project is loaded in one MSBuild design-time build, which runs the project's own targets up to
 the compiler and hands back what it would have been given, together with the names the build

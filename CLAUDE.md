@@ -2,7 +2,7 @@
 
 A standalone CLI localization linter. **.NET 11 · C# latest · console tool · binary name `locali`.**
 
-The linter reads locale files against Forma's localization schema, and reads every `IStringLocale` callsite in C# and Razor against what the runtime will do with it. It was extracted from the Forma repository and lives beside it; Forma remains both the source of the runtime it mirrors and its primary lint target.
+The linter reads locale files against Forma's localization schema, and reads every `IStringLocale` callsite in C#, Visual Basic and Razor against what the runtime will do with it. It was extracted from the Forma repository and lives beside it; Forma remains both the source of the runtime it mirrors and its primary lint target.
 
 ## Task guides
 
@@ -34,7 +34,7 @@ Forma.Locali.slnx
 - Do compile against the real runtime rather than re-implementing any of its parsing here; the linter's promise is that a rule and the runtime cannot disagree, and it keeps that promise by calling the runtime's own parser, plural rules, and schema types.
 - Do keep a folder and its namespace in step, so `src/Forma.Locali/Rules/Files/` holds `Forma.Locali.Rules.Files`.
 - Do reference the narrowest thing that supplies what the code uses, give every project its own reference for what it uses directly, and keep no reference no code uses.
-- Don't add a Roslyn package with runtime assets, such as `Microsoft.CodeAnalysis.Workspaces`, or raise `Microsoft.CodeAnalysis.CSharp` beyond the API the code needs: the linter runs on the installed SDK's compiler, bound by `SdkCompiler`, and the README's *Roslyn Is The SDK's Compiler* section says why. Do leave `ExcludeAssets="runtime"` on it and on the `Microsoft.Build` references.
+- Don't add a Roslyn package with runtime assets, such as `Microsoft.CodeAnalysis.Workspaces`, or raise `Microsoft.CodeAnalysis.CSharp` or `Microsoft.CodeAnalysis.VisualBasic` beyond the API the code needs: the linter runs on the installed SDK's compiler, bound by `SdkCompiler`, and the README's *Roslyn Is The SDK's Compiler* section says why. Do leave `ExcludeAssets="runtime"` on them and on the `Microsoft.Build` references.
 
 ## Rules
 

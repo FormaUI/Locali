@@ -17,9 +17,15 @@ using ProjectCollection = Microsoft.Build.Evaluation.ProjectCollection;
 public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IProjectLoader
 {
     private const string RazorSuffix = "_razor.g.cs";
-    private const string ProjectExtension = ".csproj";
     private const string PrepareResourceNamesTarget = "PrepareResourceNames";
     private const string ReferenceArgument = "/reference:";
+
+    // The build hands each language's compiler its arguments under an item named for that compiler.
+    private static readonly Dictionary<string, ProjectLanguage> Languages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".csproj"] = new(LanguageNames.CSharp, "CscCommandLineArgs"),
+        [".vbproj"] = new(LanguageNames.VisualBasic, "VbcCommandLineArgs"),
+    };
 
     // The targets run in one build: a second build of the same instance fails, and the compiler's arguments with it.
     private static readonly string[] Targets = [PrepareResourceNamesTarget, "Compile", "CoreCompile"];
@@ -49,13 +55,13 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             cancellationToken.ThrowIfCancellationRequested();
 
             // A project in another language is one the linter cannot read, and stands in the run as one that did not load, so what it builds is not taken for absent.
-            if (!Path.GetExtension(path).Equals(ProjectExtension, StringComparison.OrdinalIgnoreCase))
+            if (!Languages.TryGetValue(Path.GetExtension(path), out var language))
             {
                 loaded.Add(new LoadedProject(path, null, HasGeneratedSources: false, HasRazorMarkup: false));
                 continue;
             }
 
-            if (Evaluate(path, evaluated, cancellationToken) is { } project)
+            if (Evaluate(path, language, evaluated, cancellationToken) is { } project)
             {
                 loaded.Add(project.Loaded);
             }
@@ -72,7 +78,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             : [path];
 
     // One evaluation answers for the compilation and the embedded names alike, so the two never describe different builds.
-    private EvaluatedProject? Evaluate(string path, Dictionary<string, EvaluatedProject?> evaluated, CancellationToken cancellationToken, string? targetFramework = null)
+    private EvaluatedProject? Evaluate(string path, ProjectLanguage language, Dictionary<string, EvaluatedProject?> evaluated, CancellationToken cancellationToken, string? targetFramework = null)
     {
         if (evaluated.TryGetValue(path, out var known))
         {
@@ -102,7 +108,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         }
         catch (InvalidProjectFileException)
         {
-            return evaluated[path] = new EvaluatedProject(new LoadedProject(path, null, HasGeneratedSources: false, HasMarkup(path)), null, null);
+            return evaluated[path] = new EvaluatedProject(new LoadedProject(path, null, HasGeneratedSources: false, HasMarkup(path, language)), null, null);
         }
 
         // A project built for several frameworks compiles once per framework, so the first stands for it.
@@ -112,7 +118,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         {
             evaluated.Remove(path);
 
-            return Evaluate(path, evaluated, cancellationToken, first);
+            return Evaluate(path, language, evaluated, cancellationToken, first);
         }
 
         // Each target answers for itself, so a project that does not compile may still name what it embeds, and the reverse.
@@ -121,22 +127,24 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             ? GetResources(instance)
             : null;
 
-        var arguments = instance.GetItems("CscCommandLineArgs").Select(item => item.EvaluatedInclude).ToArray();
+        var arguments = instance.GetItems(language.ArgumentsItem).Select(item => item.EvaluatedInclude).ToArray();
 
         var rootNamespace = instance.GetPropertyValue("RootNamespace") is { Length: > 0 } declared ? declared : null;
         var isLocalePack = instance.GetPropertyValue("IsLocalePack").Equals("true", StringComparison.OrdinalIgnoreCase);
         var compilation = arguments.Length == 0
             ? null
-            : CompilerCommandLine.Compile(arguments, Path.GetDirectoryName(path)!, GetProjectReferences(instance, arguments, evaluated, cancellationToken), cancellationToken);
+            : CompilerCommandLine.Compile(arguments, Path.GetDirectoryName(path)!, GetProjectReferences(instance, language, arguments, evaluated, cancellationToken), language.Name, cancellationToken);
 
-        var loaded = Read(path, compilation, rootNamespace, resources?.Names, resources?.SatelliteFiles, isLocalePack, cancellationToken);
+        var loaded = Read(path, language, compilation, rootNamespace, resources?.Names, resources?.SatelliteFiles, isLocalePack, cancellationToken);
 
         return evaluated[path] = new EvaluatedProject(loaded, instance.GetPropertyValue("TargetPath"), instance.GetPropertyValue("TargetRefPath"));
     }
 
-    // A referenced project is evaluated only where the assembly it builds is missing, which is a tree that was never built.
+    // A referenced project is evaluated only where the assembly it builds is missing, which is a tree that was never built,
+    // and only a compilation in the referencing project's own language can stand in, since Roslyn takes no other's as a reference.
     private Dictionary<string, Compilation> GetProjectReferences(
         ProjectInstance instance,
+        ProjectLanguage language,
         IReadOnlyList<string> arguments,
         Dictionary<string, EvaluatedProject?> evaluated,
         CancellationToken cancellationToken)
@@ -154,7 +162,10 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
 
         foreach (var reference in instance.GetItems("ProjectReference"))
         {
-            if (Evaluate(Path.GetFullPath(reference.GetMetadataValue("FullPath")), evaluated, cancellationToken) is not { Loaded.Compilation: { } compilation } referenced)
+            var referencePath = Path.GetFullPath(reference.GetMetadataValue("FullPath"));
+            if (!Languages.TryGetValue(Path.GetExtension(referencePath), out var referencedLanguage)
+                || referencedLanguage.Name != language.Name
+                || Evaluate(referencePath, referencedLanguage, evaluated, cancellationToken) is not { Loaded.Compilation: { } compilation } referenced)
             {
                 continue;
             }
@@ -173,6 +184,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
 
     private static LoadedProject Read(
         string path,
+        ProjectLanguage language,
         Compilation? compilation,
         string? rootNamespace,
         IReadOnlyDictionary<string, string>? resourceNames,
@@ -180,10 +192,16 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         bool isLocalePack,
         CancellationToken cancellationToken)
     {
-        var markup = HasMarkup(path);
+        var markup = HasMarkup(path, language);
         if (compilation is null)
         {
             return new LoadedProject(path, null, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
+        }
+
+        // Razor generates C# alone, so no other language's project has generated sources to look for.
+        if (language.Name != LanguageNames.CSharp)
+        {
+            return new LoadedProject(path, compilation, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
         }
 
         // The generator ran with the compilation, in the compiler it was built against, which needs nothing on disk.
@@ -203,8 +221,11 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         return new LoadedProject(path, compilation.AddSyntaxTrees(Parse(emitted, parseOptions, cancellationToken)), HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
     }
 
-    private static bool HasMarkup(string path)
-        => Path.GetDirectoryName(path) is { } folder && Directory.EnumerateFiles(folder, "*.razor", SearchOption.AllDirectories).Any();
+    // Razor markup compiles to C#, so under any other language it is not the project's to lint.
+    private static bool HasMarkup(string path, ProjectLanguage language)
+        => language.Name == LanguageNames.CSharp
+            && Path.GetDirectoryName(path) is { } folder
+            && Directory.EnumerateFiles(folder, "*.razor", SearchOption.AllDirectories).Any();
 
     // Whether a file is embedded or copied beside the application is the project's items to say, and the build's own naming targets say what each is embedded as; and where; no folder's name can.
     private static EmbeddedResources GetResources(ProjectInstance instance)
@@ -266,6 +287,9 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
     }
 
     private sealed record EvaluatedProject(LoadedProject Loaded, string? TargetPath, string? TargetRefPath);
+
+    // The language as Roslyn names it, and the build item its compiler's arguments come back under.
+    private sealed record ProjectLanguage(string Name, string ArgumentsItem);
 
     private sealed record EmbeddedResources(IReadOnlyDictionary<string, string> Names, IReadOnlySet<string> SatelliteFiles);
 }

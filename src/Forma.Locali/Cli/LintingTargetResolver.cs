@@ -6,7 +6,8 @@ using Forma.Locali.Configuration;
 /// <param name="lintingConfiguration">Leaves out whatever the run's configuration excludes, from its <c>.locali.json</c> and its command line alike.</param>
 public sealed class LintingTargetResolver(ILintingConfiguration lintingConfiguration) : ILintingTargetResolver
 {
-    private static readonly string[] SourceExtensions = [".cs", ".razor"];
+    private static readonly string[] SourceExtensions = [".cs", ".vb", ".razor"];
+    private static readonly string[] ProjectPatterns = ["*.csproj", "*.vbproj"];
 
     private readonly ILintingConfiguration _lintingConfiguration = lintingConfiguration ?? throw new ArgumentNullException(nameof(lintingConfiguration));
 
@@ -28,7 +29,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
         return Path.GetExtension(path).ToUpperInvariant() switch
         {
             ".SLN" or ".SLNX" => FromSolution(path),
-            ".CSPROJ" => FromProject(path),
+            ".CSPROJ" or ".VBPROJ" => FromProject(path),
             _ => FromFiles([path]),
         };
     }
@@ -41,7 +42,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
 
         for (var folder = Directory.GetParent(Path.GetFullPath(file)); folder is not null; folder = folder.Parent)
         {
-            var project = Directory.EnumerateFiles(folder.FullName, "*.csproj").FirstOrDefault();
+            var project = ProjectPatterns.SelectMany(pattern => Directory.EnumerateFiles(folder.FullName, pattern)).FirstOrDefault();
             if (project is not null)
             {
                 return project;

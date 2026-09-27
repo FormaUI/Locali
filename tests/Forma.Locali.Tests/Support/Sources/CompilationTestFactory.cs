@@ -2,6 +2,7 @@ namespace Forma.Locali.Tests.Support.Sources;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.VisualBasic;
 
 /// <summary>Builds compilations a test can walk.</summary>
 public static class CompilationTestFactory
@@ -48,5 +49,18 @@ public static class CompilationTestFactory
             sources.Select(source => CSharpSyntaxTree.ParseText(source, path: $"{Guid.NewGuid():N}.cs")),
             Platform,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+    }
+
+    /// <summary>A Visual Basic compilation carrying everything the test run loaded, so the localizer contract binds.</summary>
+    /// <param name="sources">The Visual Basic sources to parse.</param>
+    public static Compilation ReferencedVisualBasic(params string[] sources)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+
+        return VisualBasicCompilation.Create(
+            "Scratch",
+            sources.Select(source => VisualBasicSyntaxTree.ParseText(source, path: $"{Guid.NewGuid():N}.vb")),
+            Platform,
+            new VisualBasicCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }
 }

@@ -34,6 +34,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Build.Locator" Version="1.11.2" PrivateAssets="build;buildTransitive" />
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" ExcludeAssets="runtime" />
+        <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="5.0.0" ExcludeAssets="runtime" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
     </ItemGroup>
 

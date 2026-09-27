@@ -174,6 +174,38 @@ public sealed class MSBuildProjectLoaderTests
             () => Assert.Contains(LintingCodes.UnreachableLocalization.Id, output, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Should_load_a_Visual_Basic_project_and_read_its_types()
+    {
+        // Arrange — the file is embedded and no type is named for its folder, so LOC0112 speaks only once the project's own compiler has handed its types over.
+        using var directory = new TempDirectory();
+        directory.Write("Widget.vb", """
+            Namespace Scratch
+                Public NotInheritable Class Widget
+                End Class
+            End Namespace
+            """);
+        directory.Write(Path.Combine("Shipped", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var project = directory.Write("Scratch.vbproj", """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+              </PropertyGroup>
+              <ItemGroup>
+                <EmbeddedResource Include="Shipped\.locales\*.json" WithCulture="false" />
+              </ItemGroup>
+            </Project>
+            """);
+
+        // Act
+        var (exitCode, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", project);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(1, exitCode),
+            () => Assert.Contains(LintingCodes.UnreachableLocalization.Id, output, StringComparison.Ordinal));
+    }
+
     private static string Write(TempDirectory directory)
     {
         directory.Write("Widget.cs", "namespace Scratch; public sealed class Widget;");

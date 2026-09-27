@@ -31,6 +31,37 @@ public sealed class LintingTargetResolverTests
     }
 
     [Fact]
+    public void Should_read_a_Visual_Basic_file_as_a_source_file()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write("Widget.vb", "Class Widget\nEnd Class");
+
+        // Act
+        var target = new LintingTargetResolver(new LintingConfiguration(file)).Resolve(file);
+
+        // Assert
+        Assert.Equal([file], target.SourceFiles);
+    }
+
+    [Fact]
+    public void Should_name_the_Visual_Basic_project_a_source_file_belongs_to()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var project = directory.Write("Scratch.vbproj", "<Project />");
+        directory.Write("Nested/Widget.vb", "Class Widget\nEnd Class");
+
+        // Act
+        var target = new LintingTargetResolver(new LintingConfiguration(project)).Resolve(project);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal([project], target.Projects),
+            () => Assert.Single(target.SourceFiles));
+    }
+
+    [Fact]
     public void Should_read_razor_markup_as_a_source_file()
     {
         // Arrange
