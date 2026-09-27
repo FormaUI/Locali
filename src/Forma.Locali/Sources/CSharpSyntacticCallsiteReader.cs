@@ -4,8 +4,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-/// <summary>Reads the key out of an unbound lookup's arguments, mapped back to the file a human wrote.</summary>
-internal static class SyntacticCallsiteReader
+/// <summary>Reads the key out of an unbound C# lookup's arguments, mapped back to the file a human wrote.</summary>
+internal static class CSharpSyntacticCallsiteReader
 {
     /// <summary>The lookup its arguments describe, or null when the key is not a literal.</summary>
     /// <param name="tree">The tree the arguments were parsed from.</param>

@@ -9,6 +9,10 @@ using Forma.Locali.Sources;
 /// <summary>Builds the callsite rules the linter ships with.</summary>
 public static class SourceLinterTestFactory
 {
+    /// <summary>Every callsite finder the linter ships with, in the order it asks them.</summary>
+    public static IReadOnlyList<ILocalizerCallsiteFinder> Finders()
+        => [new SemanticCallsiteFinder(), new CSharpSyntacticCallsiteFinder(), new VisualBasicSyntacticCallsiteFinder()];
+
     /// <summary>Every callsite rule the linter ships with.</summary>
     public static IReadOnlyList<ICallsiteRuleChecker> Checkers()
         =>
@@ -42,7 +46,7 @@ public static class SourceLinterTestFactory
             }
             """);
 
-        var linter = new SourceLinter(new SemanticCallsiteFinder(), new SyntacticCallsiteFinder(), Checkers());
+        var linter = new SourceLinter(Finders(), Checkers());
         var files = compilation.SyntaxTrees.Select(tree => tree.FilePath).ToArray();
 
         return linter.Lint(new LoadedProject("Scratch.csproj", compilation, HasGeneratedSources: false, HasRazorMarkup: false), files).Diagnostics;

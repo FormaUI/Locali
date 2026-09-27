@@ -10,18 +10,15 @@ using Forma.Locali.Rules;
 using Microsoft.CodeAnalysis;
 
 /// <summary>Finds a project's localization callsites, then lets every rule read each one.</summary>
-/// <param name="semantic">Finds callsites by binding the receiver.</param>
-/// <param name="syntactic">Finds callsites when no semantic model is available.</param>
+/// <param name="finders">Finds callsites, asked in order for the first that can read a compilation.</param>
 /// <param name="checkers">The rules to run over each callsite.</param>
 public sealed class SourceLinter(
-    SemanticCallsiteFinder semantic,
-    SyntacticCallsiteFinder syntactic,
+    IEnumerable<ILocalizerCallsiteFinder> finders,
     IEnumerable<ICallsiteRuleChecker> checkers) : ISourceLinter
 {
     private static readonly LocaleKeywords Known = new(PluralExpressionEvaluator.Keyword);
 
-    private readonly SemanticCallsiteFinder _semantic = semantic ?? throw new ArgumentNullException(nameof(semantic));
-    private readonly SyntacticCallsiteFinder _syntactic = syntactic ?? throw new ArgumentNullException(nameof(syntactic));
+    private readonly IReadOnlyList<ILocalizerCallsiteFinder> _finders = finders?.ToArray() ?? throw new ArgumentNullException(nameof(finders));
     private readonly IEnumerable<ICallsiteRuleChecker> _checkers = checkers ?? throw new ArgumentNullException(nameof(checkers));
 
     /// <inheritdoc />
@@ -86,7 +83,11 @@ public sealed class SourceLinter(
 
     private LocalizerLookups Walk(Compilation compilation, IReadOnlyCollection<string> files, CancellationToken cancellationToken)
     {
-        var finder = _semantic.CanRead(compilation) ? (ILocalizerCallsiteFinder)_semantic : _syntactic;
+        // The semantic finder is asked first, so a syntactic one answers only where the contract does not bind.
+        if (_finders.FirstOrDefault(candidate => candidate.CanRead(compilation)) is not { } finder)
+        {
+            return LocalizerLookups.Empty;
+        }
 
         // Each tree binds independently, and the caller orders what comes back.
         var found = compilation.SyntaxTrees

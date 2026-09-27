@@ -5,14 +5,18 @@ using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-/// <summary>Finds callsites without a semantic model, by tracking which identifiers a type declares as localizers.</summary>
-public sealed class SyntacticCallsiteFinder : ILocalizerCallsiteFinder
+/// <summary>Finds callsites in C# without a semantic model, by tracking which identifiers a type declares as localizers.</summary>
+public sealed class CSharpSyntacticCallsiteFinder : ILocalizerCallsiteFinder
 {
     private readonly ConditionalWeakTable<Compilation, Dictionary<string, HashSet<string>>> _members = [];
 
     /// <inheritdoc />
     public bool CanRead(Compilation compilation)
-        => true;
+    {
+        ArgumentNullException.ThrowIfNull(compilation);
+
+        return compilation.Language == LanguageNames.CSharp;
+    }
 
     /// <inheritdoc />
     public LocalizerLookups Find(Compilation compilation, SyntaxTree tree)
@@ -57,17 +61,17 @@ public sealed class SyntacticCallsiteFinder : ILocalizerCallsiteFinder
                 continue;
             }
 
-            if (SyntacticCallsiteReader.Read(tree, arguments) is { } site)
+            if (CSharpSyntacticCallsiteReader.Read(tree, arguments) is { } site)
             {
                 lookups.Add(site);
             }
             else if (!InsideLocalizer(node))
             {
-                if (SyntacticCallsiteReader.InterpolatedKey(tree, arguments) is { } key)
+                if (CSharpSyntacticCallsiteReader.InterpolatedKey(tree, arguments) is { } key)
                 {
                     interpolated.Add(key);
                 }
-                else if (SyntacticCallsiteReader.UnreadableKey(tree, arguments) is { } location)
+                else if (CSharpSyntacticCallsiteReader.UnreadableKey(tree, arguments) is { } location)
                 {
                     unreadable.Add(location);
                 }

@@ -50,7 +50,7 @@ public sealed class LocalizationCoverageCheckerTests
         var target = new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), compilation, false, false, EmbeddedResourceNames: new Dictionary<string, string>());
         var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
         var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
-        var sites = new SourceLinter(new SemanticCallsiteFinder(), new SyntacticCallsiteFinder(), SourceLinterTestFactory.Checkers())
+        var sites = new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers())
             .Lint(target, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)], TestContext.Current.CancellationToken)
             .Callsites;
 
@@ -279,10 +279,7 @@ public sealed class LocalizationCoverageCheckerTests
             """);
 
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false);
-        var sources = new SourceLinter(
-            new SemanticCallsiteFinder(),
-            new SyntacticCallsiteFinder(),
-            SourceLinterTestFactory.Checkers());
+        var sources = new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers());
 
         var sites = sources
             .Lint(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)])

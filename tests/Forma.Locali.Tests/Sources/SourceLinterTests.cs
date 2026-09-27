@@ -236,10 +236,7 @@ public sealed class SourceLinterTests
         => [.. Result(compilation).Diagnostics.Where(diagnostic => diagnostic.Code == code)];
 
     private static SourceLintResult Result(Compilation compilation)
-        => new SourceLinter(
-                new SemanticCallsiteFinder(),
-                new SyntacticCallsiteFinder(),
-                SourceLinterTestFactory.Checkers())
+        => new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers())
             .Lint(
                 new LoadedProject("Scratch.csproj", compilation, HasGeneratedSources: false, HasRazorMarkup: false),
                 [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)]);

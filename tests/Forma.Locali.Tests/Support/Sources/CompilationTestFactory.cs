@@ -25,6 +25,17 @@ public static class CompilationTestFactory
             sources.Select(source => CSharpSyntaxTree.ParseText(source)));
     }
 
+    /// <summary>A Visual Basic compilation carrying no references, so no symbol in it binds to anything.</summary>
+    /// <param name="sources">The Visual Basic sources to parse.</param>
+    public static Compilation UnreferencedVisualBasic(params string[] sources)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+
+        return VisualBasicCompilation.Create(
+            "Scratch",
+            sources.Select(source => VisualBasicSyntaxTree.ParseText(source)));
+    }
+
     /// <summary>A compilation carrying no references, building the assembly named, so the projects of a run can be told apart by name.</summary>
     /// <param name="assemblyName">The name of the assembly the compilation builds.</param>
     /// <param name="sources">The C# sources to parse.</param>

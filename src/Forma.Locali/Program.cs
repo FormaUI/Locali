@@ -84,8 +84,10 @@ internal static class Program
         builder.Services.AddSingleton<ILintingTargetResolver, LintingTargetResolver>();
         builder.Services.AddSingleton<ILocalizationFileLinter, LocalizationFileLinter>();
         builder.Services.AddSingleton<IProjectLoader, MSBuildProjectLoader>();
-        builder.Services.AddSingleton<SemanticCallsiteFinder>();
-        builder.Services.AddSingleton<SyntacticCallsiteFinder>();
+        // The finders are asked in this order, so the semantic one answers wherever the contract binds.
+        builder.Services.AddSingleton<ILocalizerCallsiteFinder, SemanticCallsiteFinder>();
+        builder.Services.AddSingleton<ILocalizerCallsiteFinder, CSharpSyntacticCallsiteFinder>();
+        builder.Services.AddSingleton<ILocalizerCallsiteFinder, VisualBasicSyntacticCallsiteFinder>();
 
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, RequiredFieldsChecker>();
         builder.Services.AddSingleton<ILocalizationFileRuleChecker, RequiredFieldOrderChecker>();
