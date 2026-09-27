@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-Releases a version of the linter: commits the version, pushes it, and publishes the package to the organization's GitHub feed, to nuget.org, or to both.
+Releases a version of the linter: commits the version, tags it, pushes both, and publishes the package to the organization's GitHub feed, to nuget.org, or to both.
 
 .PARAMETER Source
 Where to publish: GitHub, NuGet or All. Matched without regard to case.
 
 .PARAMETER Version
-The version to release. A version any chosen feed already holds is refused.
+The version to release, which also names its tag. A version any chosen feed already holds, or whose tag marks another commit, is refused.
 
 .PARAMETER Force
 Publishes from a working tree that has uncommitted changes.
@@ -17,7 +17,7 @@ Publishes from a working tree that has uncommitted changes.
 .EXAMPLE
 ./publish.ps1 -Source All -Version 1.0.0-preview.5 -WhatIf
 
-Runs every check and lists the commit, pack and pushes a release would make, without making them.
+Runs every check and lists the commit, tag, pack and pushes a release would make, without making them.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -124,12 +124,15 @@ if (git -C $root status --porcelain -- $project) {
     throw 'The project file has uncommitted changes, and the release commit would carry them.'
 }
 
-# The release commit is pushed to the branch's upstream, so the branch must have one and hold everything it has.
+# The release commit and its tag are pushed to the branch's upstream, so the branch must have one and hold everything it has.
 $upstream = git -C $root rev-parse --abbrev-ref '@{upstream}' 2> $null
 if ($LASTEXITCODE -ne 0) {
     throw 'The current branch tracks no upstream branch to push the release to.'
 }
-Invoke-Git fetch --quiet
+$branch = git -C $root symbolic-ref --short HEAD
+$remote = git -C $root config "branch.$branch.remote"
+$upstreamRef = git -C $root config "branch.$branch.merge"
+Invoke-Git fetch --quiet --tags $remote
 if ([int] (git -C $root rev-list --count 'HEAD..@{upstream}') -gt 0) {
     throw 'The current branch is behind its upstream; pull before releasing.'
 }
@@ -138,21 +141,32 @@ if ([int] (git -C $root rev-list --count 'HEAD..@{upstream}') -gt 0) {
 $packageId = $csproj.SelectSingleNode('//PropertyGroup/PackageId').InnerText
 $currentVersion = $csproj.SelectSingleNode('//PropertyGroup/Version').InnerText
 
+# Feeds compare versions without their build metadata and without regard to case.
+$feedVersion = $Version -replace '\+.*$', ''
+
+# A tag marks the commit a version was packed from, so an existing one is only picked up again when it marks HEAD.
+$tag = $feedVersion
+$tagged = git -C $root rev-parse --quiet --verify "refs/tags/$tag^{commit}"
+if ($tagged -and $tagged -ne (git -C $root rev-parse HEAD)) {
+    throw "The tag $tag already marks commit $($tagged.Substring(0, 7)), not HEAD; choose a new version, or delete the tag if it was never pushed."
+}
+if ($tagged -and $currentVersion -ne $Version) {
+    throw "The tag $tag marks HEAD, but the project file holds version $currentVersion."
+}
+
 # Every key is in hand before anything changes, so a missing one stops the run with nothing half done.
 $keys = @{}
 foreach ($target in $targets) {
     $keys[$target] = if ($target -eq 'GitHub') { Get-GitHubKey } else { Get-NuGetKey }
 }
 
-# Feeds compare versions without their build metadata and without regard to case.
-$feedVersion = $Version -replace '\+.*$', ''
 foreach ($target in $targets) {
     if ((Get-PublishedVersions $target $packageId) -icontains $feedVersion) {
         throw "$target already holds $packageId $feedVersion; choose a new version, or publish only to the feeds that lack it."
     }
 }
 
-# A run that stopped after its release commit resumes from it rather than committing again.
+# A run that stopped after its release commit or its tag resumes from them rather than making them again.
 if ($currentVersion -ne $Version) {
     $text = [IO.File]::ReadAllText($project)
     $released = $text.Replace("<Version>$currentVersion</Version>", "<Version>$Version</Version>")
@@ -174,9 +188,16 @@ if ($PSCmdlet.ShouldProcess("$packageId $Version", 'Pack in Release')) {
     }
 }
 
-if ($PSCmdlet.ShouldProcess($upstream, 'Push the release commit')) {
-    Write-Host "Pushing the release commit to $upstream"
-    Invoke-Git push --quiet
+# The tag follows a successful pack, so a failed build leaves nothing marked as released.
+if (-not $tagged -and $PSCmdlet.ShouldProcess($tag, 'Sign and tag the release commit')) {
+    Write-Host "Tagging $tag"
+    Invoke-Git tag --sign --message "$packageId $Version" $tag
+}
+
+# Atomic, so the branch never receives the release commit without its tag, nor the tag without its commit.
+if ($PSCmdlet.ShouldProcess("$upstream and $tag", 'Push the release commit and its tag')) {
+    Write-Host "Pushing the release commit and $tag to $upstream"
+    Invoke-Git push --quiet --atomic $remote "HEAD:$upstreamRef" "refs/tags/$tag"
 }
 
 $package = Join-Path $artifacts "$packageId.$feedVersion.nupkg"

@@ -281,7 +281,8 @@ tests.
 ### Publishing
 
 `publish.ps1` releases a version: it commits the version to the project file, packs the tool in
-Release, pushes the commit to the branch's upstream, and pushes the package:
+Release, marks the commit with a signed annotated tag named for the version, pushes the commit
+and the tag to the branch's upstream together, and pushes the package:
 
 ```powershell
 ./publish.ps1 -Source GitHub -Version 1.0.0-preview.5   # the organization's feed, with the GitHub CLI's token
@@ -291,11 +292,11 @@ Release, pushes the commit to the branch's upstream, and pushes the package:
 
 The source is matched without regard to case. The GitHub CLI's token needs the `write:packages`
 scope, which `gh auth refresh -h github.com -s write:packages` adds. Before changing anything the
-script refuses a version any chosen feed already holds, a branch behind its upstream, and a
-working tree with uncommitted changes unless `-Force` is passed, so a package always matches a
-pushed commit. A run that stops after its release commit picks up from it when run again with the
-same version. `-WhatIf` runs every check and lists the commit, pack and pushes a release would
-make, without making them.
+script refuses a version any chosen feed already holds, a version whose tag marks another
+commit, a branch behind its upstream, and a working tree with uncommitted changes unless `-Force`
+is passed, so a package always matches a tagged, pushed commit. A run that stops after its release
+commit or its tag picks up from them when run again with the same version. `-WhatIf` runs every
+check and lists the commit, tag, pack and pushes a release would make, without making them.
 
 ### Roslyn Is The SDK's Compiler
 
