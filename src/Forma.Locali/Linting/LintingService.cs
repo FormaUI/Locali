@@ -129,14 +129,20 @@ public sealed class LintingService(
         // A project compiles whole because binding needs it, but only the named files are reported on.
         var wanted = target.SourceFiles.Select(Path.GetFullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var diagnostics = new List<LintingDiagnostic>();
+        var linted = new List<(LoadedProject Project, SourceLintResult Sources)>();
 
-        // Every project is loaded before any is linted, so a locale pack's folders can be resolved against the whole run and read for the projects they name.
-        var projects = new LoadedProjects(await _loader.LoadAsync(target.Projects, cancellationToken).ConfigureAwait(false), target.IsSolution);
+        // Each project's callsites are linted as soon as it is loaded, while the loader builds the next one.
+        await foreach (var project in _loader.LoadAsync(target.Projects, cancellationToken).ConfigureAwait(false))
+        {
+            linted.Add((project, _sources.Lint(project, wanted, cancellationToken)));
+        }
+
+        // The project rules wait for every project, since a locale pack's folders are resolved against the whole run and read for the projects they name.
+        var projects = new LoadedProjects([.. linted.Select(entry => entry.Project)], target.IsSolution);
         var packs = LocalePackFiles.ResolveAll(projects, target.LocalizationFilesOf);
 
-        foreach (var project in projects.All)
+        foreach (var (project, sources) in linted)
         {
-            var sources = _sources.Lint(project, wanted, cancellationToken);
             diagnostics.AddRange(sources.Diagnostics);
             diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), sources.Callsites, packs));
         }

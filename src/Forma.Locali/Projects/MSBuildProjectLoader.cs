@@ -1,5 +1,7 @@
 namespace Forma.Locali.Projects;
 
+using System.Threading.Channels;
+
 using Forma.Locali.Cli;
 
 using Microsoft.Build.Construction;
@@ -43,14 +45,28 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
     private readonly IReadOnlyDictionary<string, string> _properties = options?.Value.Properties ?? throw new ArgumentNullException(nameof(options));
 
     /// <inheritdoc />
-    public ValueTask<IReadOnlyList<LoadedProject>> LoadAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<LoadedProject> LoadAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(paths);
 
+        // The load runs on a thread of its own and hands each project over as it completes, so the caller reads one while the next builds.
+        var channel = Channel.CreateUnbounded<LoadedProject>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
+        var load = Task.Run(() => Load(paths, channel.Writer, cancellationToken), cancellationToken);
+
+        _ = load.ContinueWith(
+            task => channel.Writer.Complete(task.IsCanceled ? new OperationCanceledException(cancellationToken) : task.Exception?.GetBaseException()),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
+        return channel.Reader.ReadAllAsync(cancellationToken);
+    }
+
+    private void Load(IEnumerable<string> paths, ChannelWriter<LoadedProject> loaded, CancellationToken cancellationToken)
+    {
         // One collection serves the whole load, so the SDK's targets are parsed once rather than once per project.
         using var collection = new ProjectCollection(GetBaseProperties());
         var run = new LoadRun(collection);
-        var loaded = new List<LoadedProject>();
 
         // One build session serves the whole load too, so what MSBuild resolves for one project, its SDKs and
         // assembly references among it, is kept for the next rather than discarded with a session of its own.
@@ -66,13 +82,13 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
                 // A project in another language is one the linter cannot read, and stands in the run as one that did not load, so what it builds is not taken for absent.
                 if (!Languages.TryGetValue(Path.GetExtension(path), out var language))
                 {
-                    loaded.Add(new LoadedProject(path, null, HasGeneratedSources: false, HasRazorMarkup: false));
+                    loaded.TryWrite(new LoadedProject(path, null, HasGeneratedSources: false, HasRazorMarkup: false));
                     continue;
                 }
 
                 if (Evaluate(path, language, run, cancellationToken) is { } project)
                 {
-                    loaded.Add(project.Loaded);
+                    loaded.TryWrite(project.Loaded);
                 }
             }
         }
@@ -80,8 +96,6 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         {
             manager.EndBuild();
         }
-
-        return ValueTask.FromResult<IReadOnlyList<LoadedProject>>(loaded);
     }
 
     private static IEnumerable<string> GetProjectPaths(string path)
