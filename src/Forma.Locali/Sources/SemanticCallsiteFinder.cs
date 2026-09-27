@@ -5,6 +5,9 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 
+using CSharp = Microsoft.CodeAnalysis.CSharp.Syntax;
+using VisualBasic = Microsoft.CodeAnalysis.VisualBasic.Syntax;
+
 /// <summary>Finds callsites by binding the receiver to the localizer contract.</summary>
 public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 {
@@ -49,7 +52,7 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         var unreadable = new List<FileLinePositionSpan>();
         var interpolated = new List<FileLinePositionSpan>();
 
-        foreach (var node in tree.GetRoot().DescendantNodes())
+        foreach (var node in Candidates(tree.GetRoot(), compilation.Language))
         {
             // A lookup is read at the node its operation stands on, so a node inside it does not read it again.
             if (model.GetOperation(node) is not { } operation
@@ -78,6 +81,38 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 
         return new LocalizerLookups(lookups, unreadable, interpolated);
     }
+
+    // The compiler binds a whole member the moment any node in it is asked about, and a lookup is written as an
+    // element access or a call named Resolve, so only nodes of those shapes are asked and a member holding neither
+    // is never bound at all.
+    private static IEnumerable<SyntaxNode> Candidates(SyntaxNode root, string language)
+        => language switch
+        {
+            LanguageNames.CSharp => root.DescendantNodes().Where(IsCSharpCandidate),
+            LanguageNames.VisualBasic => root.DescendantNodes().Where(IsVisualBasicCandidate),
+            _ => root.DescendantNodes(),
+        };
+
+    private static bool IsCSharpCandidate(SyntaxNode node)
+        => node switch
+        {
+            CSharp.ElementAccessExpressionSyntax or CSharp.ElementBindingExpressionSyntax => true,
+            CSharp.InvocationExpressionSyntax invocation => Invoked(invocation.Expression) == LocalizerContract.ResolveMethod,
+            _ => false,
+        };
+
+    private static string? Invoked(CSharp.ExpressionSyntax expression)
+        => expression switch
+        {
+            CSharp.MemberAccessExpressionSyntax member => member.Name.Identifier.ValueText,
+            CSharp.MemberBindingExpressionSyntax binding => binding.Name.Identifier.ValueText,
+            CSharp.SimpleNameSyntax name => name.Identifier.ValueText,
+            _ => null,
+        };
+
+    // Visual Basic writes a default property and a call alike, so every call is a candidate.
+    private static bool IsVisualBasicCandidate(SyntaxNode node)
+        => node is VisualBasic.InvocationExpressionSyntax;
 
     // The indexer is declared on the unbound contract, so the type it translates is only on the receiver.
     private static INamedTypeSymbol? Resource(IOperation? receiver, INamedTypeSymbol? generic)
