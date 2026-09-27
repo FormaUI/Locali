@@ -268,12 +268,30 @@ dotnet test tests/Forma.Locali.Tests
 dotnet format Forma.Locali.slnx --verify-no-changes
 ```
 
+`build.ps1` runs the build and the tests, and `-Clean` removes every `bin`, `obj` and
+`artifacts` folder first so they start from nothing.
+
 `SourceLinterTestFactory.Lint` compiles a class body against the real `IStringLocale` and
 returns what the callsite rules report, so a rule is tested against a bound compilation rather
 than a stub. Run a new rule over the sibling Forma repository before trusting it; it lints
 clean, so anything a rule reports there is a false positive. It does not cover every shape a
 callsite can take — nothing there passes a values collection whole — so those belong in unit
 tests.
+
+### Publishing
+
+`publish.ps1` packs the tool in Release and pushes the package:
+
+```powershell
+./publish.ps1 -Source GitHub   # the organization's feed, with the GitHub CLI's token
+./publish.ps1 -Source NuGet    # nuget.org, with the key in NUGET_API_KEY
+./publish.ps1 -Source All
+```
+
+The source is matched without regard to case. The GitHub CLI's token needs the `write:packages`
+scope, which `gh auth refresh -h github.com -s write:packages` adds. A working tree with
+uncommitted changes is refused unless `-Force` is passed, so a package always matches a commit,
+and a version the feed already holds is skipped rather than failed.
 
 ### Roslyn Is The SDK's Compiler
 
