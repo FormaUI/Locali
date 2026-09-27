@@ -21,12 +21,13 @@
         <PackageTags>localization;linter;blazor;forma</PackageTags>
         <PackageProjectUrl>https://github.com/FormaUI/Forma.Locali</PackageProjectUrl>
         <RepositoryUrl>https://github.com/FormaUI/Forma.Locali</RepositoryUrl>
-        <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" Visible="false" />
+        <None Include="..\..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
+        <None Include="..\..\NOTICE" Pack="true" PackagePath="\" Visible="false" />
         <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
     </ItemGroup>
 
