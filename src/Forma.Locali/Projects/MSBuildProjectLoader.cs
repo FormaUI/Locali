@@ -49,24 +49,33 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
     {
         ArgumentNullException.ThrowIfNull(paths);
 
-        // The load runs on a thread of its own and hands each project over as it completes, so the caller reads one while the next builds.
-        var channel = Channel.CreateUnbounded<LoadedProject>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
-        var load = Task.Run(() => Load(paths, channel.Writer, cancellationToken), cancellationToken);
+        // MSBuild builds one project after another on a thread of its own, and the compiler turns each built project
+        // into a compilation on the cores beside it, several at a time, so the caller reads one while others load.
+        var built = Channel.CreateUnbounded<BuiltProject>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
+        var loaded = Channel.CreateUnbounded<LoadedProject>(new UnboundedChannelOptions { SingleReader = true });
 
-        _ = load.ContinueWith(
-            task => channel.Writer.Complete(task.IsCanceled ? new OperationCanceledException(cancellationToken) : task.Exception?.GetBaseException()),
+        var building = Task.Run(() => Build(paths, built.Writer, cancellationToken), cancellationToken);
+        var compiling = Task.Run(() => CompileAsync(built.Reader, loaded.Writer, cancellationToken), cancellationToken);
+
+        Complete(building, built.Writer, cancellationToken);
+        Complete(compiling, loaded.Writer, cancellationToken);
+
+        return loaded.Reader.ReadAllAsync(cancellationToken);
+    }
+
+    // A stage that fails or is cancelled ends its channel with the reason, so whoever reads past it fails the same way.
+    private static void Complete<T>(Task stage, ChannelWriter<T> writer, CancellationToken cancellationToken)
+        => _ = stage.ContinueWith(
+            task => writer.Complete(task.IsCanceled ? new OperationCanceledException(cancellationToken) : task.Exception?.GetBaseException()),
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
 
-        return channel.Reader.ReadAllAsync(cancellationToken);
-    }
-
-    private void Load(IEnumerable<string> paths, ChannelWriter<LoadedProject> loaded, CancellationToken cancellationToken)
+    private void Build(IEnumerable<string> paths, ChannelWriter<BuiltProject> built, CancellationToken cancellationToken)
     {
         // One collection serves the whole load, so the SDK's targets are parsed once rather than once per project.
         using var collection = new ProjectCollection(GetBaseProperties());
-        var run = new LoadRun(collection);
+        var run = new LoadRun(collection, built);
 
         // One build session serves the whole load too, so what MSBuild resolves for one project, its SDKs and
         // assembly references among it, is kept for the next rather than discarded with a session of its own.
@@ -82,14 +91,11 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
                 // A project in another language is one the linter cannot read, and stands in the run as one that did not load, so what it builds is not taken for absent.
                 if (!Languages.TryGetValue(Path.GetExtension(path), out var language))
                 {
-                    loaded.TryWrite(new LoadedProject(path, null, HasGeneratedSources: false, HasRazorMarkup: false));
+                    built.TryWrite(new BuiltProject(path, null, [], null, false, null, null, null, []));
                     continue;
                 }
 
-                if (Evaluate(path, language, run, cancellationToken) is { } project)
-                {
-                    loaded.TryWrite(project.Loaded);
-                }
+                Evaluate(path, language, run, cancellationToken);
             }
         }
         finally
@@ -106,7 +112,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             : [path];
 
     // One evaluation answers for the compilation and the embedded names alike, so the two never describe different builds.
-    private EvaluatedProject? Evaluate(string path, ProjectLanguage language, LoadRun run, CancellationToken cancellationToken, string? targetFramework = null)
+    private BuiltProject? Evaluate(string path, ProjectLanguage language, LoadRun run, CancellationToken cancellationToken, string? targetFramework = null)
     {
         if (run.Evaluated.TryGetValue(path, out var known))
         {
@@ -129,7 +135,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         }
         catch (InvalidProjectFileException)
         {
-            return run.Evaluated[path] = new EvaluatedProject(new LoadedProject(path, null, HasGeneratedSources: false, HasMarkup(path, language)), null, null);
+            return run.Emit(new BuiltProject(path, language, [], null, false, null, null, null, []));
         }
 
         // A project built for several frameworks compiles once per framework, so the first stands for it.
@@ -154,28 +160,34 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             : null;
 
         var arguments = instance.GetItems(language.ArgumentsItem).Select(item => item.EvaluatedInclude).ToArray();
-
         var rootNamespace = instance.GetPropertyValue("RootNamespace") is { Length: > 0 } declared ? declared : null;
         var isLocalePack = instance.GetPropertyValue("IsLocalePack").Equals("true", StringComparison.OrdinalIgnoreCase);
-        var compilation = arguments.Length == 0
-            ? null
-            : CompilerCommandLine.Compile(arguments, Path.GetDirectoryName(path)!, GetProjectReferences(instance, language, arguments, run, cancellationToken), language.Name, cancellationToken);
 
-        var loaded = Read(path, language, compilation, rootNamespace, resources?.Names, resources?.SatelliteFiles, isLocalePack, cancellationToken);
+        // A referenced project of a never-built tree is built first, so its compilation is under way before the one that reads it.
+        var references = GetProjectReferences(instance, language, arguments, run, cancellationToken);
 
-        return run.Evaluated[path] = new EvaluatedProject(loaded, instance.GetPropertyValue("TargetPath"), instance.GetPropertyValue("TargetRefPath"));
+        return run.Emit(new BuiltProject(
+            path,
+            language,
+            arguments,
+            rootNamespace,
+            isLocalePack,
+            resources,
+            instance.GetPropertyValue("TargetPath"),
+            instance.GetPropertyValue("TargetRefPath"),
+            references));
     }
 
     // A referenced project is evaluated only where the assembly it builds is missing, which is a tree that was never built,
     // and only a compilation in the referencing project's own language can stand in, since Roslyn takes no other's as a reference.
-    private Dictionary<string, Compilation> GetProjectReferences(
+    private List<BuiltProject> GetProjectReferences(
         ProjectInstance instance,
         ProjectLanguage language,
         IReadOnlyList<string> arguments,
         LoadRun run,
         CancellationToken cancellationToken)
     {
-        var references = new Dictionary<string, Compilation>(StringComparer.OrdinalIgnoreCase);
+        var references = new List<BuiltProject>();
 
         var isAnyMissing = arguments
             .Where(argument => argument.StartsWith(ReferenceArgument, StringComparison.OrdinalIgnoreCase))
@@ -189,23 +201,90 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         foreach (var reference in instance.GetItems("ProjectReference"))
         {
             var referencePath = Path.GetFullPath(reference.GetMetadataValue("FullPath"));
-            if (!Languages.TryGetValue(Path.GetExtension(referencePath), out var referencedLanguage)
-                || referencedLanguage.Name != language.Name
-                || Evaluate(referencePath, referencedLanguage, run, cancellationToken) is not { Loaded.Compilation: { } compilation } referenced)
+            if (Languages.TryGetValue(Path.GetExtension(referencePath), out var referencedLanguage)
+                && referencedLanguage.Name == language.Name
+                && Evaluate(referencePath, referencedLanguage, run, cancellationToken) is { } referenced)
             {
-                continue;
-            }
-
-            foreach (var assembly in new[] { referenced.TargetPath, referenced.TargetRefPath })
-            {
-                if (!string.IsNullOrEmpty(assembly))
-                {
-                    references[assembly] = compilation;
-                }
+                references.Add(referenced);
             }
         }
 
         return references;
+    }
+
+    // Each built project compiles on a core of its own, once every project whose compilation stands in for an assembly it lacks has.
+    private static async Task CompileAsync(ChannelReader<BuiltProject> built, ChannelWriter<LoadedProject> loaded, CancellationToken cancellationToken)
+    {
+        var compiling = new Dictionary<string, Task<LoadedProject>>(StringComparer.OrdinalIgnoreCase);
+        using var lanes = new SemaphoreSlim(Environment.ProcessorCount);
+
+        try
+        {
+            await foreach (var project in built.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+            {
+                var references = project.References.Select(reference => (reference, compiling[reference.Path])).ToArray();
+
+                compiling[project.Path] = Task.Run(() => CompileAsync(project, references, lanes, loaded, cancellationToken), cancellationToken);
+            }
+        }
+        finally
+        {
+            // Every compile under way runs to its end before the stage does, so nothing is torn down under one.
+            await Task.WhenAll(compiling.Values).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<LoadedProject> CompileAsync(
+        BuiltProject project,
+        IReadOnlyList<(BuiltProject Built, Task<LoadedProject> Loading)> references,
+        SemaphoreSlim lanes,
+        ChannelWriter<LoadedProject> loaded,
+        CancellationToken cancellationToken)
+    {
+        // A referenced project's compilation stands in for its assembly under each path the build would have written it to.
+        var standIns = new Dictionary<string, Compilation>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (built, loading) in references)
+        {
+            if ((await loading.ConfigureAwait(false)).Compilation is not { } compilation)
+            {
+                continue;
+            }
+
+            foreach (var assembly in new[] { built.TargetPath, built.TargetRefPath })
+            {
+                if (!string.IsNullOrEmpty(assembly))
+                {
+                    standIns[assembly] = compilation;
+                }
+            }
+        }
+
+        await lanes.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var result = Load(project, standIns, cancellationToken);
+            loaded.TryWrite(result);
+
+            return result;
+        }
+        finally
+        {
+            lanes.Release();
+        }
+    }
+
+    private static LoadedProject Load(BuiltProject project, IReadOnlyDictionary<string, Compilation> standIns, CancellationToken cancellationToken)
+    {
+        if (project.Language is not { } language)
+        {
+            return new LoadedProject(project.Path, null, HasGeneratedSources: false, HasRazorMarkup: false);
+        }
+
+        var compilation = project.Arguments.Count == 0
+            ? null
+            : CompilerCommandLine.Compile(project.Arguments, Path.GetDirectoryName(project.Path)!, standIns, language.Name, cancellationToken);
+
+        return Read(project.Path, language, compilation, project.RootNamespace, project.Resources?.Names, project.Resources?.SatelliteFiles, project.IsLocalePack, cancellationToken);
     }
 
     private static LoadedProject Read(
@@ -324,12 +403,31 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         return properties;
     }
 
-    private sealed record EvaluatedProject(LoadedProject Loaded, string? TargetPath, string? TargetRefPath);
+    // What the build handed back for a project, and the projects built first because their compilations stand in for assemblies it lacks.
+    private sealed record BuiltProject(
+        string Path,
+        ProjectLanguage? Language,
+        IReadOnlyList<string> Arguments,
+        string? RootNamespace,
+        bool IsLocalePack,
+        EmbeddedResources? Resources,
+        string? TargetPath,
+        string? TargetRefPath,
+        IReadOnlyList<BuiltProject> References);
 
-    // The collection every project of one load is evaluated in, and what the load has evaluated so far.
-    private sealed record LoadRun(ProjectCollection Collection)
+    // The collection every project of one load is evaluated in, what the load has evaluated so far, and where a built project goes.
+    private sealed record LoadRun(ProjectCollection Collection, ChannelWriter<BuiltProject> Built)
     {
-        public Dictionary<string, EvaluatedProject?> Evaluated { get; } = [with(StringComparer.OrdinalIgnoreCase)];
+        public Dictionary<string, BuiltProject?> Evaluated { get; } = [with(StringComparer.OrdinalIgnoreCase)];
+
+        // A project is handed on the moment it is built, after every project built first on its behalf.
+        public BuiltProject Emit(BuiltProject project)
+        {
+            Evaluated[project.Path] = project;
+            Built.TryWrite(project);
+
+            return project;
+        }
     }
 
     // The language as Roslyn names it, and the build item its compiler's arguments come back under.

@@ -297,12 +297,13 @@ embeds each resource under. `CompilerCommandLine` turns those arguments into a c
 runs the generators they name, as the compiler would. The targets run in one build because a
 second build of the same project instance fails, and every project of a run builds inside one
 MSBuild session in one project collection, so the SDK's targets are parsed once and what MSBuild
-resolves for one project, its SDKs and assembly references among it, serves the next. The load
-runs on a thread of its own and hands each project over as it completes, and that project's
-callsites are linted while the next one builds; the project rules run once every project is
-loaded, since a locale pack's folders resolve against the whole run. A referenced project is
-evaluated only where the assembly it builds is missing, in a tree that was never built, and its
-compilation stands in for the assembly.
+resolves for one project, its SDKs and assembly references among it, serves the next. MSBuild
+builds one project after another on a thread of its own, the compiler turns each built project
+into a compilation on the cores beside it, several at a time, and a project's callsites are
+linted as soon as its compilation lands, in whatever order they land; the project rules run
+once every project is loaded, since a locale pack's folders resolve against the whole run. A
+referenced project is evaluated only where the assembly it builds is missing, in a tree that
+was never built, and its compilation stands in for the assembly.
 
 MSBuild itself is loaded from the installed SDK through `MSBuildLocator`, so the `Microsoft.Build`
 packages stay reference-only too.
