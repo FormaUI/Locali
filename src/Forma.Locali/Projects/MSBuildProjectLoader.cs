@@ -47,7 +47,9 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
     {
         ArgumentNullException.ThrowIfNull(paths);
 
-        var evaluated = new Dictionary<string, EvaluatedProject?>(StringComparer.OrdinalIgnoreCase);
+        // One collection serves the whole load, so the SDK's targets are parsed once rather than once per project.
+        using var collection = new ProjectCollection(GetBaseProperties());
+        var run = new LoadRun(collection);
         var loaded = new List<LoadedProject>();
 
         foreach (var path in paths.SelectMany(GetProjectPaths).Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase))
@@ -61,7 +63,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
                 continue;
             }
 
-            if (Evaluate(path, language, evaluated, cancellationToken) is { } project)
+            if (Evaluate(path, language, run, cancellationToken) is { } project)
             {
                 loaded.Add(project.Loaded);
             }
@@ -78,37 +80,30 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             : [path];
 
     // One evaluation answers for the compilation and the embedded names alike, so the two never describe different builds.
-    private EvaluatedProject? Evaluate(string path, ProjectLanguage language, Dictionary<string, EvaluatedProject?> evaluated, CancellationToken cancellationToken, string? targetFramework = null)
+    private EvaluatedProject? Evaluate(string path, ProjectLanguage language, LoadRun run, CancellationToken cancellationToken, string? targetFramework = null)
     {
-        if (evaluated.TryGetValue(path, out var known))
+        if (run.Evaluated.TryGetValue(path, out var known))
         {
             return known;
         }
 
         // A project met again while it is still being evaluated references itself in a circle, and is left out of it.
-        evaluated[path] = null;
+        run.Evaluated[path] = null;
 
-        var properties = new Dictionary<string, string>(DesignTimeProperties, StringComparer.OrdinalIgnoreCase);
-        foreach (var (name, value) in _properties)
-        {
-            properties[name] = value;
-        }
-
+        var properties = GetBaseProperties();
         if (targetFramework is not null)
         {
             properties["TargetFramework"] = targetFramework;
         }
 
-        using var collection = new ProjectCollection(properties);
-
         ProjectInstance instance;
         try
         {
-            instance = collection.LoadProject(path).CreateProjectInstance();
+            instance = run.Collection.LoadProject(path, properties, toolsVersion: null).CreateProjectInstance();
         }
         catch (InvalidProjectFileException)
         {
-            return evaluated[path] = new EvaluatedProject(new LoadedProject(path, null, HasGeneratedSources: false, HasMarkup(path, language)), null, null);
+            return run.Evaluated[path] = new EvaluatedProject(new LoadedProject(path, null, HasGeneratedSources: false, HasMarkup(path, language)), null, null);
         }
 
         // A project built for several frameworks compiles once per framework, so the first stands for it.
@@ -116,9 +111,9 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             && instance.GetPropertyValue("TargetFramework").Length == 0
             && instance.GetPropertyValue("TargetFrameworks").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) is [var first, ..])
         {
-            evaluated.Remove(path);
+            run.Evaluated.Remove(path);
 
-            return Evaluate(path, language, evaluated, cancellationToken, first);
+            return Evaluate(path, language, run, cancellationToken, first);
         }
 
         // Each target answers for itself, so a project that does not compile may still name what it embeds, and the reverse.
@@ -133,11 +128,11 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         var isLocalePack = instance.GetPropertyValue("IsLocalePack").Equals("true", StringComparison.OrdinalIgnoreCase);
         var compilation = arguments.Length == 0
             ? null
-            : CompilerCommandLine.Compile(arguments, Path.GetDirectoryName(path)!, GetProjectReferences(instance, language, arguments, evaluated, cancellationToken), language.Name, cancellationToken);
+            : CompilerCommandLine.Compile(arguments, Path.GetDirectoryName(path)!, GetProjectReferences(instance, language, arguments, run, cancellationToken), language.Name, cancellationToken);
 
         var loaded = Read(path, language, compilation, rootNamespace, resources?.Names, resources?.SatelliteFiles, isLocalePack, cancellationToken);
 
-        return evaluated[path] = new EvaluatedProject(loaded, instance.GetPropertyValue("TargetPath"), instance.GetPropertyValue("TargetRefPath"));
+        return run.Evaluated[path] = new EvaluatedProject(loaded, instance.GetPropertyValue("TargetPath"), instance.GetPropertyValue("TargetRefPath"));
     }
 
     // A referenced project is evaluated only where the assembly it builds is missing, which is a tree that was never built,
@@ -146,7 +141,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         ProjectInstance instance,
         ProjectLanguage language,
         IReadOnlyList<string> arguments,
-        Dictionary<string, EvaluatedProject?> evaluated,
+        LoadRun run,
         CancellationToken cancellationToken)
     {
         var references = new Dictionary<string, Compilation>(StringComparer.OrdinalIgnoreCase);
@@ -165,7 +160,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             var referencePath = Path.GetFullPath(reference.GetMetadataValue("FullPath"));
             if (!Languages.TryGetValue(Path.GetExtension(referencePath), out var referencedLanguage)
                 || referencedLanguage.Name != language.Name
-                || Evaluate(referencePath, referencedLanguage, evaluated, cancellationToken) is not { Loaded.Compilation: { } compilation } referenced)
+                || Evaluate(referencePath, referencedLanguage, run, cancellationToken) is not { Loaded.Compilation: { } compilation } referenced)
             {
                 continue;
             }
@@ -286,7 +281,25 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             : [];
     }
 
+    // The properties every project of the run is evaluated under: the design-time ones, and the command line's over them.
+    private Dictionary<string, string> GetBaseProperties()
+    {
+        var properties = new Dictionary<string, string>(DesignTimeProperties, StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, value) in _properties)
+        {
+            properties[name] = value;
+        }
+
+        return properties;
+    }
+
     private sealed record EvaluatedProject(LoadedProject Loaded, string? TargetPath, string? TargetRefPath);
+
+    // The collection every project of one load is evaluated in, and what the load has evaluated so far.
+    private sealed record LoadRun(ProjectCollection Collection)
+    {
+        public Dictionary<string, EvaluatedProject?> Evaluated { get; } = [with(StringComparer.OrdinalIgnoreCase)];
+    }
 
     // The language as Roslyn names it, and the build item its compiler's arguments come back under.
     private sealed record ProjectLanguage(string Name, string ArgumentsItem);
