@@ -52,21 +52,33 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         var run = new LoadRun(collection);
         var loaded = new List<LoadedProject>();
 
-        foreach (var path in paths.SelectMany(GetProjectPaths).Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase))
+        // One build session serves the whole load too, so what MSBuild resolves for one project, its SDKs and
+        // assembly references among it, is kept for the next rather than discarded with a session of its own.
+        var manager = BuildManager.DefaultBuildManager;
+        manager.BeginBuild(new BuildParameters(collection) { MaxNodeCount = 1, EnableNodeReuse = false });
+
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // A project in another language is one the linter cannot read, and stands in the run as one that did not load, so what it builds is not taken for absent.
-            if (!Languages.TryGetValue(Path.GetExtension(path), out var language))
+            foreach (var path in paths.SelectMany(GetProjectPaths).Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                loaded.Add(new LoadedProject(path, null, HasGeneratedSources: false, HasRazorMarkup: false));
-                continue;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
 
-            if (Evaluate(path, language, run, cancellationToken) is { } project)
-            {
-                loaded.Add(project.Loaded);
+                // A project in another language is one the linter cannot read, and stands in the run as one that did not load, so what it builds is not taken for absent.
+                if (!Languages.TryGetValue(Path.GetExtension(path), out var language))
+                {
+                    loaded.Add(new LoadedProject(path, null, HasGeneratedSources: false, HasRazorMarkup: false));
+                    continue;
+                }
+
+                if (Evaluate(path, language, run, cancellationToken) is { } project)
+                {
+                    loaded.Add(project.Loaded);
+                }
             }
+        }
+        finally
+        {
+            manager.EndBuild();
         }
 
         return ValueTask.FromResult<IReadOnlyList<LoadedProject>>(loaded);
@@ -117,8 +129,13 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         }
 
         // Each target answers for itself, so a project that does not compile may still name what it embeds, and the reverse.
-        _ = instance.Build(Targets, loggers: null, out var results);
-        var resources = results.TryGetValue(PrepareResourceNamesTarget, out var naming) && naming.ResultCode == TargetResultCode.Success
+        var result = BuildManager.DefaultBuildManager.BuildRequest(
+            new BuildRequestData(instance, Targets, hostServices: null, BuildRequestDataFlags.ProvideProjectStateAfterBuild));
+
+        instance = result.ProjectStateAfterBuild ?? instance;
+        var resources = result.ResultsByTarget is { } results
+            && results.TryGetValue(PrepareResourceNamesTarget, out var naming)
+            && naming.ResultCode == TargetResultCode.Success
             ? GetResources(instance)
             : null;
 

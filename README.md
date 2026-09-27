@@ -293,9 +293,11 @@ A project is loaded in one MSBuild design-time build, which runs the project's o
 the compiler and hands back what it would have been given, together with the names the build
 embeds each resource under. `CompilerCommandLine` turns those arguments into a compilation and
 runs the generators they name, as the compiler would. The targets run in one build because a
-second build of the same project instance fails. A referenced project is evaluated only where
-the assembly it builds is missing, in a tree that was never built, and its compilation stands in
-for the assembly.
+second build of the same project instance fails, and every project of a run builds inside one
+MSBuild session in one project collection, so the SDK's targets are parsed once and what MSBuild
+resolves for one project, its SDKs and assembly references among it, serves the next. A
+referenced project is evaluated only where the assembly it builds is missing, in a tree that was
+never built, and its compilation stands in for the assembly.
 
 MSBuild itself is loaded from the installed SDK through `MSBuildLocator`, so the `Microsoft.Build`
 packages stay reference-only too.

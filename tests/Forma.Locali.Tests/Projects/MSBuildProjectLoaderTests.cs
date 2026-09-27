@@ -206,6 +206,35 @@ public sealed class MSBuildProjectLoaderTests
             () => Assert.Contains(LintingCodes.UnreachableLocalization.Id, output, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Should_load_every_project_of_a_solution_in_one_run()
+    {
+        // Arrange — each project embeds a file nothing reads under Release, so each one loaded is one LOC0112 reported.
+        using var directory = new TempDirectory();
+        foreach (var name in new[] { "Alpha", "Beta", "Gamma" })
+        {
+            directory.Write(Path.Combine(name, "Widget.cs"), $"namespace {name}; public sealed class Widget;");
+            directory.Write(Path.Combine(name, "Shipped", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+            directory.Write(Path.Combine(name, $"{name}.csproj"), Project);
+        }
+
+        var solution = directory.Write("Scratch.slnx", """
+            <Solution>
+              <Project Path="Alpha/Alpha.csproj" />
+              <Project Path="Beta/Beta.csproj" />
+              <Project Path="Gamma/Gamma.csproj" />
+            </Solution>
+            """);
+
+        // Act
+        var (exitCode, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", solution, "--property", "Configuration=Release");
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(1, exitCode),
+            () => Assert.Equal(3, output.Split(LintingCodes.UnreachableLocalization.Id).Length - 1));
+    }
+
     private static string Write(TempDirectory directory)
     {
         directory.Write("Widget.cs", "namespace Scratch; public sealed class Widget;");
