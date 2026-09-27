@@ -325,3 +325,8 @@ was never built, and its compilation stands in for the assembly.
 
 MSBuild itself is loaded from the installed SDK through `MSBuildLocator`, so the `Microsoft.Build`
 packages stay reference-only too.
+
+## License
+
+Locali is licensed under the [Apache License 2.0](LICENSE). Every earlier version, including
+releases published under the Locali Community License, is available under the same license.
