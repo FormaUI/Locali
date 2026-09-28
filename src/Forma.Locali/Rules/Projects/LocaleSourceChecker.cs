@@ -5,8 +5,9 @@ using Forma.Locali.Configuration;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 using Forma.Locali.Projects;
+using Forma.Locali.Sources;
 
-/// <summary>Checks that every locale file comes from a source the linting configuration in force over it allows.</summary>
+/// <summary>Checks that every locale file comes from a source the linting configuration in force over it allows, a pack's file by the project it localizes.</summary>
 /// <param name="lintingConfiguration">The linting configuration, read for the sources each file's ancestry allows.</param>
 public sealed class LocaleSourceChecker(ILintingConfiguration lintingConfiguration) : IProjectRuleChecker
 {
@@ -32,8 +33,11 @@ public sealed class LocaleSourceChecker(ILintingConfiguration lintingConfigurati
                 continue;
             }
 
+            // A pack's file is asked about where it stands in the project it localizes, whose line says where that assembly's translations may live.
+            var target = GetPackTarget(context.Pack, fullPath);
+
             // The configuration is asked about every locale file before anything else, so an entry over a project whose items were not read still counts as one that governs a file.
-            if (_lintingConfiguration.GetLocaleSources(fullPath) is not { } allowed)
+            if (_lintingConfiguration.GetLocaleSources(target?.StandIn ?? fullPath) is not { } allowed)
             {
                 continue;
             }
@@ -46,11 +50,39 @@ public sealed class LocaleSourceChecker(ILintingConfiguration lintingConfigurati
                 continue;
             }
 
+            var line = target is { } packTarget
+                ? $"the last localeSources line matching it as a file of {Path.GetFileName(packTarget.Project.Path)}, the project it localizes,"
+                : "the last localeSources line matching it";
+
             context.Report(
                 Code,
                 fullPath,
-                $"This file is {Describe(source)}, which the last localeSources line matching it does not allow, naming {LocaleSourceNames.Format(allowed)}; the runtime reads it all the same, so translations are kept in a place the repository said they are not.");
+                $"This file is {Describe(source)}, which {line} does not allow, naming {LocaleSourceNames.Format(allowed)}; the runtime reads it all the same, so translations are kept in a place the repository said they are not.");
         }
+    }
+
+    // The project a pack's file localizes, found by the folder beneath the pack it sits in, with the path the file stands for inside that project; null for a file outside every assembly's folder or one naming no project of the run.
+    private static (LoadedProject Project, string StandIn)? GetPackTarget(LocalePack? pack, string fullPath)
+    {
+        if (pack is null)
+        {
+            return null;
+        }
+
+        var relative = Path.GetRelativePath(Path.GetDirectoryName(Path.GetFullPath(pack.Project.Path))!, fullPath);
+        var separator = relative.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]);
+        if (separator <= 0)
+        {
+            return null;
+        }
+
+        var assemblyName = relative[..separator];
+        if (pack.Folders.FirstOrDefault(folder => folder.AssemblyName == assemblyName)?.Target is not { } target)
+        {
+            return null;
+        }
+
+        return (target, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(target.Path))!, relative[(separator + 1)..]));
     }
 
     // A pack's every file is the pack's; a file the project embeds is the assembly's own or a satellite's by what the build did with it; a file in the project's own .locales folder that it does not embed is the host's.

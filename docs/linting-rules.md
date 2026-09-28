@@ -45,8 +45,11 @@ satellite assembly; `pack`, one a locale pack carries; and `host`, one laid in t
 `.locales` folder. An allow list cannot be merged, so the last line matching a file speaks for
 it: lines are written general first and specific after, and a line that allows nothing,
 `"**": []`, put first, makes every locale file one a later line has to claim. A file no line
-matches has no policy. LOC0025 reports a file from a place its line does not allow, and LOC0021
-a line that is the last match for no file.
+matches has no policy. A locale pack's file is matched where it stands in the project it
+localizes, the one building the assembly its folder names, so the line over that project says
+whether its translations may come from a pack; a folder naming no project of the run leaves its
+files matched where they sit. LOC0025 reports a file from a place its line does not allow, and
+LOC0021 a line that is the last match for no file.
 
 ### LOC0020 — The linting configuration cannot be read
 
@@ -146,8 +149,10 @@ the pack's items could not be read.
 
 **Reports.** A culture-named locale file that comes from a source the last `localeSources` line
 matching it does not name: embedded in the assembly, moved into a satellite assembly, carried
-by a locale pack, or laid in a host's `.locales` folder. It is reported at the file, naming the
-source it comes from and the sources the line allows.
+by a locale pack, or laid in a host's `.locales` folder. A pack's file is held to the line over
+the project it localizes, so a pack folder for an assembly whose line allows embedding alone is
+reported file by file. It is reported at the file, naming the source it comes from and the
+sources the line allows.
 
 **Why it matters.** The runtime reads every source it finds, so a repository that keeps its
 translations in packs cannot tell from a build that someone embedded a Hebrew file in an

@@ -74,6 +74,58 @@ public sealed class LocaleSourceCheckerTests
     }
 
     [Fact]
+    public void Should_report_a_packs_file_for_a_project_whose_line_allows_embedding_alone()
+    {
+        // Arrange — the add-on embeds its own translations, so a pack's folder for it keeps them where the repository said they are not.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["pack", "host"], "AddOns/**": ["embedded"] } }""");
+        var target = Target(directory, Path.Combine("AddOns", "Contoso.Office"), "Contoso.Office");
+        var file = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Office", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostic = Assert.Single(CheckPack(directory, target, file));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(file, diagnostic.Path),
+            () => Assert.Contains("carried by a locale pack", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains("matching it as a file of Contoso.Office.csproj, the project it localizes,", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains("naming embedded", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Should_leave_a_packs_file_alone_where_the_line_over_its_project_allows_packs()
+    {
+        // Arrange — the line over the pack's own folder allows embedding alone, and the line over the project the file localizes allows packs.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["embedded"], "Widgets/**": ["pack"] } }""");
+        var target = Target(directory, "Widgets", "Contoso.Widgets");
+        var file = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostics = CheckPack(directory, target, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_judge_a_packs_file_by_where_it_sits_when_its_folder_names_no_project_of_the_run()
+    {
+        // Arrange — no project of the run builds the assembly the folder names, so the line over the pack's own folder speaks for the file.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["embedded"], "Widgets/**": ["pack"] } }""");
+        var target = Target(directory, "Widgets", "Contoso.Widgets");
+        var file = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Gadgets", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostic = Assert.Single(CheckPack(directory, target, file));
+
+        // Assert
+        Assert.Contains("matching it does not allow", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_leave_a_file_from_an_allowed_source_alone()
     {
         // Arrange
@@ -158,6 +210,16 @@ public sealed class LocaleSourceCheckerTests
 
     private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, params string[] files)
         => ProjectLinterTestFactory.Check(new LocaleSourceChecker(new LintingConfiguration(project.Path)), project, files);
+
+    private static IReadOnlyList<LintingDiagnostic> CheckPack(TempDirectory directory, LoadedProject target, string file)
+    {
+        var pack = LocalePackTestFactory.Resolve(directory, target, file);
+
+        return ProjectLinterTestFactory.Check(new LocaleSourceChecker(new LintingConfiguration(directory.Root)), pack.Project, [file], packs: [pack]);
+    }
+
+    private static LoadedProject Target(TempDirectory directory, string folder, string assemblyName)
+        => new(Path.Combine(directory.Root, folder, $"{assemblyName}.csproj"), CompilationTestFactory.Building(assemblyName), false, false, EmbeddedResourceNames: new Dictionary<string, string>());
 
     private static LoadedProject Project(TempDirectory directory, IReadOnlyList<string> embedded, IReadOnlyList<string>? satellite = null)
         => new(
