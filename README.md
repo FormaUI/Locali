@@ -268,8 +268,8 @@ dotnet test tests/Forma.Locali.Tests
 dotnet format Forma.Locali.slnx --verify-no-changes
 ```
 
-`build.ps1` runs the build and the tests, and `-Clean` removes every `bin`, `obj` and
-`artifacts` folder first so they start from nothing.
+`build.ps1` runs the build, the tests and the format check, and `-Clean` removes every `bin`,
+`obj` and `artifacts` folder first so they start from nothing.
 
 `SourceLinterTestFactory.Lint` compiles a class body against the real `IStringLocale` and
 returns what the callsite rules report, so a rule is tested against a bound compilation rather

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Builds the solution and runs its tests.
+Builds the solution, runs its tests, and checks its formatting.
 
 .PARAMETER Clean
 Removes every build output first, so the build starts from nothing.
@@ -40,4 +40,10 @@ Write-Host 'Testing'
 dotnet test $tests --no-build -nologo
 if ($LASTEXITCODE -ne 0) {
     throw 'dotnet test failed.'
+}
+
+Write-Host 'Checking formatting'
+dotnet format $solution --verify-no-changes
+if ($LASTEXITCODE -ne 0) {
+    throw 'dotnet format found changes to make; run: dotnet format Forma.Locali.slnx'
 }
