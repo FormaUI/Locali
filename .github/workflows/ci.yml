@@ -1,0 +1,59 @@
+# Runs the gate a person runs, then lints Forma, which lints clean, so anything reported there is a regression.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # Forma's restore can reach the organization's private feed.
+  packages: read
+
+jobs:
+  gate:
+    name: gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      # The solution references Forma's runtime beside it, so both repositories are checked out side by side.
+      - uses: actions/checkout@v7
+        with:
+          path: Forma.Locali
+
+      - uses: actions/checkout@v7
+        with:
+          repository: FormaUI/Forma
+          ref: main
+          path: Forma
+          ssh-key: ${{ secrets.FORMA_DEPLOY_KEY }}
+
+      # The SDK Forma pins, which is the one the linter is built and run with.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: Forma/global.json
+
+      - name: Run the gate
+        working-directory: Forma.Locali
+        run: pwsh ./build.ps1
+
+      - name: Lint Forma
+        working-directory: Forma.Locali
+        env:
+          NuGetPackageSourceCredentials_formaui: Username=${{ github.actor }};Password=${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dotnet restore ../Forma/Forma.slnx
+          dotnet run --project src/Forma.Locali --no-build -- --path ../Forma/Forma.slnx --exclude "*/Fixtures/*"
