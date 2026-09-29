@@ -60,7 +60,11 @@ internal static class Program
         // An empty builder keeps the linter from reading whatever configuration happens to sit in the working directory.
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { Args = args });
 
-        builder.Logging.AddSimpleConsole(console => console.SingleLine = true).SetMinimumLevel(LogLevel.Warning);
+        // Standard output carries the report alone, so every log line goes to standard error.
+        builder.Logging
+            .AddConsole(console => console.LogToStandardErrorThreshold = LogLevel.Trace)
+            .AddSimpleConsole(console => console.SingleLine = true)
+            .SetMinimumLevel(LogLevel.Warning);
         builder.Services.Configure<ConsoleLifetimeOptions>(lifetime => lifetime.SuppressStatusMessages = true);
 
         builder.Services
