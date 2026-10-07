@@ -14,7 +14,7 @@
     <PropertyGroup>
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>locali</ToolCommandName>
-        <PackageId>FormaUI.NET-Locali</PackageId>
+        <PackageId>formaui-net.Locali</PackageId>
         <Version>1.0.0-preview.7</Version>
         <Authors>Eyal Alon</Authors>
         <Description>A linter for Forma.Framework.Localization: reads locale files against the runtime's rules and every IStringLocale callsite against what the runtime will do with it.</Description>
