@@ -222,20 +222,26 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 
 ### Layout
 
-| Folder | Holds |
-|--------|-------|
-| `Cli/` | Argument parsing, options, exit codes, target resolution, the shared glob matcher |
-| `Configuration/` | Reading `.locali.json` into the linting configuration a run applies, and `.locale.json` for the runtime's rule |
-| `Diagnostics/` | `LintingCode`, the `LintingCodes` catalogue, `LintingDiagnostic` |
-| `Documents/` | The locale format, `ILocaleFormat`, and its JSON implementation, which reads a locale file into ordered entries with offsets |
-| `Linting/` | The services that drive file and schema linting |
-| `Projects/` | MSBuild loading, and binding Roslyn to the SDK's copy |
-| `Reporting/` | Console and JSON reporters |
-| `Rules/` | Rule contracts, rule contexts, shared hole-name reading |
-| `Rules/Files/` | Rules over a locale file |
-| `Rules/Sources/` | Rules over a callsite |
-| `Rules/Projects/` | Rules over a project's locale files read whole |
-| `Sources/` | Finding callsites, and resolving a project's locale files, and the locale packs carrying files for it, for the project rules |
+The engine, `src/Forma.Locali.Engine`, holds everything a run does and registers it through
+`AddLocaliEngine`; the tool, `src/Forma.Locali`, is the `locali` command around it. Both have the
+root namespace `Forma.Locali`, so a folder's namespace is the same in either project.
+
+| Project | Folder | Holds |
+|---------|--------|-------|
+| Engine | `Cli/` | Target resolution, the options a run takes, the shared glob matcher |
+| Engine | `Configuration/` | Reading `.locali.json` into the linting configuration a run applies, and `.locale.json` for the runtime's rule |
+| Engine | `Diagnostics/` | `LintingCode`, the `LintingCodes` catalogue, `LintingDiagnostic` |
+| Engine | `Documents/` | The locale format, `ILocaleFormat`, and its JSON implementation, which reads a locale file into ordered entries with offsets |
+| Engine | `Linting/` | The services that drive file and schema linting |
+| Engine | `Projects/` | MSBuild loading |
+| Engine | `Rules/` | Rule contracts, rule contexts, shared hole-name reading |
+| Engine | `Rules/Files/` | Rules over a locale file |
+| Engine | `Rules/Sources/` | Rules over a callsite |
+| Engine | `Rules/Projects/` | Rules over a project's locale files read whole |
+| Engine | `Sources/` | Finding callsites, and resolving a project's locale files, and the locale packs carrying files for it, for the project rules |
+| Tool | `Cli/` | Argument parsing and exit codes |
+| Tool | `Projects/` | Binding Roslyn to the SDK's copy |
+| Tool | `Reporting/` | Console and JSON reporters |
 
 ### Adding a Rule
 
@@ -246,7 +252,8 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 2. Implement `ILocalizationFileRuleChecker`, `ICallsiteRuleChecker`, or `IProjectRuleChecker`
    under `Rules/Files/`, `Rules/Sources/`, or `Rules/Projects/`. Expose the code through `Code`
    and report through the context, which owns the position.
-3. Register it in `Program.cs`, and in the matching test factory under `tests/…/Support/`.
+3. Register it in `AddLocaliEngine`, and in the matching test factory under
+   `tests/Forma.Locali.Engine.Tests/Support/`.
 4. Write its entry in `docs/linting-rules.md` and its row in the table above.
 
 `LintCodesTests` fails if a rule reports under a code missing from the catalogue, if two codes
@@ -264,11 +271,14 @@ reach the callsite reads `context.Site.Arguments` and returns when it is `Unknow
 
 ```powershell
 dotnet build Forma.Locali.slnx
+dotnet test tests/Forma.Locali.Engine.Tests
 dotnet test tests/Forma.Locali.Tests
 dotnet format Forma.Locali.slnx --verify-no-changes
 ```
 
-`build.ps1` runs the build, the tests and the format check, and `-Clean` removes every `bin`,
+`tests/Forma.Locali.Engine.Tests` tests the engine, and `tests/Forma.Locali.Tests` tests the
+tool: its command line, its reporters, and the project loads only a run of the built tool can
+show. `build.ps1` runs the build, both test projects and the format check, and `-Clean` removes every `bin`,
 `obj` and `artifacts` folder first so they start from nothing.
 
 `SourceLinterTestFactory.Lint` compiles a class body against the real `IStringLocale` and
@@ -308,9 +318,10 @@ against, so a newer SDK needs nothing changed here.
 
 `SdkCompiler` binds to `Roslyn/bincore` under the SDK, the folder `csc` and `vbc` run from, in a
 `[ModuleInitializer]`, since resolution has to be registered before the first Roslyn type loads,
-which is earlier than `Main`. The `Microsoft.CodeAnalysis.CSharp` and
+which is earlier than `Main`. The engine's `Microsoft.CodeAnalysis.CSharp` and
 `Microsoft.CodeAnalysis.VisualBasic` packages carry `ExcludeAssets="runtime"` so they stay
-reference-only, and their version is the oldest Roslyn API the linter is written against: a
+reference-only, and `PrivateAssets="all"` so they reach neither the tool nor anything else that
+references the engine, and their version is the oldest Roslyn API the linter is written against: a
 newer compiler runs code built against an older one, as it does for every analyzer. When no
 compiler is found the linter stops with exit code 2 and says where it looked.
 

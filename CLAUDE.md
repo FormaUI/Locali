@@ -22,24 +22,26 @@ Detailed standards live in `.claude/skills/` and load on demand. Read the matchi
 
 ## Solution structure
 
-Two projects, one solution:
+Four projects, one solution:
 
 ```text
 Forma.Locali.slnx
-├── src/Forma.Locali            # the linter; assembly name `locali`, namespace Forma.Locali
-└── tests/Forma.Locali.Tests    # its only test project
+├── src/Forma.Locali.Engine           # the engine: every rule, the linters, project loading, AddLocaliEngine
+├── src/Forma.Locali                  # the `locali` tool around it; assembly name `locali`
+├── tests/Forma.Locali.Engine.Tests   # the engine's tests
+└── tests/Forma.Locali.Tests          # the tool's tests, and the loads only a run of the built tool shows
 ```
 
-- Do keep the dependency on the runtime as cross-repository `ProjectReference`s into `..\formaui-net\src\Forma.Framework\Forma.Framework.Localization`, whose file layout and parsers the rules call, and `..\formaui-net\src\Forma.Framework\Forma.Framework.Localization.Json`, whose format reads the files. The Forma repository must sit beside this one, in a folder named `formaui-net`, for the solution to build.
+- Do keep the dependency on the runtime as cross-repository `ProjectReference`s from the engine into `..\formaui-net\src\Forma.Framework\Forma.Framework.Localization`, whose file layout and parsers the rules call, and `..\formaui-net\src\Forma.Framework\Forma.Framework.Localization.Json`, whose format reads the files. The Forma repository must sit beside this one, in a folder named `formaui-net`, for the solution to build.
 - Do compile against the real runtime rather than re-implementing any of its parsing here; the linter's promise is that a rule and the runtime cannot disagree, and it keeps that promise by calling the runtime's own parser, plural rules, and schema types.
-- Do keep a folder and its namespace in step, so `src/Forma.Locali/Rules/Files/` holds `Forma.Locali.Rules.Files`.
+- Do keep a folder and its namespace in step from the project's root namespace, which is `Forma.Locali` in both source projects and `Forma.Locali.Tests` in both test projects, so `src/Forma.Locali.Engine/Rules/Files/` holds `Forma.Locali.Rules.Files`.
 - Do reference the narrowest thing that supplies what the code uses, give every project its own reference for what it uses directly, and keep no reference no code uses.
-- Don't add a Roslyn package with runtime assets, such as `Microsoft.CodeAnalysis.Workspaces`, or raise `Microsoft.CodeAnalysis.CSharp` or `Microsoft.CodeAnalysis.VisualBasic` beyond the API the code needs: the linter runs on the installed SDK's compiler, bound by `SdkCompiler`, and the README's *Roslyn Is The SDK's Compiler* section says why. Do leave `ExcludeAssets="runtime"` on them and on the `Microsoft.Build` references.
+- Don't add a Roslyn package with runtime assets, such as `Microsoft.CodeAnalysis.Workspaces`, or raise `Microsoft.CodeAnalysis.CSharp` or `Microsoft.CodeAnalysis.VisualBasic` beyond the API the code needs: the linter runs on the installed SDK's compiler, bound by `SdkCompiler`, and the README's *Roslyn Is The SDK's Compiler* section says why. Do leave `ExcludeAssets="runtime"` and `PrivateAssets="all"` on them and on the `Microsoft.Build` references, so none of them reaches the tool's package.
 
 ## Rules
 
 - Do treat a false positive as the worst defect a rule can have: the linter runs in build gates, so a rule fires only where the failure is certain, and the README's *Where a rule stays silent* section is binding.
-- Do follow the README's *Adding a rule* steps exactly — code in the catalogue and its `All` list, checker under `Rules/Files/`, `Rules/Sources/`, or `Rules/Projects/`, registration in `Program.cs`, registration in the matching test factory — because `LintCodesTests` enforces the catalogue and the family ranges.
+- Do follow the README's *Adding a rule* steps exactly — code in the catalogue and its `All` list, checker under `Rules/Files/`, `Rules/Sources/`, or `Rules/Projects/`, registration in `AddLocaliEngine`, registration in the matching test factory — because `LintCodesTests` enforces the catalogue and the family ranges.
 - Do run a new rule over the sibling Forma repository's `src` before trusting it; the tree lints clean, so anything a new rule reports there is a false positive.
 - Do write a diagnostic message as one sentence saying what is wrong and what the runtime does about it, matching the voice of the existing messages.
 - Don't widen an existing rule and its message in one change without re-reading the README's table row for it; the row states what the rule reports and drifts silently.
@@ -70,6 +72,7 @@ These rules govern prose that *describes a thing*. They do not apply to this fil
 
 ```powershell
 dotnet build Forma.Locali.slnx
+dotnet test tests/Forma.Locali.Engine.Tests
 dotnet test tests/Forma.Locali.Tests
 dotnet format Forma.Locali.slnx --verify-no-changes
 ```

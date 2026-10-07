@@ -5,7 +5,7 @@ description: This repository's test standard — the xUnit v3 conventions (Shoul
 
 # Tests (xUnit v3)
 
-One test project, `tests/Forma.Locali.Tests`, tests the one production assembly. Its folders mirror the source, so `Rules/Files/DuplicateKeyChecker.cs` is tested by `tests/Forma.Locali.Tests/Rules/Files/DuplicateKeyCheckerTests.cs`, and the namespace follows the folder.
+Each source project has one test project: `tests/Forma.Locali.Engine.Tests` tests the engine, and `tests/Forma.Locali.Tests` tests the tool. Their folders mirror the source, so `Rules/Files/DuplicateKeyChecker.cs` is tested by `tests/Forma.Locali.Engine.Tests/Rules/Files/DuplicateKeyCheckerTests.cs`, and the namespace follows the folder from the root namespace `Forma.Locali.Tests` both share.
 
 - Do name a test class `{Type}Tests`, `public sealed`, and name tests like `Should_report_a_key_the_file_declares_twice` — a sentence about behaviour, not a method name.
 - Do mark the sections with explicit `// Arrange`, `// Act`, and `// Assert` comments.
@@ -16,7 +16,7 @@ One test project, `tests/Forma.Locali.Tests`, tests the one production assembly.
 
 ## Support factories
 
-Every fake, factory, and fixture lives under `tests/Forma.Locali.Tests/Support/`, in a folder mirroring the production area it serves; what no single area owns sits at the root, such as `TempDirectory`.
+Every fake, factory, and fixture lives under its test project's `Support/`, in a folder mirroring the production area it serves; what no single area owns sits at the root, such as `TempDirectory`. The tool's tests link `TempDirectory` and `LocalizationFileFakeData` from the engine's rather than keeping copies.
 
 - Do build translation-file fixtures from `LocalizationFileFakeData` and read them through `LocalizationDocumentTestFactory` rather than inlining JSON, except where the malformation under test *is* the content.
 - Do hand `LocaleFormatTestFactory.Json` to whatever takes the locale format, and its `RuntimeFormat` to the `Sources/` resolvers, so a test reads files as the shipped linter does; `StubLocaleFormat` stands in only where the format in force is what the test is about.
@@ -24,12 +24,12 @@ Every fake, factory, and fixture lives under `tests/Forma.Locali.Tests/Support/`
 - Do test a project rule through `ProjectLinterTestFactory.Check`, which resolves a project's files as the linter does and runs the one rule over them, or over placed files read as the host's folder, with the locale packs of the run passed as `packs`; `LocalePackTestFactory.Resolve` builds one from files written under its `Folder`, named apart where a test needs a pack per culture.
 - Do use `CompilationTestFactory.Unreferenced` for the syntactic path and `Referenced` for the semantic one, and their `…VisualBasic` twins for a Visual Basic source.
 - Do write on-disk fixtures through `TempDirectory`, which cleans up after the test.
-- Do register a new checker in the matching test factory — `SchemaLinterTestFactory`, `SourceLinterTestFactory.Checkers()`, or `ProjectLinterTestFactory.Checkers()` — as well as in `Program.cs`; `LintCodesTests` enforces the catalogue, unique codes, and family ranges over whatever the factories return.
+- Do register a new checker in the matching test factory — `SchemaLinterTestFactory`, `SourceLinterTestFactory.Checkers()`, or `ProjectLinterTestFactory.Checkers()` — as well as in `AddLocaliEngine`; `LintCodesTests` enforces the catalogue, unique codes, and family ranges over whatever the factories return.
 - Don't reach into the sibling Forma repository for test support; this project carries its own.
 
 ## What the unit suite cannot see
 
-`SourceLinterTestFactory` compiles a scratch class, so nothing in it exercises MSBuild loading or the Razor source generator. The test host binds an older `NuGet.Frameworks` than MSBuild takes, so a project cannot be loaded inside it; `LocaliToolRunner` runs the built linter as a process of its own over a scratch project instead, which costs seconds a test, so it is kept for what only a real load can show. A change to `Projects/` or to how callsites are found wants a run of the real tool over the sibling Forma repository as well:
+`SourceLinterTestFactory` compiles a scratch class, so nothing in it exercises MSBuild loading or the Razor source generator. The test host binds an older `NuGet.Frameworks` than MSBuild takes, so a project cannot be loaded inside it; `LocaliToolRunner`, in the tool's tests, runs the built linter as a process of its own over a scratch project instead, which costs seconds a test, so it is kept for what only a real load can show. A change to `Projects/` or to how callsites are found wants a run of the real tool over the sibling Forma repository as well:
 
 ```powershell
 dotnet run --project src/Forma.Locali -- --path ../formaui-net/Forma.slnx --exclude "*/Fixtures/*"
