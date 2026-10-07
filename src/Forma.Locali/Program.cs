@@ -2,15 +2,8 @@ namespace Forma.Locali;
 
 using Forma.Locali.Cli;
 using Forma.Locali.Configuration;
-using Forma.Locali.Documents;
-using Forma.Locali.Linting;
 using Forma.Locali.Projects;
 using Forma.Locali.Reporting;
-using Forma.Locali.Rules;
-using Forma.Locali.Rules.Files;
-using Forma.Locali.Rules.Projects;
-using Forma.Locali.Rules.Sources;
-using Forma.Locali.Sources;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -86,53 +79,7 @@ internal static class Program
         // One instance for the whole run, so a glob's usage tracked while excluding files is the same
         // tracking read back while deciding what a file's own configuration leaves out.
         builder.Services.AddSingleton<ILintingConfiguration>(_ => new LintingConfiguration(options.Path, options.Excludes));
-        builder.Services.AddSingleton<ILocaleFormat, JsonLocaleFormat>();
-        builder.Services.AddSingleton<ILintingTargetResolver, LintingTargetResolver>();
-        builder.Services.AddSingleton<ILocalizationFileLinter, LocalizationFileLinter>();
-        builder.Services.AddSingleton<IProjectLoader, MSBuildProjectLoader>();
-        // The finders are asked in this order, so the semantic one answers wherever the contract binds.
-        builder.Services.AddSingleton<ILocalizerCallsiteFinder, SemanticCallsiteFinder>();
-        builder.Services.AddSingleton<ILocalizerCallsiteFinder, CSharpSyntacticCallsiteFinder>();
-        builder.Services.AddSingleton<ILocalizerCallsiteFinder, VisualBasicSyntacticCallsiteFinder>();
-
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, RequiredFieldsChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, RequiredFieldOrderChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, UnknownFieldChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, SchemaVersionChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, CultureMatchesChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, LocalizedTextHolesChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, LocalizedTextHoleShapeChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, DuplicateKeyChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, InconsistentLocalizationChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, ReservedEntryOrderChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, ReservedKeyShapeChecker>();
-        builder.Services.AddSingleton<ILocalizationFileRuleChecker, SharedEntryChecker>();
-
-        builder.Services.AddSingleton<ICallsiteRuleChecker, MalformedExpressionChecker>();
-        builder.Services.AddSingleton<ICallsiteRuleChecker, ValueCountChecker>();
-        builder.Services.AddSingleton<ICallsiteRuleChecker, PluralArgumentChecker>();
-        builder.Services.AddSingleton<ICallsiteRuleChecker, SoleArgumentChecker>();
-        builder.Services.AddSingleton<ICallsiteRuleChecker, PluralOtherFieldChecker>();
-        builder.Services.AddSingleton<ICallsiteRuleChecker, HoleShapeChecker>();
-        builder.Services.AddSingleton<ICallsiteRuleChecker, BareHoleKeyChecker>();
-        builder.Services.AddSingleton<ICallsiteRuleChecker, BareExpressionKeyChecker>();
-        builder.Services.AddSingleton<ICallsiteRuleChecker, ReservedLookupShapeChecker>();
-        builder.Services.AddSingleton<ICallsiteRuleChecker, ReformattedLookupChecker>();
-
-        builder.Services.AddSingleton<IProjectRuleChecker, LocaleConfigPlacementChecker>();
-        builder.Services.AddSingleton<IProjectRuleChecker, RootNamespaceWithoutTypesChecker>();
-        builder.Services.AddSingleton<IProjectRuleChecker, UnreachableLocalizationChecker>();
-        builder.Services.AddSingleton<IProjectRuleChecker, LocalizationCoverageChecker>();
-        builder.Services.AddSingleton<IProjectRuleChecker, DuplicateAnchorFileChecker>();
-        builder.Services.AddSingleton<IProjectRuleChecker, TypeNamedFolderChecker>();
-        builder.Services.AddSingleton<IProjectRuleChecker, CultureCoverageChecker>();
-        builder.Services.AddSingleton<IProjectRuleChecker, LocalePackFolderChecker>();
-        builder.Services.AddSingleton<IProjectRuleChecker, LocaleSourceChecker>();
-
-        builder.Services.AddSingleton<ISchemaLinter, SchemaLinter>();
-        builder.Services.AddSingleton<ISourceLinter, SourceLinter>();
-        builder.Services.AddSingleton<IProjectLinter, ProjectLinter>();
-        builder.Services.AddSingleton<ILintingService, LintingService>();
+        builder.Services.AddLocaliEngine();
 
         builder.Services.AddSingleton<IDiagnosticReporter>(_ => new ConsoleDiagnosticReporter(Console.Out));
 
