@@ -9,11 +9,13 @@ using Forma.Locali.Documents;
 
 /// <summary>Reads a file and runs the schema rules over it, or holds a <c>.locale.json</c> among the files to the runtime's own rule.</summary>
 /// <param name="schema">Runs the rules once the file is readable.</param>
-public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalizationFileLinter
+/// <param name="localeFormat">Reads the file into its entries.</param>
+public sealed class LocalizationFileLinter(ISchemaLinter schema, ILocaleFormat localeFormat) : ILocalizationFileLinter
 {
     private static readonly byte[] MarkerUtf8 = Encoding.UTF8.GetBytes(LocalizationSchema.Marker);
 
     private readonly ISchemaLinter _schema = schema ?? throw new ArgumentNullException(nameof(schema));
+    private readonly ILocaleFormat _localeFormat = localeFormat ?? throw new ArgumentNullException(nameof(localeFormat));
 
     /// <inheritdoc />
     public async ValueTask<IReadOnlyList<LintingDiagnostic>> LintAsync(string filePath, CancellationToken cancellationToken = default)
@@ -41,9 +43,9 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema) : ILocalization
 
         var culture = LocalizationFileName.GetCulture(filePath);
 
-        if (!LocalizationDocument.TryRead(filePath, content, out var document, out var error))
+        if (!_localeFormat.TryRead(filePath, content, out var document, out var error))
         {
-            // Unreadable JSON is only this linter's business when the file claims to be a localization file.
+            // An unreadable file is only this linter's business when it claims to be a localization file.
             return HasMarker(content) || culture is not null
                 ? [Unreadable(filePath, error ?? "the file is not readable JSON")]
                 : [];

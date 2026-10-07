@@ -12,7 +12,7 @@ public sealed class LocalizationFileLinterTests
         var file = directory.Write(".locale.json", "{\n  \"paths\": [\"$RootDir/$AnchorName.$Culture$Extension\"],\n  \"rootNamespce\": \"Contoso.Widgets\"\n}");
 
         // Act
-        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create()).LintAsync(file, TestContext.Current.CancellationToken);
+        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create(), LocaleFormatTestFactory.Json).LintAsync(file, TestContext.Current.CancellationToken);
 
         // Assert
         var diagnostic = Assert.Single(diagnostics);
@@ -30,7 +30,7 @@ public sealed class LocalizationFileLinterTests
         var file = directory.Write(".locale.json", "not json");
 
         // Act
-        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create()).LintAsync(file, TestContext.Current.CancellationToken);
+        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create(), LocaleFormatTestFactory.Json).LintAsync(file, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal([LintingCodes.MalformedLocaleConfig], diagnostics.Codes());
@@ -44,7 +44,7 @@ public sealed class LocalizationFileLinterTests
         var file = directory.Write(".locale.json", """{ "rootNamespace": "Contoso.Widgets" }""");
 
         // Act
-        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create()).LintAsync(file, TestContext.Current.CancellationToken);
+        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create(), LocaleFormatTestFactory.Json).LintAsync(file, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(diagnostics);

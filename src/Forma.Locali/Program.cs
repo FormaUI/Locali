@@ -2,6 +2,7 @@ namespace Forma.Locali;
 
 using Forma.Locali.Cli;
 using Forma.Locali.Configuration;
+using Forma.Locali.Documents;
 using Forma.Locali.Linting;
 using Forma.Locali.Projects;
 using Forma.Locali.Reporting;
@@ -85,6 +86,7 @@ internal static class Program
         // One instance for the whole run, so a glob's usage tracked while excluding files is the same
         // tracking read back while deciding what a file's own configuration leaves out.
         builder.Services.AddSingleton<ILintingConfiguration>(_ => new LintingConfiguration(options.Path, options.Excludes));
+        builder.Services.AddSingleton<ILocaleFormat, JsonLocaleFormat>();
         builder.Services.AddSingleton<ILintingTargetResolver, LintingTargetResolver>();
         builder.Services.AddSingleton<ILocalizationFileLinter, LocalizationFileLinter>();
         builder.Services.AddSingleton<IProjectLoader, MSBuildProjectLoader>();

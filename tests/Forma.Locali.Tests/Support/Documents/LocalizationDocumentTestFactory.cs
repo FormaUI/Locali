@@ -15,7 +15,7 @@ public static class LocalizationDocumentTestFactory
         ArgumentException.ThrowIfNullOrEmpty(name);
         ArgumentException.ThrowIfNullOrEmpty(content);
 
-        return LocalizationDocument.TryRead(name, Encoding.UTF8.GetBytes(content), out var document, out var error)
+        return LocaleFormatTestFactory.Json.TryRead(name, Encoding.UTF8.GetBytes(content), out var document, out var error)
             ? document!
             : throw new InvalidOperationException($"'{name}' does not parse as a localization file: {error}");
     }

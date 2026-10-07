@@ -227,7 +227,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | `Cli/` | Argument parsing, options, exit codes, target resolution, the shared glob matcher |
 | `Configuration/` | Reading `.locali.json` into the linting configuration a run applies, and `.locale.json` for the runtime's rule |
 | `Diagnostics/` | `LintingCode`, the `LintingCodes` catalogue, `LintingDiagnostic` |
-| `Documents/` | Reading a locale file into ordered entries with offsets |
+| `Documents/` | The locale format, `ILocaleFormat`, and its JSON implementation, which reads a locale file into ordered entries with offsets |
 | `Linting/` | The services that drive file and schema linting |
 | `Projects/` | MSBuild loading, and binding Roslyn to the SDK's copy |
 | `Reporting/` | Console and JSON reporters |

@@ -4,7 +4,7 @@ using System.Text;
 
 using Forma.Locali.Documents;
 
-public sealed class LocalizationDocumentTests
+public sealed class JsonLocaleFormatTests
 {
     [Fact]
     public void Should_read_the_entries_inside_a_section_with_its_name()
@@ -13,7 +13,7 @@ public sealed class LocalizationDocumentTests
         var content = Encoding.UTF8.GetBytes(LocalizationFileFakeData.WithSections(("Widget", "Today", "היום"), ("Bars.Toolbar", "Bold", "מודגש")));
 
         // Act
-        var read = LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
+        var read = new JsonLocaleFormat().TryRead("Scratch.he.json", content, out var document, out _);
 
         // Assert
         Assert.True(read);
@@ -29,7 +29,7 @@ public sealed class LocalizationDocumentTests
         var content = Encoding.UTF8.GetBytes("""{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "Bars": { "Toolbar": { "Bold": "מודגש" } } }""");
 
         // Act
-        LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
+        new JsonLocaleFormat().TryRead("Scratch.he.json", content, out var document, out _);
 
         // Assert
         var entry = Assert.Single(document!.Entries, entry => !entry.IsTopLevel);
@@ -47,7 +47,7 @@ public sealed class LocalizationDocumentTests
         var content = Encoding.UTF8.GetBytes(LocalizationFileFakeData.WithSections(("Widget", "Today", "היום"), ("Gallery", "Bold", "מודגש")));
 
         // Act
-        LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
+        new JsonLocaleFormat().TryRead("Scratch.he.json", content, out var document, out _);
 
         // Assert
         Assert.Equal([0, 1, 2], document!.Entries.Select(entry => entry.PropertyIndex));
@@ -67,7 +67,7 @@ public sealed class LocalizationDocumentTests
             """);
 
         // Act
-        var read = LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
+        var read = new JsonLocaleFormat().TryRead("Scratch.he.json", content, out var document, out _);
 
         // Assert
         Assert.True(read);
@@ -81,7 +81,7 @@ public sealed class LocalizationDocumentTests
         var content = Encoding.UTF8.GetBytes("""{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "Today": "היום", }""");
 
         // Act
-        var read = LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
+        var read = new JsonLocaleFormat().TryRead("Scratch.he.json", content, out var document, out _);
 
         // Assert
         Assert.True(read);
@@ -95,7 +95,7 @@ public sealed class LocalizationDocumentTests
         var content = Encoding.UTF8.GetBytes(LocalizationFileFakeData.Valid);
 
         // Act
-        LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
+        new JsonLocaleFormat().TryRead("Scratch.he.json", content, out var document, out _);
 
         // Assert
         Assert.True(document!.Entries[0].IsTopLevel);
@@ -108,7 +108,7 @@ public sealed class LocalizationDocumentTests
         var content = Encoding.UTF8.GetBytes("""{ "$localization": "SchemaVersion: 1.0.0; Culture: he;", "Widget": { "list": ["first", "second"], "mixed": ["first", 1], "next": "x" } }""");
 
         // Act
-        LocalizationDocument.TryRead("Scratch.he.json", content, out var document, out _);
+        new JsonLocaleFormat().TryRead("Scratch.he.json", content, out var document, out _);
 
         // Assert
         var entries = document!.Entries.Where(entry => entry.Section == "Widget").ToList();

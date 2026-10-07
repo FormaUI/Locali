@@ -27,7 +27,7 @@ public static class LintingServiceTestFactory
             Options.Create(new LinterOptions { Path = path, MinimumSeverity = minimumSeverity }),
             new LintingTargetResolver(lintingConfiguration),
             projectLoader ?? new StubProjectLoader(),
-            new LocalizationFileLinter(SchemaLinterTestFactory.Create()),
+            new LocalizationFileLinter(SchemaLinterTestFactory.Create(), LocaleFormatTestFactory.Json),
             new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers()),
             new ProjectLinter(ProjectLinterTestFactory.Checkers(lintingConfiguration)),
             lintingConfiguration);
