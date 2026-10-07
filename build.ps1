@@ -18,7 +18,7 @@ $ErrorActionPreference = 'Stop'
 
 $root = $PSScriptRoot
 $solution = Join-Path $root 'Forma.Locali.slnx'
-$tests = Join-Path $root 'tests/Forma.Locali.Tests'
+$tests = @('tests/Forma.Locali.Engine.Tests', 'tests/Forma.Locali.Tests') | ForEach-Object { Join-Path $root $_ }
 $artifacts = Join-Path $root 'artifacts'
 
 if ($Clean) {
@@ -36,10 +36,12 @@ if ($LASTEXITCODE -ne 0) {
     throw 'dotnet build failed.'
 }
 
-Write-Host 'Testing'
-dotnet test $tests --no-build -nologo
-if ($LASTEXITCODE -ne 0) {
-    throw 'dotnet test failed.'
+foreach ($project in $tests) {
+    Write-Host "Testing $(Split-Path $project -Leaf)"
+    dotnet test $project --no-build -nologo
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet test failed for $(Split-Path $project -Leaf)."
+    }
 }
 
 Write-Host 'Checking formatting'

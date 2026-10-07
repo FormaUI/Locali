@@ -6,5 +6,6 @@
     <Project Path="src\Forma.Locali\Forma.Locali.csproj" />
 
     <!-- Tests -->
+    <Project Path="tests\Forma.Locali.Engine.Tests\Forma.Locali.Engine.Tests.csproj" />
     <Project Path="tests\Forma.Locali.Tests\Forma.Locali.Tests.csproj" />
 </Solution>
