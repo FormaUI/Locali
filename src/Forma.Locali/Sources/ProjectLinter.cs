@@ -2,14 +2,17 @@ namespace Forma.Locali.Sources;
 
 using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
+using Forma.Locali.Documents;
 using Forma.Locali.Projects;
 using Forma.Locali.Rules;
 
 /// <summary>Resolves a project's locale files once, then lets every project rule read them.</summary>
 /// <param name="checkers">The rules to run over each project.</param>
-public sealed class ProjectLinter(IEnumerable<IProjectRuleChecker> checkers) : IProjectLinter
+/// <param name="localeFormat">Reads the project's locale files as the runtime reads them.</param>
+public sealed class ProjectLinter(IEnumerable<IProjectRuleChecker> checkers, ILocaleFormat localeFormat) : IProjectLinter
 {
     private readonly IEnumerable<IProjectRuleChecker> _checkers = checkers ?? throw new ArgumentNullException(nameof(checkers));
+    private readonly ILocaleFormat _localeFormat = localeFormat ?? throw new ArgumentNullException(nameof(localeFormat));
 
     /// <inheritdoc />
     public IReadOnlyList<LintingDiagnostic> Lint(LoadedProject project, IReadOnlyList<string> localizationFiles, IReadOnlyList<LocalizerLookup> callsites, IReadOnlyList<LocalePack> packs)
@@ -22,9 +25,9 @@ public sealed class ProjectLinter(IEnumerable<IProjectRuleChecker> checkers) : I
         var context = new ProjectContext(
             project,
             localizationFiles,
-            ProjectLocaleFiles.Resolve(project, localizationFiles, packs),
+            ProjectLocaleFiles.Resolve(_localeFormat.RuntimeFormat, project, localizationFiles, packs),
             callsites,
-            HostLocaleFiles.Resolve(project, localizationFiles),
+            HostLocaleFiles.Resolve(_localeFormat.RuntimeFormat, project, localizationFiles),
             packs.FirstOrDefault(pack => pack.Project == project));
 
         var refusal = default(LocaleConfigException);

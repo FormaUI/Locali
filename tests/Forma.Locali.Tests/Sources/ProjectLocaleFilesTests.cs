@@ -33,7 +33,7 @@ public sealed class ProjectLocaleFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, "Forma.Framework");
 
         // Act
-        var resolved = Assert.Single(ProjectLocaleFiles.Resolve(project, [file])!.Files);
+        var resolved = Assert.Single(ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!.Files);
 
         // Assert
         Assert.Equal("Forma.Framework.Emojis..locales.he.json", resolved.Name);
@@ -66,7 +66,7 @@ public sealed class ProjectLocaleFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedResourceNames: resourceNames);
 
         // Act
-        var resolved = Assert.Single(ProjectLocaleFiles.Resolve(project, [file])!.Files);
+        var resolved = Assert.Single(ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!.Files);
 
         // Assert
         Assert.Equal("Contoso.Widgets..locales.he.json", resolved.Name);
@@ -125,7 +125,7 @@ public sealed class ProjectLocaleFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>());
 
         // Act
-        var resolved = ProjectLocaleFiles.Resolve(project, [file])!;
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!;
 
         // Assert
         Assert.Empty(resolved.Files);
@@ -160,7 +160,7 @@ public sealed class ProjectLocaleFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), null, false, false);
 
         // Act
-        var resolved = ProjectLocaleFiles.Resolve(project, [directory.Write(Path.Combine(".locales", "he.json"), LocalizationFileFakeData.Valid)]);
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [directory.Write(Path.Combine(".locales", "he.json"), LocalizationFileFakeData.Valid)]);
 
         // Assert
         Assert.Null(resolved);
@@ -176,7 +176,7 @@ public sealed class ProjectLocaleFilesTests
         var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
 
         // Act
-        var resolved = ProjectLocaleFiles.Resolve(target, [], [pack])!;
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, target, [], [pack])!;
 
         // Assert
         var entry = Assert.Single(resolved.Read("Contoso.Widgets.Bars.Widget", CultureInfo.GetCultureInfo("he")));
@@ -201,7 +201,7 @@ public sealed class ProjectLocaleFilesTests
         var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
 
         // Act
-        var resolved = ProjectLocaleFiles.Resolve(target, [config], [pack])!;
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, target, [config], [pack])!;
 
         // Assert
         Assert.Multiple(
@@ -220,7 +220,7 @@ public sealed class ProjectLocaleFilesTests
         var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
 
         // Act
-        var resolved = ProjectLocaleFiles.Resolve(target, [own], [pack])!;
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, target, [own], [pack])!;
 
         // Assert
         var entries = resolved.Read("Contoso.Widgets.Bars.Widget", CultureInfo.GetCultureInfo("he"));
@@ -237,7 +237,7 @@ public sealed class ProjectLocaleFilesTests
         var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
 
         // Act
-        var resolved = ProjectLocaleFiles.Resolve(target, [], [pack])!;
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, target, [], [pack])!;
 
         // Assert
         Assert.Multiple(
@@ -255,7 +255,7 @@ public sealed class ProjectLocaleFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Contoso.Widgets.Locales.Hebrew.csproj"), Compile(string.Empty), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true);
 
         // Act
-        var resolved = ProjectLocaleFiles.Resolve(project, [file]);
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file]);
 
         // Assert
         Assert.Null(resolved);
@@ -269,5 +269,5 @@ public sealed class ProjectLocaleFilesTests
         => new(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), compilation.WithAssemblyName("Contoso.Widgets"), false, false, EmbeddedResourceNames: resourceNames ?? new Dictionary<string, string>());
 
     private static ProjectLocalization Resolve(TempDirectory directory, Compilation compilation, params string[] files)
-        => ProjectLocaleFiles.Resolve(new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false), files)!;
+        => ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false), files)!;
 }

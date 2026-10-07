@@ -1,7 +1,6 @@
 namespace Forma.Locali.Sources;
 
 using Forma.Framework.Localization.Files;
-using Forma.Framework.Localization.Json;
 using Forma.Locali.Documents;
 using Forma.Locali.Projects;
 
@@ -10,10 +9,12 @@ public static class HostLocaleFiles
 {
     /// <summary>Every culture-named file in the host's folder the project does not embed, with the anchors the runtime places it at.</summary>
     /// <remarks>The host's folder is the one the runtime reads by default, <c>.locales</c> at the project's root, copied beside the application rather than embedded; the anchors are counted from each assembly's name, which the two forms a host may write a file in share whatever root namespace the assembly declares.</remarks>
+    /// <param name="format">The format the files are written in, read as the runtime reads it.</param>
     /// <param name="project">The project whose folder holds the host's files.</param>
     /// <param name="localizationFiles">The locale files this project owns, which the target attributed.</param>
-    public static IReadOnlyList<PlacedLocaleFile> Resolve(LoadedProject project, IReadOnlyCollection<string> localizationFiles)
+    public static IReadOnlyList<PlacedLocaleFile> Resolve(ILocaleFileFormat format, LoadedProject project, IReadOnlyCollection<string> localizationFiles)
     {
+        ArgumentNullException.ThrowIfNull(format);
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
@@ -25,7 +26,7 @@ public static class HostLocaleFiles
 
         var hostFolder = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(project.Path))!, LocaleConfig.DefaultLocalesDir);
         var hostPrefix = hostFolder + Path.DirectorySeparatorChar;
-        var source = new HostLocaleSource(hostFolder, new JsonLocaleFileFormat(), static _ => null);
+        var source = new HostLocaleSource(hostFolder, format, static _ => null);
         var files = new List<PlacedLocaleFile>();
 
         foreach (var file in localizationFiles)

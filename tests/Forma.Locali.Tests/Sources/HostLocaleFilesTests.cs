@@ -87,7 +87,7 @@ public sealed class HostLocaleFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), null, false, false);
 
         // Act
-        var placed = HostLocaleFiles.Resolve(project, [file]);
+        var placed = HostLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file]);
 
         // Assert
         Assert.Empty(placed);
@@ -97,5 +97,5 @@ public sealed class HostLocaleFilesTests
         => Resolve(directory, new Dictionary<string, string>(), files);
 
     private static IReadOnlyList<PlacedLocaleFile> Resolve(TempDirectory directory, IReadOnlyDictionary<string, string> resourceNames, params string[] files)
-        => HostLocaleFiles.Resolve(new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), null, false, false, EmbeddedResourceNames: resourceNames), files);
+        => HostLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), null, false, false, EmbeddedResourceNames: resourceNames), files);
 }

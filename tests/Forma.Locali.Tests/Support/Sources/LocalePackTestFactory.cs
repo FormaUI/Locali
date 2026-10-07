@@ -44,6 +44,6 @@ public static class LocalePackTestFactory
             EmbeddedResourceNames: resourceNames,
             IsLocalePack: true);
 
-        return LocalePackFiles.Resolve(pack, files, new LoadedProjects([pack, target], IsWholeSolution: true))!;
+        return LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, files, new LoadedProjects([pack, target], IsWholeSolution: true))!;
     }
 }

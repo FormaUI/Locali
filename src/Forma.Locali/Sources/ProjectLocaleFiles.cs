@@ -3,7 +3,6 @@ namespace Forma.Locali.Sources;
 using System.Globalization;
 
 using Forma.Framework.Localization.Files;
-using Forma.Framework.Localization.Json;
 using Forma.Locali.Documents;
 using Forma.Locali.Projects;
 
@@ -11,11 +10,13 @@ using Forma.Locali.Projects;
 public static class ProjectLocaleFiles
 {
     /// <summary>Every readable culture-named file the project embeds, and every pack folder naming its assembly, resolved against the compilation, or null when the project would not load or is a locale pack, whose files are other assemblies'.</summary>
+    /// <param name="format">The format the files are written in, read as the runtime reads it.</param>
     /// <param name="project">The project the files belong to.</param>
     /// <param name="localizationFiles">The locale files this project owns, which the target attributed.</param>
     /// <param name="packs">Every locale pack of the run, none unless given.</param>
-    public static ProjectLocalization? Resolve(LoadedProject project, IReadOnlyCollection<string> localizationFiles, IReadOnlyList<LocalePack>? packs = null)
+    public static ProjectLocalization? Resolve(ILocaleFileFormat format, LoadedProject project, IReadOnlyCollection<string> localizationFiles, IReadOnlyList<LocalePack>? packs = null)
     {
+        ArgumentNullException.ThrowIfNull(format);
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
@@ -29,7 +30,6 @@ public static class ProjectLocaleFiles
 
         // The SDK embeds under RootNamespace, which a project may declare apart from its assembly name.
         var root = project.RootNamespace ?? compilation.AssemblyName!;
-        var format = new JsonLocaleFileFormat();
         var files = new List<ProjectLocaleFile>();
 
         foreach (var file in localizationFiles)

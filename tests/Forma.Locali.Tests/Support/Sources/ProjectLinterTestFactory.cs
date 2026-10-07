@@ -42,7 +42,7 @@ public static class ProjectLinterTestFactory
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
-        return new ProjectLinter([checker]).Lint(project, localizationFiles, callsites ?? [], packs ?? []);
+        return new ProjectLinter([checker], LocaleFormatTestFactory.Json).Lint(project, localizationFiles, callsites ?? [], packs ?? []);
     }
 
     /// <summary>What one project rule reports over files already placed, read as the host's folder.</summary>

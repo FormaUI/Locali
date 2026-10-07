@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using Forma.Locali.Cli;
 using Forma.Locali.Configuration;
 using Forma.Locali.Diagnostics;
+using Forma.Locali.Documents;
 using Forma.Locali.Projects;
 using Forma.Locali.Sources;
 
@@ -18,6 +19,7 @@ using Microsoft.Extensions.Options;
 /// <param name="sourcesLinter">Checks the keys written at callsites.</param>
 /// <param name="projectLinter">Checks a project's locale files read whole.</param>
 /// <param name="lintingConfiguration">The one <c>.locali.json</c> the run applies.</param>
+/// <param name="localeFormat">Reads a locale pack's files as the runtime reads them.</param>
 public sealed class LintingService(
     IOptions<LinterOptions> options,
     ILintingTargetResolver resolver,
@@ -25,7 +27,8 @@ public sealed class LintingService(
     ILocalizationFileLinter localizationFileLinter,
     ISourceLinter sourcesLinter,
     IProjectLinter projectLinter,
-    ILintingConfiguration lintingConfiguration) : ILintingService
+    ILintingConfiguration lintingConfiguration,
+    ILocaleFormat localeFormat) : ILintingService
 {
     private static readonly IReadOnlySet<LintingCode> NoConfigIgnores = new HashSet<LintingCode>();
 
@@ -36,6 +39,7 @@ public sealed class LintingService(
     private readonly ISourceLinter _sources = sourcesLinter ?? throw new ArgumentNullException(nameof(sourcesLinter));
     private readonly IProjectLinter _projects = projectLinter ?? throw new ArgumentNullException(nameof(projectLinter));
     private readonly ILintingConfiguration _lintingConfiguration = lintingConfiguration ?? throw new ArgumentNullException(nameof(lintingConfiguration));
+    private readonly ILocaleFormat _localeFormat = localeFormat ?? throw new ArgumentNullException(nameof(localeFormat));
 
     /// <inheritdoc />
     public async ValueTask<LintingResult> RunAsync(CancellationToken cancellationToken = default)
@@ -139,7 +143,7 @@ public sealed class LintingService(
 
         // The project rules wait for every project, since a locale pack's folders are resolved against the whole run and read for the projects they name.
         var projects = new LoadedProjects([.. linted.Select(entry => entry.Project)], target.IsSolution);
-        var packs = LocalePackFiles.ResolveAll(projects, target.LocalizationFilesOf);
+        var packs = LocalePackFiles.ResolveAll(_localeFormat.RuntimeFormat, projects, target.LocalizationFilesOf);
 
         foreach (var (project, sources) in linted)
         {

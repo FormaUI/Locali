@@ -18,7 +18,7 @@ public sealed class LocalePackFilesTests
         var target = Project(directory, CompilationTestFactory.Building("Contoso.Widgets", Widget));
 
         // Act
-        var resolved = LocalePackFiles.Resolve(pack, [file], new LoadedProjects([pack, target], IsWholeSolution: true))!;
+        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, target], IsWholeSolution: true))!;
 
         // Assert
         var folder = Assert.Single(resolved.Folders);
@@ -39,7 +39,7 @@ public sealed class LocalePackFilesTests
         var host = Project(directory, CompilationTestFactory.Building("Contoso.Host").AddReferences(CompilationTestFactory.Building("Contoso.Widgets", Widget).ToMetadataReference()));
 
         // Act
-        var folder = Assert.Single(LocalePackFiles.Resolve(pack, [file], new LoadedProjects([pack, host], IsWholeSolution: true))!.Folders);
+        var folder = Assert.Single(LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, host], IsWholeSolution: true))!.Folders);
 
         // Assert
         Assert.Multiple(
@@ -57,7 +57,7 @@ public sealed class LocalePackFilesTests
         var target = Project(directory, CompilationTestFactory.Building("Contoso.Widgets", Widget));
 
         // Act
-        var folder = Assert.Single(LocalePackFiles.Resolve(pack, [file], new LoadedProjects([pack, target], IsWholeSolution: true))!.Folders);
+        var folder = Assert.Single(LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, target], IsWholeSolution: true))!.Folders);
 
         // Assert
         Assert.Multiple(
@@ -75,7 +75,7 @@ public sealed class LocalePackFilesTests
         var pack = Pack(directory, file);
 
         // Act
-        var resolved = LocalePackFiles.Resolve(pack, [file], new LoadedProjects([pack], IsWholeSolution: false))!;
+        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack], IsWholeSolution: false))!;
 
         // Assert
         Assert.False(resolved.IsEveryAssemblyKnown);
@@ -91,7 +91,7 @@ public sealed class LocalePackFilesTests
         var broken = Project(directory, null);
 
         // Act
-        var resolved = LocalePackFiles.Resolve(pack, [file], new LoadedProjects([pack, broken], IsWholeSolution: true))!;
+        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, broken], IsWholeSolution: true))!;
 
         // Assert
         Assert.False(resolved.IsEveryAssemblyKnown);
@@ -106,7 +106,7 @@ public sealed class LocalePackFilesTests
         var pack = Pack(directory, file);
 
         // Act
-        var folder = Assert.Single(LocalePackFiles.Resolve(pack, [file], new LoadedProjects([pack], IsWholeSolution: true))!.Folders);
+        var folder = Assert.Single(LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack], IsWholeSolution: true))!.Folders);
 
         // Assert
         Assert.Multiple(
@@ -123,7 +123,7 @@ public sealed class LocalePackFilesTests
         var pack = Pack(directory, file);
 
         // Act
-        var resolved = LocalePackFiles.Resolve(pack, [file], new LoadedProjects([pack], IsWholeSolution: true))!;
+        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack], IsWholeSolution: true))!;
 
         // Assert
         Assert.Empty(resolved.Folders);
@@ -138,7 +138,7 @@ public sealed class LocalePackFilesTests
         var pack = new LoadedProject(Path.Combine(directory.Root, "Contoso.Widgets.Locales.Hebrew.csproj"), CompilationTestFactory.Building("Contoso.Widgets.Locales.Hebrew"), false, false, EmbeddedResourceNames: new Dictionary<string, string>(), IsLocalePack: true);
 
         // Act
-        var resolved = LocalePackFiles.Resolve(pack, [file], new LoadedProjects([pack], IsWholeSolution: true))!;
+        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack], IsWholeSolution: true))!;
 
         // Assert
         Assert.Empty(resolved.Folders);
@@ -153,7 +153,7 @@ public sealed class LocalePackFilesTests
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(Widget), false, false, EmbeddedResourceNames: Names(directory, file));
 
         // Act
-        var resolved = LocalePackFiles.Resolve(project, [file], new LoadedProjects([project], IsWholeSolution: true));
+        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file], new LoadedProjects([project], IsWholeSolution: true));
 
         // Assert
         Assert.Null(resolved);
@@ -168,7 +168,7 @@ public sealed class LocalePackFilesTests
         var pack = new LoadedProject(Path.Combine(directory.Root, "Contoso.Widgets.Locales.Hebrew.csproj"), CompilationTestFactory.Building("Contoso.Widgets.Locales.Hebrew"), false, false, IsLocalePack: true);
 
         // Act
-        var resolved = LocalePackFiles.Resolve(pack, [file], new LoadedProjects([pack], IsWholeSolution: true));
+        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack], IsWholeSolution: true));
 
         // Assert
         Assert.Null(resolved);

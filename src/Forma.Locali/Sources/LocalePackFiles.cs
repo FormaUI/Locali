@@ -2,7 +2,7 @@ namespace Forma.Locali.Sources;
 
 using System.Globalization;
 
-using Forma.Framework.Localization.Json;
+using Forma.Framework.Localization.Files;
 using Forma.Locali.Documents;
 using Forma.Locali.Projects;
 
@@ -12,11 +12,13 @@ using Microsoft.CodeAnalysis;
 public static class LocalePackFiles
 {
     /// <summary>The pack's folders, each named for an assembly and resolved to the project in the run that builds it, or null when the project is not a locale pack or its items were not read.</summary>
+    /// <param name="format">The format the files are written in, read as the runtime reads it.</param>
     /// <param name="project">The project the files belong to.</param>
     /// <param name="localizationFiles">The locale files this project owns, which the target attributed.</param>
     /// <param name="projects">Every project the run loaded, which the folders are resolved against.</param>
-    public static LocalePack? Resolve(LoadedProject project, IReadOnlyCollection<string> localizationFiles, LoadedProjects projects)
+    public static LocalePack? Resolve(ILocaleFileFormat format, LoadedProject project, IReadOnlyCollection<string> localizationFiles, LoadedProjects projects)
     {
+        ArgumentNullException.ThrowIfNull(format);
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
         ArgumentNullException.ThrowIfNull(projects);
@@ -28,7 +30,6 @@ public static class LocalePackFiles
         }
 
         var projectDirectory = Path.GetDirectoryName(Path.GetFullPath(project.Path))!;
-        var format = new JsonLocaleFileFormat();
         var folders = new Dictionary<string, List<ProjectLocaleFile>>(StringComparer.Ordinal);
 
         foreach (var file in localizationFiles)
@@ -92,16 +93,18 @@ public static class LocalePackFiles
     }
 
     /// <summary>Every locale pack of the run, each resolved against the run's projects.</summary>
+    /// <param name="format">The format the files are written in, read as the runtime reads it.</param>
     /// <param name="projects">Every project the run loaded.</param>
     /// <param name="localizationFilesOf">The locale files a project owns, by the project's path.</param>
-    public static IReadOnlyList<LocalePack> ResolveAll(LoadedProjects projects, Func<string, IReadOnlyList<string>> localizationFilesOf)
+    public static IReadOnlyList<LocalePack> ResolveAll(ILocaleFileFormat format, LoadedProjects projects, Func<string, IReadOnlyList<string>> localizationFilesOf)
     {
+        ArgumentNullException.ThrowIfNull(format);
         ArgumentNullException.ThrowIfNull(projects);
         ArgumentNullException.ThrowIfNull(localizationFilesOf);
 
         return [.. projects.All
             .Where(project => project.IsLocalePack)
-            .Select(project => Resolve(project, localizationFilesOf(project.Path), projects))
+            .Select(project => Resolve(format, project, localizationFilesOf(project.Path), projects))
             .OfType<LocalePack>()];
     }
 }

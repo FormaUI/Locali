@@ -29,7 +29,8 @@ public static class LintingServiceTestFactory
             projectLoader ?? new StubProjectLoader(),
             new LocalizationFileLinter(SchemaLinterTestFactory.Create(), LocaleFormatTestFactory.Json),
             new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers()),
-            new ProjectLinter(ProjectLinterTestFactory.Checkers(lintingConfiguration)),
-            lintingConfiguration);
+            new ProjectLinter(ProjectLinterTestFactory.Checkers(lintingConfiguration), LocaleFormatTestFactory.Json),
+            lintingConfiguration,
+            LocaleFormatTestFactory.Json);
     }
 }
