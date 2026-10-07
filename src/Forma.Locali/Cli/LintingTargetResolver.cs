@@ -1,15 +1,19 @@
 namespace Forma.Locali.Cli;
 
+using Forma.Framework.Localization.Files;
 using Forma.Locali.Configuration;
+using Forma.Locali.Documents;
 
 /// <summary>Reads a path as a solution, a project, a directory or a single file.</summary>
 /// <param name="lintingConfiguration">Leaves out whatever the run's configuration excludes, from its <c>.locali.json</c> and its command line alike.</param>
-public sealed class LintingTargetResolver(ILintingConfiguration lintingConfiguration) : ILintingTargetResolver
+/// <param name="localeFormat">Names the extension a locale file ends in.</param>
+public sealed class LintingTargetResolver(ILintingConfiguration lintingConfiguration, ILocaleFormat localeFormat) : ILintingTargetResolver
 {
     private static readonly string[] SourceExtensions = [".cs", ".vb", ".razor"];
     private static readonly string[] ProjectPatterns = ["*.csproj", "*.vbproj"];
 
     private readonly ILintingConfiguration _lintingConfiguration = lintingConfiguration ?? throw new ArgumentNullException(nameof(lintingConfiguration));
+    private readonly ILocaleFormat _localeFormat = localeFormat ?? throw new ArgumentNullException(nameof(localeFormat));
 
     /// <inheritdoc />
     public LintingTarget Resolve(string path)
@@ -57,15 +61,15 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
         => file.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
             .Any(static segment => segment is "bin" or "obj");
 
-    private static IEnumerable<string> Walk(string folder)
+    private IEnumerable<string> Walk(string folder)
         => Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories)
             .Where(static file => !IsBuildOutput(file))
-            .Where(static file => IsLocalizationFile(file) || IsSourceFile(file) || IsConfigurationFile(file));
+            .Where(file => IsLocalizationFile(file) || IsSourceFile(file) || IsConfigurationFile(file));
 
-    // The linting configuration file ends in .json like a locale file, but it is never one.
-    private static bool IsLocalizationFile(string file)
-        => Path.GetExtension(file).Equals(".json", StringComparison.OrdinalIgnoreCase)
-            && !Path.GetFileName(file).Equals(LintingConfiguration.FileName, StringComparison.OrdinalIgnoreCase);
+    // The runtime's config file is read whatever the locale format; the linting configuration file may end like a locale file, but it is never one.
+    private bool IsLocalizationFile(string file)
+        => Path.GetFileName(file).Equals(LocaleConfig.FileName, StringComparison.OrdinalIgnoreCase)
+            || (Path.GetExtension(file).Equals(_localeFormat.RuntimeFormat.Extension, StringComparison.OrdinalIgnoreCase) && !IsConfigurationFile(file));
 
     private static bool IsSourceFile(string file)
         => SourceExtensions.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase);

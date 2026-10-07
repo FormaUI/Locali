@@ -10,10 +10,39 @@ public sealed class LintingTargetResolverTests
         var file = directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Valid);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(file)).Resolve(file);
+        var target = new LintingTargetResolver(new LintingConfiguration(file), LocaleFormatTestFactory.Json).Resolve(file);
 
         // Assert
         Assert.Equal([file], target.LocalizationFiles);
+    }
+
+    [Fact]
+    public void Should_read_only_the_files_of_the_locale_format_as_localization_files()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write("he.yaml", "Today: היום");
+        directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Valid);
+
+        // Act
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), new StubLocaleFormat(".yaml")).Resolve(directory.Root);
+
+        // Assert
+        Assert.Equal([file], target.LocalizationFiles);
+    }
+
+    [Fact]
+    public void Should_read_the_runtime_config_file_whatever_the_locale_format()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var config = directory.Write(".locale.json", "{}");
+
+        // Act
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), new StubLocaleFormat(".yaml")).Resolve(directory.Root);
+
+        // Assert
+        Assert.Equal([config], target.LocalizationFiles);
     }
 
     [Fact]
@@ -24,7 +53,7 @@ public sealed class LintingTargetResolverTests
         var file = directory.Write("Widget.cs", "class Widget;");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(file)).Resolve(file);
+        var target = new LintingTargetResolver(new LintingConfiguration(file), LocaleFormatTestFactory.Json).Resolve(file);
 
         // Assert
         Assert.Equal([file], target.SourceFiles);
@@ -38,7 +67,7 @@ public sealed class LintingTargetResolverTests
         var file = directory.Write("Widget.vb", "Class Widget\nEnd Class");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(file)).Resolve(file);
+        var target = new LintingTargetResolver(new LintingConfiguration(file), LocaleFormatTestFactory.Json).Resolve(file);
 
         // Assert
         Assert.Equal([file], target.SourceFiles);
@@ -53,7 +82,7 @@ public sealed class LintingTargetResolverTests
         directory.Write("Nested/Widget.vb", "Class Widget\nEnd Class");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(project)).Resolve(project);
+        var target = new LintingTargetResolver(new LintingConfiguration(project), LocaleFormatTestFactory.Json).Resolve(project);
 
         // Assert
         Assert.Multiple(
@@ -69,7 +98,7 @@ public sealed class LintingTargetResolverTests
         var file = directory.Write("Widget.razor", "<p>x</p>");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(file)).Resolve(file);
+        var target = new LintingTargetResolver(new LintingConfiguration(file), LocaleFormatTestFactory.Json).Resolve(file);
 
         // Assert
         Assert.Equal([file], target.SourceFiles);
@@ -86,7 +115,7 @@ public sealed class LintingTargetResolverTests
         directory.Write("Widget.razor", "<p>x</p>");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Multiple(
@@ -103,7 +132,7 @@ public sealed class LintingTargetResolverTests
         directory.Write("obj/Widget.razor", "<p>x</p>");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Empty(target.SourceFiles);
@@ -113,7 +142,7 @@ public sealed class LintingTargetResolverTests
     public void Should_report_nothing_for_a_path_that_does_not_exist()
     {
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(Path.GetTempPath())).Resolve(Path.Combine(Path.GetTempPath(), "forma-absent-a3f1"));
+        var target = new LintingTargetResolver(new LintingConfiguration(Path.GetTempPath()), LocaleFormatTestFactory.Json).Resolve(Path.Combine(Path.GetTempPath(), "forma-absent-a3f1"));
 
         // Assert
         Assert.Equal(0, target.FileCount);
@@ -128,7 +157,7 @@ public sealed class LintingTargetResolverTests
         directory.Write("Nested/Widget.cs", "class Widget;");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Equal([project], target.Projects);
@@ -143,7 +172,7 @@ public sealed class LintingTargetResolverTests
         directory.Write("Widget.cs", "class Widget;");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(project)).Resolve(project);
+        var target = new LintingTargetResolver(new LintingConfiguration(project), LocaleFormatTestFactory.Json).Resolve(project);
 
         // Assert
         Assert.Multiple(
@@ -162,7 +191,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Scratch", "Widget.cs"), "class Widget;");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(solution)).Resolve(solution);
+        var target = new LintingTargetResolver(new LintingConfiguration(solution), LocaleFormatTestFactory.Json).Resolve(solution);
 
         // Assert
         Assert.Multiple(
@@ -194,7 +223,7 @@ public sealed class LintingTargetResolverTests
         var file = directory.Write(Path.Combine("Components", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Valid);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Equal([file], target.LocalizationFilesOf(project));
@@ -210,7 +239,7 @@ public sealed class LintingTargetResolverTests
         var file = directory.Write(Path.Combine("Nested", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Valid);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Multiple(
@@ -227,7 +256,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", "Broken.he.json"), LocalizationFileFakeData.Unmarked);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/Fixtures/*"])).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/Fixtures/*"]), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Equal([kept], target.LocalizationFiles);
@@ -241,7 +270,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", "Broken.he.json"), LocalizationFileFakeData.Unmarked);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/fixtures/*"])).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/fixtures/*"]), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Empty(target.LocalizationFiles);
@@ -255,7 +284,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", "Widget.cs"), "class Widget;");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/Fixtures/*"])).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/Fixtures/*"]), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Empty(target.SourceFiles);
@@ -269,7 +298,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", "Broken.he.json"), LocalizationFileFakeData.Unmarked);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Single(target.LocalizationFiles);
@@ -285,7 +314,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", "Broken.he.json"), LocalizationFileFakeData.Unmarked);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(project, ["*/Fixtures/*"])).Resolve(project);
+        var target = new LintingTargetResolver(new LintingConfiguration(project, ["*/Fixtures/*"]), LocaleFormatTestFactory.Json).Resolve(project);
 
         // Assert
         Assert.Multiple(
@@ -301,7 +330,7 @@ public sealed class LintingTargetResolverTests
         var file = directory.Write(Path.Combine("Fixtures", "Broken.he.json"), LocalizationFileFakeData.Unmarked);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(file, ["*/Fixtures/*"])).Resolve(file);
+        var target = new LintingTargetResolver(new LintingConfiguration(file, ["*/Fixtures/*"]), LocaleFormatTestFactory.Json).Resolve(file);
 
         // Assert
         Assert.Empty(target.LocalizationFiles);
@@ -316,7 +345,7 @@ public sealed class LintingTargetResolverTests
         directory.Write("Widget.cs", "class Widget;");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Empty(target.LocalizationFilesOf(project));
@@ -331,7 +360,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", "Widget.he.json"), LocalizationFileFakeData.Valid);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Empty(target.LocalizationFiles);
@@ -346,7 +375,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Valid);
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Equal([LocalizationFileFakeData.HebrewName], target.LocalizationFiles.Select(Path.GetFileName));
@@ -361,7 +390,7 @@ public sealed class LintingTargetResolverTests
         directory.Write("Widget.he.json", "{}");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root)).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Multiple(
@@ -378,7 +407,7 @@ public sealed class LintingTargetResolverTests
         directory.Write(Path.Combine("Fixtures", ".locali.json"), "not json");
 
         // Act
-        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/Fixtures/*"])).Resolve(directory.Root);
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root, ["*/Fixtures/*"]), LocaleFormatTestFactory.Json).Resolve(directory.Root);
 
         // Assert
         Assert.Equal([root], target.ConfigurationFiles);
