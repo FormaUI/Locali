@@ -33,7 +33,7 @@ dotnet run --project src/Forma.Locali -- --path <target>
 Lint a whole solution, skipping the test fixtures that are malformed on purpose:
 
 ```powershell
-locali --path ../Forma/Forma.slnx --exclude "*/Fixtures/*"
+locali --path ../formaui-net/Forma.slnx --exclude "*/Fixtures/*"
 ```
 
 Errors are reported by default; `--severity warning` reads the warnings as well. The examples

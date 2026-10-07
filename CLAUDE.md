@@ -17,7 +17,7 @@ Detailed standards live in `.claude/skills/` and load on demand. Read the matchi
 
 - Do use [README.md](README.md) for everything about the tool itself: the CLI, every rule and where it stays silent, the source layout, how to add a rule, and how the linter runs on the SDK's compiler. It is the authority; this file only says what the repository around it expects.
 - Do read `.editorconfig` before writing C#; it is the authority on style, and the root file and `tests/.editorconfig` differ deliberately.
-- Do treat the sibling **Forma** repository (`c:\Users\eyal\Development\Projects\Forma`) as the reference for how the runtime behaves; a rule is right when it reports exactly what `Forma.Framework.Localization` will get wrong at run time.
+- Do treat the sibling **Forma** repository (`c:\Users\eyal\Development\Projects\formaui-net`) as the reference for how the runtime behaves; a rule is right when it reports exactly what `Forma.Framework.Localization` will get wrong at run time.
 - Don't invent scope, status, or style rules when an authoritative file defines them.
 
 ## Solution structure
@@ -30,7 +30,7 @@ Forma.Locali.slnx
 └── tests/Forma.Locali.Tests    # its only test project
 ```
 
-- Do keep the dependency on the runtime as cross-repository `ProjectReference`s into `..\Forma\src\Forma.Framework\Forma.Framework.Localization`, whose file layout and parsers the rules call, and `..\Forma\src\Forma.Framework\Forma.Framework.Localization.Json`, whose format reads the files. The Forma repository must sit beside this one for the solution to build.
+- Do keep the dependency on the runtime as cross-repository `ProjectReference`s into `..\formaui-net\src\Forma.Framework\Forma.Framework.Localization`, whose file layout and parsers the rules call, and `..\formaui-net\src\Forma.Framework\Forma.Framework.Localization.Json`, whose format reads the files. The Forma repository must sit beside this one, in a folder named `formaui-net`, for the solution to build.
 - Do compile against the real runtime rather than re-implementing any of its parsing here; the linter's promise is that a rule and the runtime cannot disagree, and it keeps that promise by calling the runtime's own parser, plural rules, and schema types.
 - Do keep a folder and its namespace in step, so `src/Forma.Locali/Rules/Files/` holds `Forma.Locali.Rules.Files`.
 - Do reference the narrowest thing that supplies what the code uses, give every project its own reference for what it uses directly, and keep no reference no code uses.
@@ -87,7 +87,7 @@ dotnet build Forma.Locali.slnx -p:GenerateDocumentationFile=true --no-incrementa
 - Do finish by running the tool itself over the sibling Forma repository when a change touches what a rule reports:
 
   ```powershell
-  dotnet run --project src/Forma.Locali -- --path ../Forma/Forma.slnx --exclude "*/Fixtures/*"
+  dotnet run --project src/Forma.Locali -- --path ../formaui-net/Forma.slnx --exclude "*/Fixtures/*"
   ```
 
 ## Working agreement

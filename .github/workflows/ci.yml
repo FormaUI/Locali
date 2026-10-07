@@ -37,14 +37,14 @@ jobs:
         with:
           repository: FormaUI/Forma
           ref: main
-          path: Forma
+          path: formaui-net
           ssh-key: ${{ secrets.FORMA_DEPLOY_KEY }}
 
       # The SDK Forma pins, which is the one the linter is built and run with.
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:
-          global-json-file: Forma/global.json
+          global-json-file: formaui-net/global.json
 
       - name: Run the gate
         working-directory: Forma.Locali
@@ -55,5 +55,5 @@ jobs:
         env:
           NuGetPackageSourceCredentials_formaui: Username=${{ github.actor }};Password=${{ secrets.GITHUB_TOKEN }}
         run: |
-          dotnet restore ../Forma/Forma.slnx
-          dotnet run --project src/Forma.Locali --no-build -- --path ../Forma/Forma.slnx --exclude "*/Fixtures/*"
+          dotnet restore ../formaui-net/Forma.slnx
+          dotnet run --project src/Forma.Locali --no-build -- --path ../formaui-net/Forma.slnx --exclude "*/Fixtures/*"
