@@ -93,9 +93,71 @@ public sealed class HostLocaleFilesTests
         Assert.Empty(placed);
     }
 
+    [Fact]
+    public void Should_place_a_file_embedded_as_the_hosts_by_its_path_in_the_hosts_folder()
+    {
+        // Arrange — the build names the file for that path, its folders joined by dots after the host's prefix.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = ".locales.Contoso.Widgets.Bars.he.json" };
+
+        // Act
+        var placed = Assert.Single(ResolveEmbedded(directory, resourceNames, file));
+
+        // Assert
+        Assert.Equal(["Contoso.Widgets.Bars"], placed.AnchorNames);
+    }
+
+    [Fact]
+    public void Should_leave_a_file_embedded_as_the_hosts_out_of_the_copied_folder()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = ".locales.Contoso.Widgets.he.json" };
+
+        // Act
+        var placed = Resolve(directory, resourceNames, file);
+
+        // Assert
+        Assert.Empty(placed);
+    }
+
+    [Fact]
+    public void Should_leave_a_copied_hosts_file_out_of_the_embedded_ones()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var placed = ResolveEmbedded(directory, new Dictionary<string, string>(), file);
+
+        // Assert
+        Assert.Empty(placed);
+    }
+
+    [Fact]
+    public void Should_leave_a_file_embedded_under_a_name_of_the_projects_own_to_the_assembly()
+    {
+        // Arrange — a project file may embed a file in an assembly's folder under a name it gives the file itself.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Scratch..locales.Contoso.Widgets.he.json" };
+
+        // Act
+        var placed = ResolveEmbedded(directory, resourceNames, file);
+
+        // Assert
+        Assert.Empty(placed);
+    }
+
     private static IReadOnlyList<PlacedLocaleFile> Resolve(TempDirectory directory, params string[] files)
         => Resolve(directory, new Dictionary<string, string>(), files);
 
     private static IReadOnlyList<PlacedLocaleFile> Resolve(TempDirectory directory, IReadOnlyDictionary<string, string> resourceNames, params string[] files)
         => HostLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), null, false, false, EmbeddedResourceNames: resourceNames), files);
+
+    private static IReadOnlyList<PlacedLocaleFile> ResolveEmbedded(TempDirectory directory, IReadOnlyDictionary<string, string> resourceNames, params string[] files)
+        => HostLocaleFiles.ResolveEmbedded(LocaleFormatTestFactory.Json.RuntimeFormat, new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), null, false, false, EmbeddedResourceNames: resourceNames), files);
 }

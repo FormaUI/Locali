@@ -41,11 +41,11 @@ public static class ProjectLocaleFiles
 
             var fullPath = Path.GetFullPath(file);
 
-            // A file the project does not embed is the host's own, copied beside the application, and translates other assemblies' types.
+            // A file the project does not embed, or embeds under the host's prefix, is the host's, and translates other assemblies' types.
             string name;
             if (project.EmbeddedResourceNames is { } resourceNames)
             {
-                if (!resourceNames.TryGetValue(fullPath, out var resourceName))
+                if (!resourceNames.TryGetValue(fullPath, out var resourceName) || HostLocaleFiles.IsHostResourceName(resourceName))
                 {
                     continue;
                 }

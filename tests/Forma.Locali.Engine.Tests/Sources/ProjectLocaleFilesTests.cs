@@ -132,6 +132,22 @@ public sealed class ProjectLocaleFilesTests
     }
 
     [Fact]
+    public void Should_skip_a_file_the_project_embeds_as_the_hosts()
+    {
+        // Arrange — an application embeds a host's file for another assembly under the prefix the build reserves for one.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Forma.Blazor", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = ".locales.Forma.Blazor.he.json" };
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedResourceNames: resourceNames);
+
+        // Act
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!;
+
+        // Assert
+        Assert.Empty(resolved.Files);
+    }
+
+    [Fact]
     public void Should_list_every_type_the_project_declares()
     {
         // Arrange

@@ -262,6 +262,21 @@ public sealed class UnreachableLocalizationCheckerTests
     }
 
     [Fact]
+    public void Should_leave_a_file_embedded_as_the_hosts_alone()
+    {
+        // Arrange — an application embeds a host's file for another assembly, whose types the project does not declare.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Forma.Blazor", "Components", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = ".locales.Forma.Blazor.Components.Bars.he.json" };
+
+        // Act
+        var diagnostics = Lint(directory, Widget, resourceNames, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_report_nothing_when_the_project_owns_no_locale_files()
     {
         // Arrange

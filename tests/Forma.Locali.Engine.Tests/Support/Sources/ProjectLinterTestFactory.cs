@@ -53,7 +53,7 @@ public static class ProjectLinterTestFactory
         ArgumentNullException.ThrowIfNull(checker);
         ArgumentNullException.ThrowIfNull(files);
 
-        var context = new ProjectContext(new LoadedProject("Scratch.csproj", null, false, false), [], null, [], files);
+        var context = new ProjectContext(new LoadedProject("Scratch.csproj", null, false, false), [], null, [], files, []);
         checker.Check(context);
 
         return context.Reported;

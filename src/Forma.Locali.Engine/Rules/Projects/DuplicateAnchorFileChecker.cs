@@ -15,7 +15,8 @@ public sealed class DuplicateAnchorFileChecker : IProjectRuleChecker
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // The host's folder is a source of its own, checked first because placing the embedded files can meet a config the runtime refuses.
+        // The host's files are two sources of their own, those the application embeds and those copied beside it, checked first because placing the embedded files can meet a config the runtime refuses.
+        Check(context, context.EmbeddedHostFiles);
         Check(context, context.HostFiles);
 
         if (context.Localization is not { } localization)

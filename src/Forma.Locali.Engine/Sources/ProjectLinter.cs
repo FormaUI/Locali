@@ -28,6 +28,7 @@ public sealed class ProjectLinter(IEnumerable<IProjectRuleChecker> checkers, ILo
             ProjectLocaleFiles.Resolve(_localeFormat.RuntimeFormat, project, localizationFiles, packs),
             callsites,
             HostLocaleFiles.Resolve(_localeFormat.RuntimeFormat, project, localizationFiles),
+            HostLocaleFiles.ResolveEmbedded(_localeFormat.RuntimeFormat, project, localizationFiles),
             packs.FirstOrDefault(pack => pack.Project == project));
 
         var refusal = default(LocaleConfigException);

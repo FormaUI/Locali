@@ -32,6 +32,32 @@ public sealed class MSBuildProjectLoaderTests
         """;
 
     [Fact]
+    public async Task Should_read_a_file_embedded_under_the_hosts_prefix_as_the_hosts()
+    {
+        // Arrange — an application's build embeds a host's file for another assembly under its path after .locales., and the project declares none of that assembly's types.
+        using var directory = new TempDirectory();
+        var project = directory.Write("Contoso.Host.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+              </PropertyGroup>
+              <ItemGroup>
+                <EmbeddedResource Include=".locales\Contoso.Widgets\Bars\he.json" WithCulture="false" LogicalName=".locales.Contoso.Widgets.Bars.he.json" />
+              </ItemGroup>
+            </Project>
+            """);
+        directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var (exitCode, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", project);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(0, exitCode),
+            () => Assert.DoesNotContain(LintingCodes.UnreachableLocalization.Id, output, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Should_load_a_locale_pack_as_a_pack_rather_than_as_the_owner_of_its_files()
     {
         // Arrange

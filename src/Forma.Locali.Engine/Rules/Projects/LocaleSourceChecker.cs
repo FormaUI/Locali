@@ -85,7 +85,7 @@ public sealed class LocaleSourceChecker(ILintingConfiguration lintingConfigurati
         return (target, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(target.Path))!, relative[(separator + 1)..]));
     }
 
-    // A pack's every file is the pack's; a file the project embeds is the assembly's own or a satellite's by what the build did with it; a file in the project's own .locales folder that it does not embed is the host's.
+    // A pack's every file is the pack's; a file the project embeds under the host's prefix is the host's, and any other it embeds is the assembly's own or a satellite's by what the build did with it; a file in the project's own .locales folder that it does not embed is the host's.
     private static LocaleSources? GetSource(LoadedProject project, string fullPath, string hostFolder)
     {
         if (project.IsLocalePack)
@@ -93,8 +93,13 @@ public sealed class LocaleSourceChecker(ILintingConfiguration lintingConfigurati
             return LocaleSources.Pack;
         }
 
-        if (project.EmbeddedResourceNames!.ContainsKey(fullPath))
+        if (project.EmbeddedResourceNames!.TryGetValue(fullPath, out var resourceName))
         {
+            if (HostLocaleFiles.IsHostResourceName(resourceName))
+            {
+                return LocaleSources.Host;
+            }
+
             return project.SatelliteFiles?.Contains(fullPath) == true ? LocaleSources.Satellite : LocaleSources.Embedded;
         }
 

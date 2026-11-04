@@ -42,7 +42,8 @@ in `suppressedCount` and named in the console brief.
 `localeSources` pairs a glob with the places a locale file it matches may come from, any of
 `embedded`, a file the assembly embeds in itself; `satellite`, one the build moves into a
 satellite assembly; `pack`, one a locale pack carries; and `host`, one laid in the host's
-`.locales` folder. An allow list cannot be merged, so the last line matching a file speaks for
+`.locales` folder, whether an application embeds it or it is copied beside the application. An
+allow list cannot be merged, so the last line matching a file speaks for
 it: lines are written general first and specific after, and a line that allows nothing,
 `"**": []`, put first, makes every locale file one a later line has to claim. A file no line
 matches has no policy. A locale pack's file is matched where it stands in the project it
@@ -320,8 +321,9 @@ every culture its files carry, under the name the build gives each file, an expl
 folder for the project is read the same way, laid out by the project's root namespace, so a
 pack's file is reported where it sits in the pack.
 
-**Silent where.** The run did not name the project's files; the file is one the project does not
-embed — a host's folder, which translates other assemblies' types; the file is a locale pack's
+**Silent where.** The run did not name the project's files; the file is a host's, one the
+project does not embed or embeds under the `.locales.` name the build gives a host's file, which
+translates other assemblies' types; the file is a locale pack's
 whose folder names no project of the run, which LOC0024 reports; or the project's items could
 not be read and the file sits under a folder the build renames to embed it, such as `my-folder`,
 so its name cannot be told.
@@ -378,9 +380,10 @@ paths or through a host's two forms of a file. Each file is reported, naming the
 they share a key the later wins without a word, and a file meant to be moved rather than copied
 keeps answering from where it was left.
 
-**What fixes it.** Keep one. The rule reads a project's embedded files as one source, the
-host's `.locales` folder at the project's root as another, and each locale pack's folder for the
-project as another, in which a file may sit in a folder's own `.locales` or directly in the
+**What fixes it.** Keep one. The rule reads a project's embedded files as one source; the
+host's `.locales` folder at the project's root as two, the files an application embeds from it
+and the files copied beside it; and each locale pack's folder for the project as another. In a
+host's folder and a pack's, a file may sit in a folder's own `.locales` or directly in the
 folder. It is a warning because both files load.
 
 ### LOC0118 — A folder named for a type
