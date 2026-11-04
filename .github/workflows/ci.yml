@@ -14,8 +14,6 @@ concurrency:
 
 permissions:
   contents: read
-  # Forma's restore can reach the organization's private feed.
-  packages: read
 
 jobs:
   gate:
@@ -38,7 +36,6 @@ jobs:
           repository: FormaUI/Forma
           ref: dev
           path: formaui-net
-          ssh-key: ${{ secrets.FORMA_DEPLOY_KEY }}
 
       # The SDK Forma pins, which is the one the linter is built and run with.
       - name: Set up .NET
@@ -52,8 +49,6 @@ jobs:
 
       - name: Lint Forma
         working-directory: Forma.Locali
-        env:
-          NuGetPackageSourceCredentials_formaui: Username=${{ github.actor }};Password=${{ secrets.GITHUB_TOKEN }}
         run: |
           dotnet restore ../formaui-net/Forma.slnx
           dotnet run --project src/Forma.Locali --no-build -- --path ../formaui-net/Forma.slnx --exclude "*/Fixtures/*"

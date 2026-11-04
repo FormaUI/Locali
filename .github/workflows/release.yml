@@ -37,7 +37,6 @@ jobs:
           repository: FormaUI/Forma
           ref: dev
           path: formaui-net
-          ssh-key: ${{ secrets.FORMA_DEPLOY_KEY }}
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
@@ -62,11 +61,12 @@ jobs:
         working-directory: Forma.Locali
         run: dotnet pack src/Forma.Locali -c Release -o "${{ runner.temp }}/package" -nologo
 
+      # The user is the nuget.org account that made the policy.
       - name: Get a nuget.org key
         id: login
         uses: NuGet/login@v1
         with:
-          user: ${{ secrets.NUGET_USER }}
+          user: soyeyalon
 
       - name: Push to nuget.org
         run: dotnet nuget push "${{ runner.temp }}/package/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
