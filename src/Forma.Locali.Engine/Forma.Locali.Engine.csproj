@@ -23,8 +23,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\formaui-net\src\Forma.Framework\Forma.Framework.Localization\Forma.Framework.Localization.csproj" />
-        <ProjectReference Include="..\..\..\formaui-net\src\Forma.Framework\Forma.Framework.Localization.Json\Forma.Framework.Localization.Json.csproj" />
+        <ProjectReference Include="..\..\..\formaui-net\src\Framework\Forma.Framework.Localization\Forma.Framework.Localization.csproj" />
+        <ProjectReference Include="..\..\..\formaui-net\src\Framework\Forma.Framework.Localization.Json\Forma.Framework.Localization.Json.csproj" />
     </ItemGroup>
 
 </Project>

@@ -32,7 +32,7 @@ Forma.Locali.slnx
 └── tests/Forma.Locali.Tests          # the tool's tests, and the loads only a run of the built tool shows
 ```
 
-- Do keep the dependency on the runtime as cross-repository `ProjectReference`s from the engine into `..\formaui-net\src\Forma.Framework\Forma.Framework.Localization`, whose file layout and parsers the rules call, and `..\formaui-net\src\Forma.Framework\Forma.Framework.Localization.Json`, whose format reads the files. The Forma repository must sit beside this one, in a folder named `formaui-net`, for the solution to build.
+- Do keep the dependency on the runtime as cross-repository `ProjectReference`s from the engine into `..\formaui-net\src\Framework\Forma.Framework.Localization`, whose file layout and parsers the rules call, and `..\formaui-net\src\Framework\Forma.Framework.Localization.Json`, whose format reads the files. The Forma repository must sit beside this one, in a folder named `formaui-net`, for the solution to build.
 - Do compile against the real runtime rather than re-implementing any of its parsing here; the linter's promise is that a rule and the runtime cannot disagree, and it keeps that promise by calling the runtime's own parser, plural rules, and schema types.
 - Do keep a folder and its namespace in step from the project's root namespace, which is `Forma.Locali` in both source projects and `Forma.Locali.Tests` in both test projects, so `src/Forma.Locali.Engine/Rules/Files/` holds `Forma.Locali.Rules.Files`.
 - Do reference the narrowest thing that supplies what the code uses, give every project its own reference for what it uses directly, and keep no reference no code uses.
