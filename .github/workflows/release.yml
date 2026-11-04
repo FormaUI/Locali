@@ -1,0 +1,72 @@
+# Publishes a release tag's package to nuget.org through Trusted Publishing, once the gate passes on the tagged commit.
+name: Release
+
+on:
+  push:
+    tags: ['*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag to publish, such as 1.0.0-preview.10.
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      # nuget.org exchanges the job's OIDC token for a key that lasts an hour.
+      id-token: write
+
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+    steps:
+      # The solution references Forma's runtime beside it, so both repositories are checked out side by side, Forma at the branch its runtime is developed on.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          path: Forma.Locali
+
+      - uses: actions/checkout@v7
+        with:
+          repository: FormaUI/Forma
+          ref: dev
+          path: formaui-net
+          ssh-key: ${{ secrets.FORMA_DEPLOY_KEY }}
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: formaui-net/global.json
+
+      - name: Check the tag names the project's version
+        working-directory: Forma.Locali
+        shell: pwsh
+        run: |
+          [xml] $project = Get-Content src/Forma.Locali/Forma.Locali.csproj
+          $version = $project.SelectSingleNode('//PropertyGroup/Version').InnerText -replace '\+.*$', ''
+          if ($version -ne $env:RELEASE_TAG) {
+              throw "The tag $env:RELEASE_TAG does not name the project's version, $version."
+          }
+
+      - name: Run the gate
+        working-directory: Forma.Locali
+        run: pwsh ./build.ps1
+
+      - name: Pack
+        working-directory: Forma.Locali
+        run: dotnet pack src/Forma.Locali -c Release -o "${{ runner.temp }}/package" -nologo
+
+      - name: Get a nuget.org key
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to nuget.org
+        run: dotnet nuget push "${{ runner.temp }}/package/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

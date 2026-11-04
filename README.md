@@ -310,6 +310,19 @@ is passed, so a package always matches a tagged, pushed commit. A run that stops
 commit or its tag picks up from them when run again with the same version. `-WhatIf` runs every
 check and lists the commit, tag, pack and pushes a release would make, without making them.
 
+A pushed release tag runs `.github/workflows/release.yml`, which checks that the tag names the
+project's version, runs `build.ps1` on the tagged commit, packs it, and pushes the package to
+nuget.org through Trusted Publishing, with a key nuget.org issues for that run alone; a version
+nuget.org already holds is skipped. The workflow can also be run by hand for a tag pushed before
+it existed:
+
+```powershell
+gh workflow run release.yml -f tag=1.0.0-preview.10
+```
+
+It reads the nuget.org user name from the repository secret `NUGET_USER`, and nuget.org's
+trusted publishing policy names this repository and `release.yml`.
+
 ### Roslyn Is The SDK's Compiler
 
 The Razor generator ships inside the SDK, built against the SDK's own Roslyn, and Roslyn refuses
