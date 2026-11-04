@@ -19,8 +19,8 @@
         <Authors>Eyal Alon</Authors>
         <Description>A linter for Forma.Framework.Localization: reads locale files against the runtime's rules and every IStringLocale callsite against what the runtime will do with it.</Description>
         <PackageTags>localization;linter;blazor;forma</PackageTags>
-        <PackageProjectUrl>https://github.com/FormaUI/Forma.Locali</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/FormaUI/Forma.Locali</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/FormaUI/Locali</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/FormaUI/Locali</RepositoryUrl>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
