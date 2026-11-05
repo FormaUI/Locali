@@ -1,16 +1,18 @@
-# Runs the gate a person runs, then lints Forma, which lints clean, so anything reported there is a regression.
+# Runs the fast gate a person runs, then lints Forma, which lints clean, so anything reported there is a regression. It
+# runs on every push but main's, which promotion fast-forwards to a commit candidate's full gate passed, and on every
+# pull request.
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches-ignore: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
+# A newer push to a pull request supersedes the older run; every commit on a branch keeps its own result.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
