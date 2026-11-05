@@ -9,3 +9,5 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 - The package links each of its assemblies to the commit it was built from through Source Link, carries its symbols
   in a `.snupkg` beside it, and names this entry as its release notes.
+- The package is published to nuget.org alone; the FormaUI organization's GitHub Packages feed receives no new
+  version.

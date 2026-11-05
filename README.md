@@ -290,38 +290,23 @@ clean, so anything a rule reports there is a false positive. It does not cover e
 callsite can take — nothing there passes a values collection whole — so those belong in unit
 tests.
 
-### Publishing
+### Releasing
 
-`publish.ps1` releases a version: it commits the version to the project file, packs the tool in
-Release, marks the commit with a signed annotated tag named for the version, pushes the commit
-and the tag to the branch's upstream together, and pushes the package:
-
-```powershell
-./publish.ps1 -Source GitHub -Version 1.0.0-preview.5   # the organization's feed, with the GitHub CLI's token
-./publish.ps1 -Source NuGet -Version 1.0.0-preview.5    # nuget.org, with the key in NUGET_API_KEY
-./publish.ps1 -Source All -Version 1.0.0-preview.5
-```
-
-The source is matched without regard to case. The GitHub CLI's token needs the `write:packages`
-scope, which `gh auth refresh -h github.com -s write:packages` adds. Before changing anything the
-script refuses a version any chosen feed already holds, a version whose tag marks another
-commit, a branch behind its upstream, and a working tree with uncommitted changes unless `-Force`
-is passed, so a package always matches a tagged, pushed commit. A run that stops after its release
-commit or its tag picks up from them when run again with the same version. `-WhatIf` runs every
-check and lists the commit, tag, pack and pushes a release would make, without making them.
-
-A pushed release tag runs `.github/workflows/release.yml`, which checks that the tag names the
-project's version, runs `build.ps1` on the tagged commit, packs it, and pushes the package to
-nuget.org through Trusted Publishing, with a key nuget.org issues for that run alone; a push
-nuget.org refuses, a version it already holds among them, fails the run with nuget.org's reason.
-The workflow can also be run by hand for a tag pushed before it existed:
+A release follows Versioning's
+[releases](https://github.com/FormaUI/Versioning/blob/v1.0.0-preview.1/docs/releases.md): the
+version and the changelog entry's date are set on `dev`, `candidate` fast-forwards to `dev`'s tip
+so `full.yml` runs on it, a pull request from `candidate` into `main` passes the promotion check
+and `main` fast-forwards to it, and a release signer tags `main`:
 
 ```powershell
-gh workflow run release.yml -f tag=1.0.0-preview.10
+git tag -s v1.0.0-preview.11 -m "Locali 1.0.0-preview.11"
+git push origin v1.0.0-preview.11
 ```
 
-It reads the nuget.org user name from the repository secret `NUGET_USER`, and nuget.org's
-trusted publishing policy names this repository and `release.yml`.
+The tag's push runs `release.yml`, which holds the tag to the release check, attaches the package
+`full.yml` verified to the tag's GitHub release with its digest, and publishes it to nuget.org
+through trusted publishing, as `soyeyalon`, the account whose policy names this repository and
+`release.yml`. A failed publication runs again for the same tag.
 
 ### Roslyn Is The SDK's Compiler
 
