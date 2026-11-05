@@ -1,0 +1,71 @@
+# Runs the full gate on the candidate: the fast gate on Linux and Windows, the package packed and verified as a
+# consumer receives it, and Forma linted. Its passing run on a push to candidate is the one the promotion and release
+# checks look for on the exact commit, and the packages it keeps are the ones the release publishes.
+name: Full
+
+on:
+  push:
+    branches: [candidate]
+  workflow_dispatch:
+
+# A candidate superseded on candidate before its run finished is no longer the one to promote.
+concurrency:
+  group: full-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      # The solution references Forma's runtime beside it, so both repositories are checked out side by side, Forma at the branch its runtime is developed on.
+      - uses: actions/checkout@v7
+        with:
+          path: Forma.Locali
+
+      - uses: actions/checkout@v7
+        with:
+          repository: FormaUI/Forma
+          ref: dev
+          path: formaui-net
+
+      # The SDK Forma pins, which is the one the linter is built and run with.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: formaui-net/global.json
+
+      # The package is packed and verified once, on Linux, and the release publishes that package.
+      - name: Run the full gate
+        if: runner.os == 'Linux'
+        working-directory: Forma.Locali
+        run: pwsh ./build.ps1 -Full
+
+      - name: Run the gate
+        if: runner.os != 'Linux'
+        working-directory: Forma.Locali
+        run: pwsh ./build.ps1
+
+      - name: Lint Forma
+        working-directory: Forma.Locali
+        run: |
+          dotnet restore ../formaui-net/Forma.slnx
+          dotnet run --project src/Forma.Locali --no-build -- --path ../formaui-net/Forma.slnx --exclude "*/Fixtures/*"
+
+      - name: Keep the verified packages
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: Forma.Locali/artifacts/packages/
+          if-no-files-found: error
+          retention-days: 90
