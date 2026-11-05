@@ -15,14 +15,19 @@
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>locali</ToolCommandName>
         <PackageId>formaui-net.Locali</PackageId>
-        <Version>1.0.0-preview.10</Version>
+        <Version>1.0.0-preview.11</Version>
         <Authors>Eyal Alon</Authors>
         <Description>A linter for Forma.Framework.Localization: reads locale files against the runtime's rules and every IStringLocale callsite against what the runtime will do with it.</Description>
         <PackageTags>localization;linter;blazor;forma</PackageTags>
         <PackageProjectUrl>https://github.com/FormaUI/Locali</PackageProjectUrl>
         <RepositoryUrl>https://github.com/FormaUI/Locali</RepositoryUrl>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageReleaseNotes>https://github.com/FormaUI/Locali/blob/v$(Version)/CHANGELOG.md#$(Version.Replace('.', ''))</PackageReleaseNotes>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <EnablePackageValidation>true</EnablePackageValidation>
     </PropertyGroup>
 
     <ItemGroup>
