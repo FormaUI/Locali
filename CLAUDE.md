@@ -16,6 +16,7 @@ Detailed standards live in `.claude/skills/` and load on demand. Read the matchi
 ## Source of truth
 
 - Do use [README.md](README.md) for everything about the tool itself: the CLI, every rule and where it stays silent, the source layout, how to add a rule, and how the linter runs on the SDK's compiler. It is the authority; this file only says what the repository around it expects.
+- Do follow [FormaUI/Versioning `v1.0.0-preview.1`](https://github.com/FormaUI/Versioning/blob/v1.0.0-preview.1/README.md) for versions, branches, commits, releases and the package; the README's *Versioning* section states what it leaves to Locali.
 - Do read `.editorconfig` before writing C#; it is the authority on style, and the root file and `tests/.editorconfig` differ deliberately.
 - Do treat the sibling **Forma** repository (`c:\Users\eyal\Development\Projects\formaui-net`) as the reference for how the runtime behaves; a rule is right when it reports exactly what `Forma.Framework.Localization` will get wrong at run time.
 - Don't invent scope, status, or style rules when an authoritative file defines them.
@@ -85,6 +86,7 @@ dotnet build Forma.Locali.slnx -p:GenerateDocumentationFile=true --no-incrementa
 ```
 
 - Do require build, tests, and the format check to pass before offering work for review.
+- Do run `./build.ps1 -Full`, the full gate, after a change to the package, its project file or `package-files.txt`; it packs the tool and verifies the package as a consumer installs it.
 - Do run the `CS1591` sweep after adding or changing public API, and ignore the hits under `tests/`, which are test method names.
 - Do run the format check rather than trusting the build; it catches using-directive ordering and line endings that compilation ignores.
 - Do finish by running the tool itself over the sibling Forma repository when a change touches what a rule reports:
