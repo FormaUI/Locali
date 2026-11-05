@@ -15,12 +15,13 @@ Two things go wrong quietly in a localized codebase, and a build catches neither
 
 ## Quick Start
 
-The binary is `locali`, shipped as the dotnet tool `formaui-net.Locali`. A repository pins it in its tool
-manifest and restores it, so every machine runs one version:
+The binary is `locali`, shipped on nuget.org as the dotnet tool `formaui-net.Locali`. A repository
+pins it in its tool manifest and restores it, so every machine runs one version; a preview
+installs only when it's asked for:
 
 ```powershell
 dotnet new tool-manifest
-dotnet tool install formaui-net.Locali
+dotnet tool install formaui-net.Locali --prerelease
 dotnet locali --path <target>
 ```
 
@@ -280,8 +281,10 @@ dotnet format Forma.Locali.slnx --verify-no-changes
 
 `tests/Forma.Locali.Engine.Tests` tests the engine, and `tests/Forma.Locali.Tests` tests the
 tool: its command line, its reporters, and the project loads only a run of the built tool can
-show. `build.ps1` runs the build, both test projects and the format check, and `-Clean` removes every `bin`,
-`obj` and `artifacts` folder first so they start from nothing.
+show. `build.ps1` runs the build, both test projects and the format check, the fast gate, and `-Clean` removes
+every `bin`, `obj` and `artifacts` folder first so they start from nothing. `build.ps1 -Full` runs the
+full gate: the fast gate, then it packs the tool and verifies the package, as [Versioning](#versioning)
+sets out.
 
 `SourceLinterTestFactory.Lint` compiles a class body against the real `IStringLocale` and
 returns what the callsite rules report, so a rule is tested against a bound compilation rather
@@ -289,6 +292,33 @@ than a stub. Run a new rule over the sibling Forma repository before trusting it
 clean, so anything a rule reports there is a false positive. It does not cover every shape a
 callsite can take — nothing there passes a values collection whole — so those belong in unit
 tests.
+
+### Versioning
+
+Locali follows [FormaUI/Versioning `v1.0.0-preview.1`](https://github.com/FormaUI/Versioning/blob/v1.0.0-preview.1/README.md), which sets out how
+it versions, branches, commits, releases and packages its work, and leaves Locali to state:
+
+- **Its public contract** is the command line: the [options](#options), the console output's format
+  and the exit codes under [Output](#output), the JSON report `--report` writes, and the rule ids in
+  the [rules](#rules) tables, each with what it reports and its severity.
+- **Its version** is declared once, by `Version` in
+  [`src/Forma.Locali/Forma.Locali.csproj`](src/Forma.Locali/Forma.Locali.csproj), and the package,
+  the release's tag and the [changelog](CHANGELOG.md) repeat it.
+- **Its fast gate** is `./build.ps1`, which `ci.yml` runs on every push but `main`'s and on every
+  pull request, with a lint of the sibling Forma's `dev`. **Its full gate** is `./build.ps1 -Full`,
+  which packs the tool, checks the package against its inventory, installs it from a local feed
+  outside the checkout and runs it over a sample project; `full.yml` runs it on every push to
+  `candidate`, with the fast gate on Windows and the lint of Forma, and keeps the verified package
+  as the artifact `packages`.
+- **Its package** is `formaui-net.Locali` on nuget.org, a .NET tool for `net11.0` whose command is
+  `locali`, depending on no package. It holds the files
+  [`package-files.txt`](src/Forma.Locali/package-files.txt) lists, with its symbols beside it as a
+  `.snupkg`; the SDK builds a tool's symbol package from the `.pdb` files the tool holds, so those
+  stay in the package as well.
+- **Its release** is published by `release.yml`, as [Releasing](#releasing) sets out.
+- **Its changelog** is [`CHANGELOG.md`](CHANGELOG.md).
+
+A commit's message follows Versioning's [commits](https://github.com/FormaUI/Versioning/blob/v1.0.0-preview.1/docs/commits.md).
 
 ### Releasing
 
