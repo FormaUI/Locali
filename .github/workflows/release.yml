@@ -1,65 +1,51 @@
-# Publishes a release tag's package to nuget.org through Trusted Publishing, once the gate passes on the tagged commit.
+# Publishes a release from its signed vX.Y.Z tag on main. The release check of FormaUI/Versioning, at the release Locali
+# follows, holds the tag first; the package candidate's full gate built and verified is then attached to the tag's
+# GitHub release with its digest, and published to nuget.org through trusted publishing. A failed publication runs again
+# for the same tag.
 name: Release
 
 on:
   push:
-    tags: ['*.*.*']
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: The release tag to publish, such as 1.0.0-preview.10.
-        required: true
+    tags: ['v*']
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  publish:
+  release:
+    name: Release
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
-      # nuget.org exchanges the job's OIDC token for a key that lasts an hour.
+      # The release-packages step writes the tag's GitHub release.
+      contents: write
+      actions: read
+      pull-requests: read
+      # nuget.org exchanges the job's OIDC token for a key that lasts an hour, through its policy for this workflow.
       id-token: write
 
-    env:
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-
     steps:
-      # The solution references Forma's runtime beside it, so both repositories are checked out side by side, Forma at the branch its runtime is developed on.
       - uses: actions/checkout@v7
+
+      - name: Hold the tag to the release check
+        id: check
+        uses: FormaUI/Versioning/actions/release-check@68ff74cadbe94084384d29be93466713fd989b53 # v1.0.0-preview.1
         with:
-          ref: ${{ env.RELEASE_TAG }}
-          path: Forma.Locali
+          gate-workflow: full.yml
+          version-command: "([xml] (Get-Content src/Forma.Locali/Forma.Locali.csproj)).SelectSingleNode('//PropertyGroup/Version').InnerText"
+          packages-artifact: packages
 
-      - uses: actions/checkout@v7
+      - name: Attach the release's packages
+        id: packages
+        uses: FormaUI/Versioning/actions/release-packages@68ff74cadbe94084384d29be93466713fd989b53 # v1.0.0-preview.1
         with:
-          repository: FormaUI/Forma
-          ref: dev
-          path: formaui-net
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: formaui-net/global.json
-
-      - name: Check the tag names the project's version
-        working-directory: Forma.Locali
-        shell: pwsh
-        run: |
-          [xml] $project = Get-Content src/Forma.Locali/Forma.Locali.csproj
-          $version = $project.SelectSingleNode('//PropertyGroup/Version').InnerText -replace '\+.*$', ''
-          if ($version -ne $env:RELEASE_TAG) {
-              throw "The tag $env:RELEASE_TAG does not name the project's version, $version."
-          }
-
-      - name: Run the gate
-        working-directory: Forma.Locali
-        run: pwsh ./build.ps1
-
-      - name: Pack
-        working-directory: Forma.Locali
-        run: dotnet pack src/Forma.Locali -c Release -o "${{ runner.temp }}/package" -nologo
+          gate-run-id: ${{ steps.check.outputs.gate-run-id }}
+          packages-artifact: packages
+          name: Locali
 
       # The user is the nuget.org account that made the policy.
       - name: Get a nuget.org key
@@ -68,5 +54,39 @@ jobs:
         with:
           user: soyeyalon
 
-      - name: Push to nuget.org
-        run: dotnet nuget push "${{ runner.temp }}/package/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
+      # A package nuget.org holds already was published by an earlier run for this tag; pushing a package pushes its
+      # symbol package beside it.
+      - name: Publish to nuget.org
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+          PACKAGES: ${{ steps.packages.outputs.directory }}
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          foreach ($package in Get-ChildItem -LiteralPath $env:PACKAGES -Filter '*.nupkg') {
+              $archive = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
+              try {
+                  $entry = $archive.Entries | Where-Object { $_.FullName -notmatch '/' -and $_.Name -like '*.nuspec' } | Select-Object -First 1
+                  $reader = [System.IO.StreamReader]::new($entry.Open())
+                  try {
+                      $metadata = ([xml] $reader.ReadToEnd()).package.metadata
+                  }
+                  finally {
+                      $reader.Dispose()
+                  }
+              }
+              finally {
+                  $archive.Dispose()
+              }
+
+              $index = Invoke-RestMethod "https://api.nuget.org/v3-flatcontainer/$($metadata.id.ToLowerInvariant())/index.json" -SkipHttpErrorCheck -StatusCodeVariable status
+              if ($status -eq 200 -and $index.versions -contains $metadata.version.ToLowerInvariant()) {
+                  Write-Host "nuget.org already holds $($metadata.id) $($metadata.version)."
+                  continue
+              }
+
+              dotnet nuget push $package.FullName --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Pushing $($package.Name) to nuget.org failed."
+              }
+          }

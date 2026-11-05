@@ -1,0 +1,30 @@
+# Holds every pull request into main to the promotion check of FormaUI/Versioning, at the release Locali follows: it
+# comes from candidate, candidate's full gate passed on its head commit and still holds the packages it built, and the
+# version it declares is new, with a dated changelog entry.
+name: Promotion
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  promotion:
+    name: Promotion
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: FormaUI/Versioning/actions/promotion-check@68ff74cadbe94084384d29be93466713fd989b53 # v1.0.0-preview.1
+        with:
+          gate-workflow: full.yml
+          version-command: "([xml] (Get-Content src/Forma.Locali/Forma.Locali.csproj)).SelectSingleNode('//PropertyGroup/Version').InnerText"
+          packages-artifact: packages
