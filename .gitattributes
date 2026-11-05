@@ -1,28 +1,12 @@
-# Set default behavior to automatically normalize line endings.
-* text=auto
+# Every text file is stored and checked out with LF, whatever platform it is checked out on, so a file
+# reads the same everywhere and a generator writing one produces the same bytes on any machine. Declaring
+# the default rather than a list of extensions means a file type nobody has added yet is already right.
+* text=auto eol=lf
 
-# Explicitly declare text files you want to always be normalized and converted
-# to native line endings on checkout.
-*.cs text eol=lf
-*.csx text eol=lf
-*.razor text eol=lf
-*.xaml text eol=lf
-*.xml text eol=lf
-*.config text eol=lf
-*.json text eol=lf
-*.yml text eol=lf
-*.yaml text eol=lf
-*.md text eol=lf
-*.txt text eol=lf
-*.props text eol=lf
-*.targets text eol=lf
-*.csproj text eol=lf
-*.sln text eol=lf
-
-# Declare files that will always have CRLF line endings on checkout.
+# The exception, and the only one: cmd.exe parses a batch file line by line as it runs it, and mishandles
+# a label or a goto that ends in LF alone.
 *.bat text eol=crlf
 *.cmd text eol=crlf
-*.ps1 text eol=crlf
 
 # Denote all files that are truly binary and should not be modified.
 *.png binary
@@ -51,3 +35,5 @@
 *.pptx binary
 *.snk binary
 *.pfx binary
+*.mp4 binary
+*.wav binary
