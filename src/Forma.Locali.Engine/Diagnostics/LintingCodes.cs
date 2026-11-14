@@ -37,6 +37,7 @@ public static class LintingCodes
             TypeNamedFolder,
             MissingCultureCoverage,
             EntryConflict,
+            AmbiguousName,
             CultureInAnotherCase,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
@@ -221,6 +222,12 @@ public static class LintingCodes
         "LOC0120",
         LintingSeverity.Error,
         "Two files of one source give an entry a type reads different texts, so the runtime keeps the text of the file whose name sorts last and logs the conflict.");
+
+    /// <summary>A section of an application's file is read both for the application's own types and for another assembly's, a type of each reaching it.</summary>
+    public static LintingCode AmbiguousName { get; } = new(
+        "LOC0121",
+        LintingSeverity.Warning,
+        "An application's file has a name that reads both in the application's own namespace and as another assembly's, and a type of each reads one of its sections, so its entries answer both.");
 
     /// <summary>A part of a locale file's name is a culture written in another case than .NET names it, and names no type.</summary>
     public static LintingCode CultureInAnotherCase { get; } = new(

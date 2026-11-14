@@ -60,6 +60,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IProjectRuleChecker, TypeNamedFolderChecker>();
         services.AddSingleton<IProjectRuleChecker, CultureCoverageChecker>();
         services.AddSingleton<IProjectRuleChecker, EntryConflictChecker>();
+        services.AddSingleton<IProjectRuleChecker, AmbiguousNameChecker>();
         services.AddSingleton<IProjectRuleChecker, CultureInAnotherCaseChecker>();
         services.AddSingleton<IProjectRuleChecker, LocalePackAssemblyChecker>();
         services.AddSingleton<IProjectRuleChecker, LocaleSourceChecker>();

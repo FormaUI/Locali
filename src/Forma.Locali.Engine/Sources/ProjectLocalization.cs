@@ -183,9 +183,9 @@ public sealed class ProjectLocalization
         return !typeNames.Any(typeName => typeName == start || typeName.StartsWith(start + ".", StringComparison.Ordinal));
     }
 
-    /// <summary>Every section an application's reading of its files for the assemblies their names start with reads for a type of one of those assemblies in one culture, whether or not its entries win; none for a library, or for an assembly no project of the run builds.</summary>
+    /// <summary>Every section an application's reading of its files reads for a type of an assembly their names start with in one culture, whether or not its entries win, with the name of the assembly it is read for; none for a library, or for an assembly no project of the run builds.</summary>
     /// <param name="culture">The culture.</param>
-    public IReadOnlyList<LocaleSourceSection> GetApplicationSections(CultureInfo culture)
+    public IReadOnlyList<(string AssemblyName, LocaleSourceSection Section)> GetApplicationSections(CultureInfo culture)
     {
         ArgumentNullException.ThrowIfNull(culture);
 
@@ -204,7 +204,7 @@ public sealed class ProjectLocalization
             entries.Collect(typeName, new Dictionary<string, LocaleSourceEntry>(StringComparer.Ordinal), conflicts);
 
             return conflicts;
-        })];
+        }).Select(read => read.Item)];
     }
 
     /// <summary>Whether a part spells a segment of a name the run knows: one of the project's types, an assembly it references or the run builds, or one of the types the run builds.</summary>
@@ -284,7 +284,7 @@ public sealed class ProjectLocalization
     }
 
     // Each assembly of the run the application's files name is read for each of its types, the application's own among them.
-    private IEnumerable<T> ReadApplication<T>(CultureInfo culture, Func<LocaleEntries, string, IEnumerable<T>> read)
+    private IEnumerable<(string AssemblyName, T Item)> ReadApplication<T>(CultureInfo culture, Func<LocaleEntries, string, IEnumerable<T>> read)
     {
         if (_applicationSource.Value is not { } applicationSource)
         {
@@ -305,7 +305,7 @@ public sealed class ProjectLocalization
             {
                 foreach (var item in read(entries, typeName))
                 {
-                    yield return item;
+                    yield return (assemblyName, item);
                 }
             }
         }

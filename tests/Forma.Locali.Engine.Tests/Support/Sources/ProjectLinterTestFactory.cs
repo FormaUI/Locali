@@ -21,6 +21,7 @@ public static class ProjectLinterTestFactory
             new TypeNamedFolderChecker(),
             new CultureCoverageChecker(),
             new EntryConflictChecker(),
+            new AmbiguousNameChecker(),
             new CultureInAnotherCaseChecker(),
             new LocalePackAssemblyChecker(),
             new LocaleSourceChecker(lintingConfiguration ?? new LintingConfiguration(Path.GetTempPath()), LocaleFormatTestFactory.Json),

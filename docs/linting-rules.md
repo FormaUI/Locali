@@ -473,6 +473,25 @@ naming no type is LOC0112's; one file gives it twice, which LOC0113 reports; the
 two sources; or the files are copied beside the application, a folder the runtime merges from
 every project's copies, which no one project shows whole.
 
+### LOC0121 — A name read two ways
+
+**Reports.** An application's file whose name reads both in the application's own namespace and
+as a name of another assembly of the run, where a type of each reads one of its sections: in an
+application `Epica.App` declaring `Epica.App.Forma.Blazor.Components.Bars.FormaToolbar`,
+`.locales/es/Forma.Blazor.Components.Bars.json` with a `FormaToolbar` section answers that type
+and `Forma.Blazor`'s `FormaToolbar` alike. It is reported at the file, naming both readings.
+
+**Why it matters.** A lookup reads a file for the type it looks up, so each reading applies where
+its type exists, and one section answers two assemblies' types; a key worded for one reads the
+same for the other, which nobody chose.
+
+**What fixes it.** Rename the application's namespace that repeats the other assembly's name; a
+folder and a dot read alike, so moving the file changes nothing while both names stand.
+
+**Silent where.** The project is a library, whose files are read for its own types alone; no one
+section is read for a type of each, though each reading reaches some section; or the other
+assembly is no project of the run, so its types are out of reach.
+
 ### LOC0122 — A culture written in another case
 
 **Reports.** A part of the name a locale file is embedded under, a folder or a part between dots,

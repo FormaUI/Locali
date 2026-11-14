@@ -87,7 +87,7 @@ public sealed class UnreachableLocalizationChecker : IProjectRuleChecker
         foreach (var culture in localization.Cultures)
         {
             // An application reads its files for the assemblies their names start with as well, so what those readings reach is reached.
-            var read = localization.TypeNames.SelectMany(typeName => localization.GetSections(typeName, culture)).Concat(localization.GetApplicationSections(culture));
+            var read = localization.TypeNames.SelectMany(typeName => localization.GetSections(typeName, culture)).Concat(localization.GetApplicationSections(culture).Select(read => read.Section));
 
             foreach (var section in read)
             {
