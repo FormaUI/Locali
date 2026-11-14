@@ -169,7 +169,7 @@ public sealed class LintingServiceTests
     [Fact]
     public async Task Should_leave_out_but_still_count_a_diagnostic_the_runs_own_configuration_ignores()
     {
-        // Arrange — two sections translate one key two ways, which the linting configuration says is meant.
+        // Arrange — two sections word one key two ways, which the linting configuration says is meant.
         using var directory = new TempDirectory();
         directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
         directory.Write("Widget.he.json", LocalizationFileFakeData.WithSections(("A", "Today", "היום"), ("B", "Today", "עכשיו")));

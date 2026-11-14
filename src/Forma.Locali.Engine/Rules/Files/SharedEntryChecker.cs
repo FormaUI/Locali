@@ -4,7 +4,7 @@ using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 
-/// <summary>Checks that every shared entry is an object holding translations alone, which is the only shape the runtime loads.</summary>
+/// <summary>Checks that every shared entry is an object holding entries alone, which is the only shape the runtime loads.</summary>
 public sealed class SharedEntryChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
@@ -23,7 +23,7 @@ public sealed class SharedEntryChecker : ILocalizationFileRuleChecker
             // An entry is a leaf, so a shared entry that reaches here was given something other than an object.
             if (entry.Name == LocalizationSchema.SharedKey)
             {
-                context.Report(Code, entry.NameOffset, $"'{LocalizationSchema.SharedKey}' is given a value that is not an object, so the file does not load; a shared section holds translations alone.");
+                context.Report(Code, entry.NameOffset, $"'{LocalizationSchema.SharedKey}' is given a value that is not an object, so the file does not load; a shared section holds entries alone.");
 
                 continue;
             }
@@ -45,7 +45,7 @@ public sealed class SharedEntryChecker : ILocalizationFileRuleChecker
 
         if (reportedNests.Add(string.Join('.', segments[..(shared + 2)])))
         {
-            context.Report(Code, entry.NameOffset, $"'{LocalizationSchema.SharedKey}' nests '{segments[shared + 1]}', so the file does not load; a shared section holds translations alone.");
+            context.Report(Code, entry.NameOffset, $"'{LocalizationSchema.SharedKey}' nests '{segments[shared + 1]}', so the file does not load; a shared section holds entries alone.");
         }
     }
 }

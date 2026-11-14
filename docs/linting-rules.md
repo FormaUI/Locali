@@ -32,7 +32,7 @@ of its own into.
 ```
 
 `ignoreDiagnostics` pairs a glob with the rules a file it matches is left out of, and is the one
-place a per-file exception is written, since a locale file holds translations and nothing a tool
+place a per-file exception is written, since a locale file holds entries and nothing a tool
 reads. `excludeFiles` mirrors `--exclude`, so a fixture folder is excluded once rather than on
 every invocation. Globs are case-insensitive, written with forward slashes, `*` and `**` both
 spanning separators, and read relative to the folder the file sits in. Comments and trailing
@@ -159,9 +159,9 @@ assembly whose line allows embedding alone are reported one by one. It is report
 naming the source it comes from and the sources the line allows.
 
 **Why it matters.** The runtime reads every source it finds, so a repository that keeps its
-translations in packs cannot tell from a build that someone embedded a Hebrew file in an
+entries in packs cannot tell from a build that someone embedded a Hebrew file in an
 assembly again: both load, the pack wins where they share a key, and the stray file answers
-alone where they do not. The rule turns the repository's choice of where translations live
+alone where they do not. The rule turns the repository's choice of where entries live
 into something the gate holds it to.
 
 **What fixes it.** Move the file to a source its line allows, or add a later `localeSources`
@@ -216,7 +216,7 @@ A JSON file is read as a locale file when it carries `$localization`, or is name
 sits in a `.locales` folder with a name giving it a culture, or its file name ends in a culture.
 Its culture is read as the runtime reads it, from the project's folder down: the first part of
 its name, folders included, that is a culture written exactly as .NET names it. A locale file
-opens with `$localization`, then `$shared` where it carries one, then its translations and
+opens with `$localization`, then `$shared` where it carries one, then its entries and
 sections.
 
 ### LOC0100 — Not readable JSON
@@ -225,7 +225,7 @@ sections.
 JSON.
 
 **Why it matters.** The runtime refuses the file, and every type it would have localized falls
-back to English.
+back to the source text.
 
 **What fixes it.** Make it JSON. A `//` or `/* */` comment and a trailing comma are accepted,
 as the runtime's own reader accepts them.
@@ -306,20 +306,20 @@ read for, and the entry has to agree.
 
 **What fixes it.** Make the entry say what the name says.
 
-### LOC0109 — A translation fills a hole its key does not name
+### LOC0109 — A text fills a hole its key does not name
 
-**Reports.** A translation writing `{stord}` for a key that names `{stored}`.
+**Reports.** A text writing `{stord}` for a key that names `{stored}`.
 
 **Why it matters.** The runtime renders `{stord}` literally, in front of a user, and nothing else
 complains.
 
 **What fixes it.** Name the holes the key names. A name may be written as a brace hole or as a
-plural expression's bracketed argument, the two are equivalent, and a translation may reorder or
+plural expression's bracketed argument, the two are equivalent, and a text may reorder or
 drop a name freely.
 
-### LOC0110 — A translation writes text shaped like a hole the runtime cannot read
+### LOC0110 — A text writes something shaped like a hole the runtime cannot read
 
-**Reports.** `{0}`, `{a.b}` or `{stored,x}` in a translation: a shape that could only have been
+**Reports.** `{0}`, `{a.b}` or `{stored,x}` in a text: a shape that could only have been
 meant as a hole, whose name the runtime cannot read or whose alignment is not a number.
 
 **Why it matters.** The text renders as written.
@@ -334,7 +334,7 @@ is prose, rendered as written and meant to be. LOC0206 is the same rule at a cal
 
 **Reports.** A key declared more than once in one section.
 
-**Why it matters.** Every translation but the last is dropped, silently.
+**Why it matters.** Every text but the last is dropped, silently.
 
 **What fixes it.** Keep one. A key repeating across sections is two types sharing a string, which
 LOC0113 reads instead.
@@ -346,9 +346,9 @@ in a file read for its sections alone; and a file no path in force places. Every
 the anchors the runtime places the file at, and a library's file whose name starts with an
 assembly's name is reported as one only an application or a locale pack reads by that name.
 
-**Why it matters.** The runtime resolves translations by the owning type's full name, from a
+**Why it matters.** The runtime reads entries by the owning type's full name, from a
 file's position and the sections inside it, so a moved folder, a renamed type or a misspelled
-section strands its translations while every other check stays green.
+section strands its entries while every other check stays green.
 
 **What fixes it.** Put the file where the type's name says, or name the type in a section: from
 the file's position, or from the assembly's root with a leading `@.`. The rule reads through the
@@ -369,21 +369,21 @@ which an assembly the run does not know, loaded at run time, could start; or the
 locale pack's whose name starts with no assembly a project of the run builds, which LOC0024
 reports where it starts with none the solution builds or references.
 
-### LOC0113 — A key translated two ways across sections
+### LOC0113 — A key worded two ways across sections
 
-**Reports.** Sections of one file that translate the same key differently, each after the first
+**Reports.** Sections of one file that give the same key different texts, each after the first
 naming the section it differs from. A `null` reads as the key text, and the last declaration in
 a section is the one compared.
 
-**Why it matters.** Both load, so the same English text reads two ways across the application.
+**Why it matters.** Both load, so the same source text reads two ways across the application.
 
-**What fixes it.** Agree the translations, or say in `.locali.json` that they differ on purpose,
-where a translation agrees in gender or number with the thing its type describes. That case is
+**What fixes it.** Agree the texts, or say in `.locali.json` that they differ on purpose,
+where a text agrees in gender or number with the thing its type describes. That case is
 why the rule is a warning.
 
 ### LOC0114 — A reserved entry out of order
 
-**Reports.** A `$shared` before `$localization`, or either after a translation or a section.
+**Reports.** A `$shared` before `$localization`, or either after an entry or a section.
 
 **Why it matters.** The file loads; a file leads with what it is and what it shares.
 
@@ -407,10 +407,10 @@ breaks the shape. LOC0212 is the same rule at a callsite.
 
 **Reports.** A `$shared` that is not an object, or that nests a section or another `$shared`.
 
-**Why it matters.** The runtime refuses the file. `$shared` holds translations alone, which every
+**Why it matters.** The runtime refuses the file. `$shared` holds entries alone, which every
 type reached through its node gets unless a section of its own says otherwise.
 
-**What fixes it.** Keep translations only in it; put a nested section beside it.
+**What fixes it.** Keep entries only in it; put a nested section beside it.
 
 ### LOC0118 — A folder named for a type
 
@@ -434,16 +434,16 @@ assembly name its name starts with, and held to that project's types.
 none at all in another family the project's files or packs also carry: once per type per family
 missing it, at a file that does answer the type.
 
-**Why it matters.** A type's translations used to sit beside each other, one file per culture,
+**Why it matters.** A type's entries used to sit beside each other, one file per culture,
 where a language falling behind was visible by eye. Split across packs, a type Hebrew answers
 and Spanish never received loads correctly and falls back to the source language for every
 Spanish reader, with every other check staying green.
 
-**What fixes it.** Translate the type for the missing family, or accept that it renders in the
+**What fixes it.** Localize the type in the missing family, or accept that it renders in the
 source language there.
 
 **Silent where.** The project's files and packs carry only one culture family; the type has no
-translations in any family, since it is unlocalized rather than uneven; a regional culture,
+entries in any family, since it is unlocalized rather than uneven; a regional culture,
 `es-419` among them, answers where its neutral culture, `es`, does not, and the reverse, since
 one stands for the family; or the only entries a culture carries for the type come from a
 `$shared` block above it, a folder's or an outer type's, which answers for every type beneath
@@ -525,7 +525,7 @@ inside a type that implements `IStringLocale` is left alone throughout, since su
 forwards the key its own caller wrote.
 
 A call to a method whose parameter carries `[LocaleKey]` is a lookup too, found on the semantic
-path alone: the argument for that parameter is the key, read in the translations of the method's
+path alone: the argument for that parameter is the key, read in the entries of the method's
 one type argument, and the values are what one `params` parameter after the key gathers. A key
 passed on from a parameter that carries `[LocaleKey]` itself is left alone, since it is checked
 where its own method is called:
@@ -618,23 +618,24 @@ build gate.
 
 **What fixes it.** Write the hole as `{Name}`.
 
-### LOC0207 — A key is not answered in a culture its type is translated for
+### LOC0207 — A key is not answered in a culture its type is localized in
 
-**Reports.** A key written at a callsite that a culture translating its type leaves out, once
-per key per culture, at the first callsite writing it. The cultures translating a type are read
+**Reports.** A key written at a callsite that a culture localizing its type leaves out, once
+per key per culture, at the first callsite writing it. The cultures localizing a type are read
 from the project's own files and from every locale pack's files for it alike.
 
 **Why it matters.** Falling back to the key is exactly what the runtime is defined to do, so the
-string renders in English and every other rule stays green; adding `L["Details columns"]` to a
-component whose `he` and `es` files exist leaves both behind without a word.
+string renders in the source language and every other rule stays green; adding
+`L["Details columns"]` to a component whose `he` and `es` files exist leaves both behind without
+a word.
 
-**What fixes it.** Translate the key, or declare that its right translation is the source text
-with a JSON `null`: `"Email": null`. A null entry is *found* — `ResourceNotFound` is `false`,
+**What fixes it.** Localize the key, or declare that its right text is the source text with a
+JSON `null`: `"Email": null`. A null entry is *found* — `ResourceNotFound` is `false`,
 `RequireMatchingLocalization` passes, `GetAllStrings` lists it — so a key that has to read as
 genuinely missing cannot use it, and the warning is the honest answer there.
 
-**Silent where.** The type has no translations at all, since it is unlocalized rather than
-under-translated; the lookup is through the unbound `IStringLocale`, which names no type, or is
+**Silent where.** The type has no entries at all, since it is unlocalized rather than
+under-localized; the lookup is through the unbound `IStringLocale`, which names no type, or is
 a call through `[LocaleKey]` to a method without exactly one type argument; a parent culture
 answers, since `es-419` reads `es` for what it does not declare; or the run did not name the
 project's files.
@@ -656,9 +657,9 @@ own callers write and the rules read there.
 
 **Reports.** A key made only of holes and punctuation, `"{count} / {total}"`.
 
-**Why it matters.** It formats a value rather than says anything, so there is nothing for a
-translator to read and no entry a locale file could hold for it; `null` marks a key whose
-translation is the source text, and there is no text here to mark.
+**Why it matters.** It formats a value rather than says anything, so there is nothing for anyone
+localizing it to read and no entry a locale file could hold for it; `null` marks a key whose
+text is the source text, and there is no text here to mark.
 
 **What fixes it.** Format the value directly, `$"{count} / {total}"`. A single letter of prose
 clears the rule.
@@ -667,7 +668,7 @@ clears the rule.
 
 **Reports.** A plural expression whose fields carry only `#`, `"[$ plural; other: #; $]"`.
 
-**Why it matters.** As LOC0209: a number formatted, not a sentence translated.
+**Why it matters.** As LOC0209: a number formatted, not a sentence localized.
 
 **What fixes it.** `count.ToString("N0", culture)`, or a field with a word in it.
 
@@ -676,7 +677,7 @@ clears the rule.
 **Reports.** `L[$"Stored {stored} of {total}."]`.
 
 **Why it matters.** The string formats before the lookup, so the runtime receives the formatted
-text as the key, which no translation is keyed by.
+text as the key, which no entry is keyed by.
 
 **What fixes it.** A literal key with the values beside it, `L["Stored {Stored} of {Total}.",
 stored, total]`. An interpolated string with no holes folds to a constant and is checked like a
@@ -697,7 +698,7 @@ always falls back to the key.
 position or by the `format` name.
 
 **Why it matters.** The runtime already fills a lookup's holes, so `string.Format` reads the
-translated result as a second composite format string. `"Stored {0} of {1}."` survives by
+localized result as a second composite format string. `"Stored {0} of {1}."` survives by
 accident, since `{0}` is also an index; `"Stored {stored} of {total}."` throws `FormatException`
 the moment any culture is active.
 

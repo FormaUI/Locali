@@ -69,7 +69,7 @@ public sealed class CultureCoverageCheckerTests
     [Fact]
     public void Should_report_a_type_whose_only_entry_is_a_shared_one_in_its_own_section()
     {
-        // Arrange — a shared block inside the type's own section answers for the type itself, so the type is translated for Hebrew and not for Spanish.
+        // Arrange — a shared block inside the type's own section answers for the type itself, so the type is localized in Hebrew and not for Spanish.
         using var directory = new TempDirectory();
         var target = Target(directory);
         var heFile = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.WithSharedSection("Widget", "Today", "היום"));
@@ -107,7 +107,7 @@ public sealed class CultureCoverageCheckerTests
     [Fact]
     public void Should_leave_a_type_answered_only_by_its_folders_shared_entry_alone()
     {
-        // Arrange — the folder's shared block reaches Widget in Hebrew without anyone translating Widget, so Widget is unlocalized in both rather than uneven.
+        // Arrange — the folder's shared block reaches Widget in Hebrew without anyone localizing Widget, so Widget is unlocalized in both rather than uneven.
         using var directory = new TempDirectory();
         var target = Target(directory);
         var heFile = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.WithSharedAndSection("Edit", "עריכה", "Gadget", "Today", "היום"));

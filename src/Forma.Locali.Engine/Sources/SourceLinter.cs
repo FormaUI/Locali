@@ -79,7 +79,7 @@ public sealed class SourceLinter(
             location.StartLinePosition.Character + 1,
             LintingCodes.InterpolatedKey.DefaultSeverity,
             LintingCodes.InterpolatedKey,
-            "The lookup's key is an interpolated string, so the formatted text becomes the key and no translation matches it; write the key as a literal and pass the values positionally.");
+            "The lookup's key is an interpolated string, so the formatted text becomes the key and no entry matches it; write the key as a literal and pass the values positionally.");
 
     private LocalizerLookups Walk(Compilation compilation, IReadOnlyCollection<string> files, CancellationToken cancellationToken)
     {

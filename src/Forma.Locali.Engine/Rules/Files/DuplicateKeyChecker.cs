@@ -23,7 +23,7 @@ public sealed class DuplicateKeyChecker : ILocalizationFileRuleChecker
                 context.Report(
                     Code,
                     entry.NameOffset,
-                    $"The file declares '{entry.Name}' again, having already declared it on line {line}; only the last translation survives.");
+                    $"The file declares '{entry.Name}' again, having already declared it on line {line}; only the last text survives.");
 
                 continue;
             }

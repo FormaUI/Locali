@@ -2,16 +2,17 @@
 
 A linter for `Forma.Framework.Localization`. It reads locale files against the runtime's own
 rules, and every `IStringLocale` callsite in C#, Visual Basic and Razor against what the runtime
-will do with it, and reports what would throw, render wrong, or quietly stay in English.
+will do with it, and reports what would throw, render wrong, or quietly stay in the source
+language.
 
 Two things go wrong quietly in a localized codebase, and a build catches neither:
 
 - **A lookup throws, or renders the wrong thing.** `L["Stored {stored} of {total}.", 1]`
-  supplies one value for two holes and throws at run time. A Hebrew translation that writes
+  supplies one value for two holes and throws at run time. A Hebrew text that writes
   `{stord}` renders those seven characters literally, in front of a user.
-- **A string silently stays in English.** Adding `L["Details columns"]` to a component whose `he`
-  and `es` files already exist leaves both files behind, and falling back to the key is exactly
-  what the runtime is defined to do, so nothing anywhere complains.
+- **A string silently stays in the source language.** Adding `L["Details columns"]` to a
+  component whose `he` and `es` files already exist leaves both files behind, and falling back
+  to the key is exactly what the runtime is defined to do, so nothing anywhere complains.
 
 ## Quick Start
 
@@ -111,7 +112,7 @@ walking up to the nearest `.csproj` or `.vbproj`.
 `--exclude` is what makes a test tree lintable: a fixture that is malformed on purpose reports
 what it exists to prove. A `.locali.json` file's `excludeFiles` entry does the same without a
 flag on every invocation, its `ignoreDiagnostics` entry leaves a named file out of named
-rules, and its `localeSources` entry says where each part of the tree keeps its translations.
+rules, and its `localeSources` entry says where each part of the tree keeps its entries.
 A run reads one such file, the nearest at or above the path it was given; [Rules](docs/linting-rules.md)
 describes all three entries under the linting configuration.
 
@@ -170,7 +171,7 @@ overloads, and so leaves the rules that count values silent.
 
 A call to a method whose parameter carries `[LocaleKey]`, as `LocalizableText.For<TSource>`'s
 key does, is a lookup on the semantic path: the argument for that parameter is its key, read in
-the translations of the method's one type argument, and its values are counted where one `params`
+the entries of the method's one type argument, and its values are counted where one `params`
 parameter follows the key, as a lookup's are. A key a method passes on from a `[LocaleKey]`
 parameter of its own is checked where that method is called.
 
@@ -206,16 +207,16 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0106 | Error | The file is written for a schema this build does not define |
 | LOC0107 | Warning | The metadata entry declares an unknown field |
 | LOC0108 | Error | The file declares a culture its own name does not give it |
-| LOC0109 | Error | A translation fills a hole its key does not name |
-| LOC0110 | Error | A translation writes text shaped like a hole the runtime cannot read |
+| LOC0109 | Error | A text fills a hole its key does not name |
+| LOC0110 | Error | A text writes something shaped like a hole the runtime cannot read |
 | LOC0111 | Error | The file declares the same key more than once |
 | LOC0112 | Error | A locale file, or a section of one, names a type that does not exist |
-| LOC0113 | Warning | The file translates the same key differently across its sections |
+| LOC0113 | Warning | The file gives the same key different texts across its sections |
 | LOC0114 | Warning | A reserved entry sits after an entry it has to precede |
 | LOC0115 | Error | A key or section is shaped like a reserved entry the runtime does not define |
-| LOC0116 | Error | The `$shared` entry is not an object holding translations alone |
+| LOC0116 | Error | The `$shared` entry is not an object holding entries alone |
 | LOC0118 | Warning | A folder of locale files is named for a type |
-| LOC0119 | Warning | A type is translated in one culture family the project's files or packs carry and left out of another |
+| LOC0119 | Warning | A type is localized in one culture family the project's files or packs carry and left out of another |
 | LOC0120 | Error | Two files of one source give an entry a type reads different texts |
 | LOC0121 | Warning | An application's file has a name that reads both in its own namespace and as another assembly's, and a type of each reads one of its sections |
 | LOC0122 | Warning | A part of a locale file's name is a culture written in another case than .NET names it, and names no type |
@@ -226,7 +227,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0204 | Warning | A plural expression omits `other` |
 | LOC0205 | Warning | A project's Razor markup went unchecked |
 | LOC0206 | Error | A key writes text shaped like a hole the runtime cannot read |
-| LOC0207 | Warning | A key is not answered in a culture its type is translated for |
+| LOC0207 | Warning | A key is not answered in a culture its type is localized in |
 | LOC0208 | Warning | A lookup writes its key as an expression |
 | LOC0209 | Warning | A key carries holes but no words anywhere else |
 | LOC0210 | Warning | An expression key carries no words in any field |

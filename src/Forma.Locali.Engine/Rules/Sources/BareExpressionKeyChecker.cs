@@ -3,7 +3,7 @@ namespace Forma.Locali.Rules.Sources;
 using Forma.Framework.Localization.Parser.Syntax;
 using Forma.Locali.Diagnostics;
 
-/// <summary>Checks that an expression key is not nothing but a count, which carries no words to translate.</summary>
+/// <summary>Checks that an expression key is not nothing but a count, which carries no words to localize.</summary>
 public sealed class BareExpressionKeyChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />

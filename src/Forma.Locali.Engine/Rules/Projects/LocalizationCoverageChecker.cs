@@ -7,8 +7,8 @@ using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
 /// <summary>
-/// Checks that a key written in source is answered in every culture its type is already translated for. A new key
-/// added to a component whose translations exist otherwise passes every check while rendering in the source
+/// Checks that a key written in source is answered in every culture its type is already localized in. A new key
+/// added to a component whose entries exist otherwise passes every check while rendering in the source
 /// language, because falling back to the key is what an absent entry is supposed to do.
 /// </summary>
 public sealed class LocalizationCoverageChecker : IProjectRuleChecker
@@ -44,7 +44,7 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
 
             foreach (var culture in localization.Cultures)
             {
-                // A type with no translations in a culture is unlocalized there rather than under-translated.
+                // A type with no entries in a culture is unlocalized there rather than under-localized.
                 var entries = localization.Read(typeName, culture);
                 if (entries.Count == 0 || IsAnswered(localization, typeName, culture, key) || !seen.Add((key, typeName, culture.Name)))
                 {
@@ -58,7 +58,7 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
                 context.Report(
                     Code,
                     site,
-                    $"'{site.Key.Text}' has no entry in '{filePath}', which translates '{typeName}' for '{culture.Name}', so it renders in the source language there.");
+                    $"'{site.Key.Text}' has no entry in '{filePath}', which localizes '{typeName}' in '{culture.Name}', so it renders in the source language there.");
             }
         }
     }

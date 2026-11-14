@@ -2,7 +2,7 @@ namespace Forma.Locali.Sources;
 
 using Microsoft.CodeAnalysis;
 
-/// <summary>Names types the way the runtime resolves their translations: containing namespaces and types joined by dots, with no arity.</summary>
+/// <summary>Names types the way the runtime reads their entries: containing namespaces and types joined by dots, with no arity.</summary>
 public static class ResourceTypeNames
 {
     private static readonly SymbolDisplayFormat Format = new(
@@ -10,7 +10,7 @@ public static class ResourceTypeNames
         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
         genericsOptions: SymbolDisplayGenericsOptions.None);
 
-    /// <summary>The name the runtime resolves a type's translations by.</summary>
+    /// <summary>The name the runtime reads a type's entries by.</summary>
     /// <param name="type">The type.</param>
     public static string GetName(INamedTypeSymbol type)
     {

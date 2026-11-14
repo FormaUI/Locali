@@ -4,7 +4,7 @@ using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 
-/// <summary>Checks that a file translates a key the same way in every section that declares it, since each section's type shows its own.</summary>
+/// <summary>Checks that a file gives a key the same text in every section that declares it, since each section's type shows its own.</summary>
 public sealed class InconsistentLocalizationChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
@@ -65,11 +65,11 @@ public sealed class InconsistentLocalizationChecker : ILocalizationFileRuleCheck
             context.Report(
                 Code,
                 entry.NameOffset,
-                $"The key '{entry.Name}' is translated as '{text}' here and as '{referenceText}' {Place(reference)}, so the same English text reads two ways at run time.");
+                $"The key '{entry.Name}' has the text '{text}' here and '{referenceText}' {Place(reference)}, so the same source text reads two ways at run time.");
         }
     }
 
-    // A null value declares that the translation is the key text itself.
+    // A null value declares that the text is the key itself.
     private static string GetLocalizedText(LocalizationEntry entry)
         => entry.Value ?? entry.Name;
 

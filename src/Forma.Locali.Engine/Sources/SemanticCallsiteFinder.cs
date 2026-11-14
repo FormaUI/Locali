@@ -136,7 +136,7 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
     private static bool IsVisualBasicCandidate(SyntaxNode node)
         => node is VisualBasic.InvocationExpressionSyntax;
 
-    // The indexer is declared on the unbound contract, so the type it translates is only on the receiver.
+    // The indexer is declared on the unbound contract, so the type it localizes is only on the receiver.
     private static INamedTypeSymbol? Resource(IOperation? receiver, INamedTypeSymbol? generic)
         => generic is null || receiver is null ? null : LocalizerContract.ResourceOf(receiver.Type, generic);
 

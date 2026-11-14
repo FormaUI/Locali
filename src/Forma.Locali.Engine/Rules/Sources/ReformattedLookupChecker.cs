@@ -2,7 +2,7 @@ namespace Forma.Locali.Rules.Sources;
 
 using Forma.Locali.Diagnostics;
 
-/// <summary>Checks that a lookup does not itself supply string.Format's format text, which would format its already-translated result a second time.</summary>
+/// <summary>Checks that a lookup does not itself supply string.Format's format text, which would format its already-localized result a second time.</summary>
 public sealed class ReformattedLookupChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
@@ -18,7 +18,7 @@ public sealed class ReformattedLookupChecker : ICallsiteRuleChecker
         {
             context.Report(
                 Code,
-                "The lookup supplies string.Format's format text, which reads its own '{0}' rather than the runtime's holes, and throws once a translation names one; pass the values to the lookup itself instead.");
+                "The lookup supplies string.Format's format text, which reads its own '{0}' rather than the runtime's holes, and throws once a text names one; pass the values to the lookup itself instead.");
         }
     }
 }

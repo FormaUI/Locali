@@ -79,7 +79,7 @@ public sealed class SourceLinterTests
     [Fact]
     public void Should_leave_an_interpolated_key_a_localizer_writes_alone()
     {
-        // Arrange — a key composed inside an implementation belongs to the implementation, not to a translation.
+        // Arrange — a key composed inside an implementation belongs to the implementation, not to an entry.
         var compilation = CompilationTestFactory.Unreferenced("""
             namespace Scratch;
 

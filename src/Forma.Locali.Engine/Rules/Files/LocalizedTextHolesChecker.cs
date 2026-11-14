@@ -4,7 +4,7 @@ using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 
-/// <summary>Checks that a translation fills only the holes its key names.</summary>
+/// <summary>Checks that a text fills only the holes its key names.</summary>
 public sealed class LocalizedTextHolesChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
@@ -18,7 +18,7 @@ public sealed class LocalizedTextHolesChecker : ILocalizationFileRuleChecker
 
         foreach (var entry in context.Document.Entries)
         {
-            // The metadata entry is no translation, and a null value is the key left as written.
+            // The metadata entry declares what the file is, and a null value is the key left as written.
             if (!entry.IsText || entry.Value is not { } translation || entry.Name == LocalizationSchema.Marker)
             {
                 continue;
@@ -46,7 +46,7 @@ public sealed class LocalizedTextHolesChecker : ILocalizationFileRuleChecker
                 context.Report(
                     Code,
                     entry.ValueOffset,
-                    $"The translation of '{entry.Name}' fills '{hole}', which the key does not name, so it renders as written.");
+                    $"The text of '{entry.Name}' fills '{hole}', which the key does not name, so it renders as written.");
             }
         }
     }

@@ -56,7 +56,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
         return null;
     }
 
-    // The build copies both translations and generated code beside the binaries, where reading them would double every report.
+    // The build copies both locale files and generated code beside the binaries, where reading them would double every report.
     private static bool IsBuildOutput(string file)
         => file.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
             .Any(static segment => segment is "bin" or "obj");
@@ -103,7 +103,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
             {
                 localization.Add(file);
 
-                // The nearest project above a file owns it, so a nested project keeps its own translations.
+                // The nearest project above a file owns it, so a nested project keeps its own locale files.
                 if (ProjectOf(file) is { } project)
                 {
                     projects.Add(project);

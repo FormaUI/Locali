@@ -89,7 +89,7 @@ public static class LintingCodes
     public static LintingCode DisallowedLocaleSource { get; } = new(
         "LOC0025",
         LintingSeverity.Warning,
-        "A locale file comes from a source the linting configuration in force over it does not allow, embedded, satellite, pack or host; the runtime reads it all the same, so translations are kept in a place the repository said they are not.");
+        "A locale file comes from a source the linting configuration in force over it does not allow, embedded, satellite, pack or host; the runtime reads it all the same, so entries are kept in a place the repository said they are not.");
 
     /// <summary>A <c>.locali.json</c> the run does not read sits beneath the path it was given.</summary>
     public static LintingCode UnreadConfiguration { get; } = new(
@@ -107,7 +107,7 @@ public static class LintingCodes
     public static LintingCode InvalidJson { get; } = new(
         "LOC0100",
         LintingSeverity.Error,
-        "A file that claims to carry translations is not readable JSON.");
+        "A file that claims to be a locale file is not readable JSON.");
 
     /// <summary>The file carries no metadata entry.</summary>
     public static LintingCode MissingMarker { get; } = new(
@@ -157,35 +157,35 @@ public static class LintingCodes
         LintingSeverity.Error,
         "A file declares a culture its own name does not give it.");
 
-    /// <summary>A translation fills a hole its key does not name.</summary>
+    /// <summary>A text fills a hole its key does not name.</summary>
     public static LintingCode UnknownLocalizedTextHole { get; } = new(
         "LOC0109",
         LintingSeverity.Error,
-        "A translation fills a hole its key does not name, so it renders as written.");
+        "A text fills a hole its key does not name, so it renders as written.");
 
-    /// <summary>A translation writes text shaped like a hole whose name the runtime cannot read.</summary>
+    /// <summary>A text writes something shaped like a hole whose name the runtime cannot read.</summary>
     public static LintingCode LocalizedTextHoleShapedText { get; } = new(
         "LOC0110",
         LintingSeverity.Error,
-        "A translation writes text shaped like a hole that names nothing a value can be read by, so it renders as written.");
+        "A text writes something shaped like a hole that names nothing a value can be read by, so it renders as written.");
 
     /// <summary>The file declares the same key more than once.</summary>
     public static LintingCode DuplicateKey { get; } = new(
         "LOC0111",
         LintingSeverity.Error,
-        "A file declares the same key more than once, so every translation but the last is dropped.");
+        "A file declares the same key more than once, so every text but the last is dropped.");
 
     /// <summary>A locale file, or a section of one, names a type that does not exist.</summary>
     public static LintingCode UnreachableLocalization { get; } = new(
         "LOC0112",
         LintingSeverity.Error,
-        "No type reads this file, or a section of it, by the full name its position implies, so the runtime never finds those translations.");
+        "No type reads this file, or a section of it, by the full name its position implies, so the runtime never finds those entries.");
 
-    /// <summary>A file translates the same key differently across its sections.</summary>
+    /// <summary>A file gives the same key different texts across its sections.</summary>
     public static LintingCode InconsistentLocalization { get; } = new(
         "LOC0113",
         LintingSeverity.Warning,
-        "A file translates the same key differently across its sections, so the same English text reads two ways at run time.");
+        "A file gives the same key different texts across its sections, so the same source text reads two ways at run time.");
 
     /// <summary>A reserved entry sits after an entry it has to precede.</summary>
     public static LintingCode ReservedEntryOutOfOrder { get; } = new(
@@ -199,11 +199,11 @@ public static class LintingCodes
         LintingSeverity.Error,
         "A key or section is shaped like a reserved entry, '$' followed by one lowercase word, but names none the runtime defines, so the file does not load.");
 
-    /// <summary>A shared entry is not an object holding translations alone.</summary>
+    /// <summary>A shared entry is not an object holding entries alone.</summary>
     public static LintingCode MalformedShared { get; } = new(
         "LOC0116",
         LintingSeverity.Error,
-        "A shared entry is not an object, or nests a section, so the file does not load; a shared section holds translations alone.");
+        "A shared entry is not an object, or nests a section, so the file does not load; a shared section holds entries alone.");
 
     /// <summary>A folder of locale files is named for a type.</summary>
     public static LintingCode TypeNamedFolder { get; } = new(
@@ -211,11 +211,11 @@ public static class LintingCodes
         LintingSeverity.Warning,
         "A folder of locale files is named for a type, which lays the type out as a namespace; a type's own file is named for the type among its namespace folder's locale files.");
 
-    /// <summary>A type is translated in one culture family the project's files or packs carry and left out of another.</summary>
+    /// <summary>A type is localized in one culture family the project's files or packs carry and left out of another.</summary>
     public static LintingCode MissingCultureCoverage { get; } = new(
         "LOC0119",
         LintingSeverity.Warning,
-        "A type is translated in one culture family the project's files or packs carry and left out of another, so it renders in the source language for every reader of the missing one.");
+        "A type is localized in one culture family the project's files or packs carry and left out of another, so it renders in the source language for every reader of the missing one.");
 
     /// <summary>Two files of one source give an entry a type reads different texts.</summary>
     public static LintingCode EntryConflict { get; } = new(
@@ -277,11 +277,11 @@ public static class LintingCodes
         LintingSeverity.Error,
         "A key writes text shaped like a hole that names nothing a value can be read by, so it renders as written.");
 
-    /// <summary>A key written in source is not answered in a culture its type is already translated for.</summary>
+    /// <summary>A key written in source is not answered in a culture its type is already localized in.</summary>
     public static LintingCode MissingLocalization { get; } = new(
         "LOC0207",
         LintingSeverity.Warning,
-        "A key written at a callsite has no entry in a culture its type is already translated for, so it renders untranslated.");
+        "A key written at a callsite has no entry in a culture its type is already localized in, so it renders in the source language.");
 
     /// <summary>A lookup writes its key as an expression, so no rule could read it.</summary>
     public static LintingCode KeyNotAnalysed { get; } = new(
@@ -289,23 +289,23 @@ public static class LintingCodes
         LintingSeverity.Warning,
         "A lookup writes its key as an expression, so what it reads went unchecked.");
 
-    /// <summary>The key carries holes but no words for a translator to read.</summary>
+    /// <summary>The key carries holes but no words for anyone localizing it to read.</summary>
     public static LintingCode BareHoleKey { get; } = new(
         "LOC0209",
         LintingSeverity.Warning,
-        "A key carries holes but no words anywhere else, so it names no text to translate.");
+        "A key carries holes but no words anywhere else, so it names no text to localize.");
 
     /// <summary>The expression key carries no words in any field, only the count.</summary>
     public static LintingCode BareExpressionKey { get; } = new(
         "LOC0210",
         LintingSeverity.Warning,
-        "An expression key carries no words in any field, so it names no text to translate.");
+        "An expression key carries no words in any field, so it names no text to localize.");
 
     /// <summary>A lookup writes its key as an interpolated string with holes.</summary>
     public static LintingCode InterpolatedKey { get; } = new(
         "LOC0211",
         LintingSeverity.Error,
-        "A lookup writes its key as an interpolated string with holes, so the formatted text becomes the key and no translation matches it.");
+        "A lookup writes its key as an interpolated string with holes, so the formatted text becomes the key and no entry matches it.");
 
     /// <summary>A lookup writes a key shaped like a reserved entry.</summary>
     public static LintingCode ReservedShapedLookup { get; } = new(
@@ -317,5 +317,5 @@ public static class LintingCodes
     public static LintingCode ReformattedLookup { get; } = new(
         "LOC0213",
         LintingSeverity.Error,
-        "A lookup supplies string.Format's format text, which reads its own '{0}' rather than the runtime's holes, and throws once a translation names one.");
+        "A lookup supplies string.Format's format text, which reads its own '{0}' rather than the runtime's holes, and throws once a text names one.");
 }

@@ -125,7 +125,7 @@ public sealed class LinterConfigFileTests
         var document = LinterConfigFileTestFactory.Read(
             """
             {
-              // ignore the showcase page's missing translation on purpose
+              // ignore the showcase page's missing entry on purpose
               "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] }
             }
             """);

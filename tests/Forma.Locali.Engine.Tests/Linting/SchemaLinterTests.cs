@@ -20,7 +20,7 @@ public sealed class SchemaLinterTests
     [Fact]
     public void Should_count_a_section_as_one_entry_before_the_marker()
     {
-        // Arrange — the section holds two translations but is one property of the file.
+        // Arrange — the section holds two entries but is one property of the file.
         var document = LocalizationDocumentTestFactory.Read(
             LocalizationFileFakeData.HebrewName,
             """{ "Widget": { "Today": "היום", "Tomorrow": "מחר" }, "$localization": "SchemaVersion: 1.0.0; Culture: he;" }""");

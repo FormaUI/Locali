@@ -4,7 +4,7 @@ using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 
-/// <summary>Checks that the shared section precedes every translation and section.</summary>
+/// <summary>Checks that the shared section precedes every entry and section.</summary>
 public sealed class ReservedEntryOrderChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
@@ -25,7 +25,7 @@ public sealed class ReservedEntryOrderChecker : ILocalizationFileRuleChecker
             {
                 if (sawTopLevelItem)
                 {
-                    context.Report(Code, offset, $"'{LocalizationSchema.SharedKey}' has to come before every translation and section, directly after '{LocalizationSchema.Marker}'.");
+                    context.Report(Code, offset, $"'{LocalizationSchema.SharedKey}' has to come before every entry and section, directly after '{LocalizationSchema.Marker}'.");
                 }
             }
             else if (name != LocalizationSchema.Marker)

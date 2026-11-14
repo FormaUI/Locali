@@ -5,9 +5,9 @@ using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
 /// <summary>
-/// Checks that every translation a file declares is one some type reads. The runtime resolves a translation by a
+/// Checks that every entry a file declares is one some type reads. The runtime reads an entry by a
 /// type's full name, from the file's position and the sections inside it, so a type renamed or moved away, or a
-/// section naming none, leaves translations unreachable while every other check stays green.
+/// section naming none, leaves entries unreachable while every other check stays green.
 /// </summary>
 public sealed class UnreachableLocalizationChecker : IProjectRuleChecker
 {
@@ -64,7 +64,7 @@ public sealed class UnreachableLocalizationChecker : IProjectRuleChecker
 
             if (read.Count == 0)
             {
-                context.Report(Code, file.Path, $"No type reads this file: the runtime resolves translations by a type's full name, and neither {FormatNames(anchorNames, "nor")} nor any section in the file names one.");
+                context.Report(Code, file.Path, $"No type reads this file: the runtime reads a type's entries by its full name, and neither {FormatNames(anchorNames, "nor")} nor any section in the file names one.");
                 continue;
             }
 
@@ -73,8 +73,8 @@ public sealed class UnreachableLocalizationChecker : IProjectRuleChecker
                 context.Report(Code, file.Path, section.Length == 0
                     ? $"No type named {FormatNames(anchorNames, "or")} exists, so the entries outside any section are unreachable."
                     : section.StartsWith(LocalizationSchema.RootedSectionPrefix, StringComparison.Ordinal)
-                        ? $"Section '{section}' names no type from the assembly's root, so its translations are unreachable."
-                        : $"Section '{section}' names no type below this file's position, so its translations are unreachable.");
+                        ? $"Section '{section}' names no type from the assembly's root, so its entries are unreachable."
+                        : $"Section '{section}' names no type below this file's position, so its entries are unreachable.");
             }
         }
     }

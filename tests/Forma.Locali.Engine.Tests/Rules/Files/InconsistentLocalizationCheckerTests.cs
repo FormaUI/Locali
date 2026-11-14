@@ -75,7 +75,7 @@ public sealed class InconsistentLocalizationCheckerTests
 
         // Assert
         Assert.Equal(
-            "The key 'Font Family' is translated as 'משפחת גופנים' here and as 'גופן' under 'Widget', so the same English text reads two ways at run time.",
+            "The key 'Font Family' has the text 'משפחת גופנים' here and 'גופן' under 'Widget', so the same source text reads two ways at run time.",
             diagnostic.Message);
     }
 
@@ -171,7 +171,7 @@ public sealed class InconsistentLocalizationCheckerTests
 
         // Assert
         Assert.Equal(
-            "The key 'Dismiss' is translated as 'סגור' here and as 'בטל' at the file's top level, so the same English text reads two ways at run time.",
+            "The key 'Dismiss' has the text 'סגור' here and 'בטל' at the file's top level, so the same source text reads two ways at run time.",
             diagnostic.Message);
     }
 

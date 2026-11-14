@@ -4,10 +4,10 @@ using Forma.Framework.Localization.Files;
 /// <summary>Localization file contents a test can lint.</summary>
 public static class LocalizationFileFakeData
 {
-    /// <summary>The name a file carrying Hebrew translations has.</summary>
+    /// <summary>The name a file carrying Hebrew entries has.</summary>
     public const string HebrewName = "Colocated.he.json";
 
-    /// <summary>A file carrying a translation but no metadata entry.</summary>
+    /// <summary>A file carrying an entry but no metadata entry.</summary>
     public const string Unmarked = """{ "Today": "היום" }""";
 
     /// <summary>A file that is not readable as JSON at all.</summary>
@@ -19,10 +19,10 @@ public static class LocalizationFileFakeData
     /// <summary>A file that follows the schema for Hebrew but declares its metadata entry last.</summary>
     public static string TrailingMarker { get; } = WithTrailingMarker($"SchemaVersion: {LocalizationSchema.CurrentVersion}; Culture: he;");
 
-    /// <summary>A schema-following file for the culture named, carrying one translation.</summary>
+    /// <summary>A schema-following file for the culture named, carrying one entry.</summary>
     /// <param name="culture">The culture the file declares and is named for.</param>
-    /// <param name="key">The key the translation is written under.</param>
-    /// <param name="text">The translation itself.</param>
+    /// <param name="key">The key the entry is written under.</param>
+    /// <param name="text">The text itself.</param>
     public static string ForCulture(string culture, string key, string text)
         => $$"""
             {
@@ -41,7 +41,7 @@ public static class LocalizationFileFakeData
             }
             """;
 
-    /// <summary>A file that declares its metadata entry after a translation rather than first.</summary>
+    /// <summary>A file that declares its metadata entry after an entry rather than first.</summary>
     /// <param name="marker">The fields the entry declares.</param>
     public static string WithTrailingMarker(string marker)
         => $$"""
@@ -55,9 +55,9 @@ public static class LocalizationFileFakeData
     public static string WithBracedMarker { get; } =
         WithMarker($"SchemaVersion: {LocalizationSchema.CurrentVersion}; Culture: he; Author: {{Eyal}};");
 
-    /// <summary>A schema-following file carrying one translation.</summary>
-    /// <param name="key">The key the translation is written under.</param>
-    /// <param name="text">The translation itself.</param>
+    /// <summary>A schema-following file carrying one entry.</summary>
+    /// <param name="key">The key the entry is written under.</param>
+    /// <param name="text">The text itself.</param>
     public static string WithLocalizationEntry(string key, string text)
         => $$"""
             {
@@ -67,8 +67,8 @@ public static class LocalizationFileFakeData
             }
             """;
 
-    /// <summary>A schema-following file whose one translation is deliberately the key itself.</summary>
-    /// <param name="key">The key left untranslated.</param>
+    /// <summary>A schema-following file whose one entry's text is deliberately the key itself.</summary>
+    /// <param name="key">The key left as its own text.</param>
     public static string WithNullLocalizationEntry(string key)
         => $$"""
             {
@@ -78,18 +78,18 @@ public static class LocalizationFileFakeData
             }
             """;
 
-    /// <summary>A schema-following file holding one section, for the type named, with one translation.</summary>
+    /// <summary>A schema-following file holding one section, for the type named, with one entry.</summary>
     /// <param name="section">The section, which completes a type's name.</param>
-    /// <param name="key">The key the translation is written under.</param>
-    /// <param name="text">The translation itself.</param>
+    /// <param name="key">The key the entry is written under.</param>
+    /// <param name="text">The text itself.</param>
     public static string WithSection(string section, string key, string text)
         => WithSections((section, key, text));
 
-    /// <summary>A schema-following file for the culture named, holding one section, for the type named, with one translation.</summary>
+    /// <summary>A schema-following file for the culture named, holding one section, for the type named, with one entry.</summary>
     /// <param name="culture">The culture the file declares and is named for.</param>
     /// <param name="section">The section, which completes a type's name.</param>
-    /// <param name="key">The key the translation is written under.</param>
-    /// <param name="text">The translation itself.</param>
+    /// <param name="key">The key the entry is written under.</param>
+    /// <param name="text">The text itself.</param>
     public static string WithSection(string culture, string section, string key, string text)
         => $$"""
             {
@@ -98,10 +98,10 @@ public static class LocalizationFileFakeData
             }
             """;
 
-    /// <summary>A schema-following file holding one section, for the type named, whose only content is a shared block with one translation.</summary>
+    /// <summary>A schema-following file holding one section, for the type named, whose only content is a shared block with one entry.</summary>
     /// <param name="section">The section, which completes a type's name.</param>
-    /// <param name="key">The key the shared translation is written under.</param>
-    /// <param name="text">The translation itself.</param>
+    /// <param name="key">The key the shared entry is written under.</param>
+    /// <param name="text">The text itself.</param>
     public static string WithSharedSection(string section, string key, string text)
         => $$"""
             {
@@ -111,11 +111,11 @@ public static class LocalizationFileFakeData
             """;
 
     /// <summary>A schema-following file whose shared block at the top answers for every type the file reaches, beside one section for one type.</summary>
-    /// <param name="sharedKey">The key the shared translation is written under.</param>
-    /// <param name="sharedText">The shared translation itself.</param>
+    /// <param name="sharedKey">The key the shared entry is written under.</param>
+    /// <param name="sharedText">The shared text itself.</param>
     /// <param name="section">The section, which completes a type's name.</param>
-    /// <param name="key">The key the section's translation is written under.</param>
-    /// <param name="text">The section's translation itself.</param>
+    /// <param name="key">The key the section's entry is written under.</param>
+    /// <param name="text">The section's text itself.</param>
     public static string WithSharedAndSection(string sharedKey, string sharedText, string section, string key, string text)
         => $$"""
             {
@@ -125,8 +125,8 @@ public static class LocalizationFileFakeData
             }
             """;
 
-    /// <summary>A schema-following file holding one section per type named, each with one translation.</summary>
-    /// <param name="sections">The sections, each with the key and translation it holds.</param>
+    /// <summary>A schema-following file holding one section per type named, each with one entry.</summary>
+    /// <param name="sections">The sections, each with the key and text it holds.</param>
     public static string WithSections(params (string Section, string Key, string Text)[] sections)
         => $$"""
             {
@@ -139,10 +139,10 @@ public static class LocalizationFileFakeData
 
     /// <summary>A schema-following file holding one section and one entry outside it.</summary>
     /// <param name="section">The section, which completes a type's name.</param>
-    /// <param name="key">The key the section translates.</param>
-    /// <param name="text">The section's translation.</param>
+    /// <param name="key">The key the section localizes.</param>
+    /// <param name="text">The section's text.</param>
     /// <param name="strayKey">The key written outside the section.</param>
-    /// <param name="strayText">The translation written outside the section.</param>
+    /// <param name="strayText">The text written outside the section.</param>
     public static string WithSectionAndStray(string section, string key, string text, string strayKey, string strayText)
         => $$"""
             {
@@ -166,7 +166,7 @@ public static class LocalizationFileFakeData
         return "{\n  " + string.Join(",\n  ", entries) + "\n}";
     }
 
-    /// <summary>A schema-following file declaring the same key twice, with different translations.</summary>
+    /// <summary>A schema-following file declaring the same key twice, with different texts.</summary>
     /// <param name="key">The key the file declares more than once.</param>
     public static string WithDuplicateKey(string key)
         => $$"""

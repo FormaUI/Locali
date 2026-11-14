@@ -147,7 +147,7 @@ public sealed class ProjectLocaleFilesTests
     [Fact]
     public void Should_skip_a_file_the_project_does_not_embed()
     {
-        // Arrange — the host's own folder is copied beside the application and translates other assemblies' types.
+        // Arrange — the host's own folder is copied beside the application and localizes other assemblies' types.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine(".locales", "Forma.Blazor", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>());

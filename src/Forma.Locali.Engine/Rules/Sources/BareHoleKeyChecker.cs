@@ -3,7 +3,7 @@ namespace Forma.Locali.Rules.Sources;
 using Forma.Framework.Localization;
 using Forma.Locali.Diagnostics;
 
-/// <summary>Checks that a key is not nothing but holes, which carry no words to translate.</summary>
+/// <summary>Checks that a key is not nothing but holes, which carry no words to localize.</summary>
 public sealed class BareHoleKeyChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
@@ -36,6 +36,6 @@ public sealed class BareHoleKeyChecker : ICallsiteRuleChecker
 
         context.Report(
             Code,
-            "The key carries holes but no words anywhere else, so there is no text here to translate; format the values directly instead.");
+            "The key carries holes but no words anywhere else, so there is no text here to localize; format the values directly instead.");
     }
 }

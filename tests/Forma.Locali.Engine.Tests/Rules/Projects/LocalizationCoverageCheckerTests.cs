@@ -33,7 +33,7 @@ public sealed class LocalizationCoverageCheckerTests
     [Fact]
     public void Should_report_a_key_a_pack_leaves_out()
     {
-        // Arrange — the type is translated by a pack alone, so a key the pack's file leaves out renders in the source language.
+        // Arrange — the type is localized by a pack alone, so a key the pack's file leaves out renders in the source language.
         using var directory = new TempDirectory();
         var compilation = CompilationTestFactory.Referenced("""
             using Forma.Framework.Localization;
@@ -188,7 +188,7 @@ public sealed class LocalizationCoverageCheckerTests
     [Fact]
     public async Task Should_let_the_roots_file_answer_through_a_section()
     {
-        // Arrange — the type's translations sit in the root's file, in a section of its own.
+        // Arrange — the type's entries sit in the root's file, in a section of its own.
         using var directory = new TempDirectory();
         var file = directory.Write(RootFile, LocalizationFileFakeData.WithSection("Widget", "Tomorrow", "מחר"));
 

@@ -26,6 +26,8 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   another assembly's, and a type of each reads one of its sections, so its entries answer both.
 - LOC0122 warns where a part of a locale file's name is a culture written in another case than .NET names it, `ES`
   or `He`, and names no type, so the runtime reads it as part of the name rather than as the file's culture.
+- Messages and documents speak of a key's entries and texts, and of its source text in the source language, in the
+  words `Forma.Framework.Localization` uses, rather than of translations and English.
 
 ## `1.0.0-preview.12`
 

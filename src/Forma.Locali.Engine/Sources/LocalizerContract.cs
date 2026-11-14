@@ -8,7 +8,7 @@ public static class LocalizerContract
     /// <summary>The metadata name of the interface a localization lookup goes through.</summary>
     public const string MetadataName = "Forma.Framework.Localization.IStringLocale";
 
-    /// <summary>The metadata name of the contract that names the type whose translations a lookup reads.</summary>
+    /// <summary>The metadata name of the contract that names the type whose entries a lookup reads.</summary>
     public const string GenericMetadataName = "Forma.Framework.Localization.IStringLocale`1";
 
     /// <summary>The type name as source writes it, without namespace or type arguments.</summary>
@@ -41,7 +41,7 @@ public static class LocalizerContract
         return method.Parameters.FirstOrDefault(IsKey)?.Ordinal;
     }
 
-    /// <summary>The type whose translations a call's key is read in, the method's one type argument, or null when it has not exactly one.</summary>
+    /// <summary>The type whose entries a call's key is read in, the method's one type argument, or null when it has not exactly one.</summary>
     /// <param name="method">The method a call binds to.</param>
     public static INamedTypeSymbol? ResourceOf(IMethodSymbol method)
     {
@@ -51,7 +51,7 @@ public static class LocalizerContract
         return method.TypeArguments is [INamedTypeSymbol resource] ? resource.OriginalDefinition : null;
     }
 
-    /// <summary>The type whose translations the receiver reads, or null when it names none.</summary>
+    /// <summary>The type whose entries the receiver reads, or null when it names none.</summary>
     /// <param name="receiver">The type the lookup was made through.</param>
     /// <param name="generic">The generic contract as the compilation resolved it.</param>
     public static INamedTypeSymbol? ResourceOf(ITypeSymbol? receiver, INamedTypeSymbol generic)

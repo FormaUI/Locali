@@ -3,7 +3,7 @@ namespace Forma.Locali.Rules.Files;
 using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 
-/// <summary>Checks that a translation writes nothing shaped like a hole the runtime cannot read.</summary>
+/// <summary>Checks that a text writes nothing shaped like a hole the runtime cannot read.</summary>
 public sealed class LocalizedTextHoleShapeChecker : ILocalizationFileRuleChecker
 {
     /// <inheritdoc />
@@ -27,7 +27,7 @@ public sealed class LocalizedTextHoleShapeChecker : ILocalizationFileRuleChecker
                 context.Report(
                     Code,
                     entry.ValueOffset,
-                    $"The translation of '{entry.Name}' writes '{{{suspect}}}', which is not a name a value can be read by, so it renders as written.");
+                    $"The text of '{entry.Name}' writes '{{{suspect}}}', which is not a name a value can be read by, so it renders as written.");
             }
         }
     }

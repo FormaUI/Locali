@@ -6,7 +6,7 @@ using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
-/// <summary>Checks that a type translated for one culture family the project's files or packs carry is not left out of another.</summary>
+/// <summary>Checks that a type localized in one culture family the project's files or packs carry is not left out of another.</summary>
 public sealed class CultureCoverageChecker : IProjectRuleChecker
 {
     /// <inheritdoc />
@@ -37,7 +37,7 @@ public sealed class CultureCoverageChecker : IProjectRuleChecker
         {
             var answered = GetAnswered(localization, typeName, families);
 
-            // A type with no translations at all is unlocalized rather than uneven, and one every family carries is not missing anywhere.
+            // A type with no entries at all is unlocalized rather than uneven, and one every family carries is not missing anywhere.
             if (answered.Count == 0 || answered.Count == families.Count)
             {
                 continue;
@@ -51,7 +51,7 @@ public sealed class CultureCoverageChecker : IProjectRuleChecker
                 context.Report(
                     Code,
                     filePath,
-                    $"'{typeName}' is translated in '{answeredFamily}' here, and has no entry anywhere for '{family}', so it renders in the source language for every '{family}' reader.");
+                    $"'{typeName}' is localized in '{answeredFamily}' here, and has no entry anywhere for '{family}', so it renders in the source language for every '{family}' reader.");
             }
         }
     }
