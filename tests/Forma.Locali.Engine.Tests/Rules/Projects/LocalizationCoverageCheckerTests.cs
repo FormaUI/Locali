@@ -247,6 +247,24 @@ public sealed class LocalizationCoverageCheckerTests
     }
 
     [Fact]
+    public async Task Should_report_a_key_text_carried_as_data_reads_that_its_type_argument_leaves_out()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(HebrewFile, LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostics = await LintAsync(directory, """public LocalizableText Title { get; } = LocalizableText.For<Widget>("Tomorrow");""", file);
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MissingLocalization, diagnostic.Code),
+            () => Assert.Contains("'Tomorrow'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Should_ignore_a_file_carrying_no_recognised_culture()
     {
         // Arrange

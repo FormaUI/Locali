@@ -164,6 +164,64 @@ public sealed class CallsiteRuleTests
         Assert.Equal([LintingCodes.ValueCountMismatch], diagnostics.Codes());
     }
 
+    [Fact]
+    public void Should_report_text_carried_as_data_supplying_fewer_values_than_its_key_names_holes()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public LocalizableText Read() => LocalizableText.For<Widget>("Stored {stored} of {total}.", 1);""");
+
+        // Assert
+        Assert.Equal([LintingCodes.ValueCountMismatch], diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_accept_text_carried_as_data_supplying_one_value_for_each_hole()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public LocalizableText Read() => LocalizableText.For<Widget>("Stored {stored} of {total}.", 1, 2);""");
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_text_carried_as_data_writing_something_shaped_like_a_hole_it_cannot_read()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint("""public LocalizableText Read() => LocalizableText.For<Widget>("Value: {0}", 1);""");
+
+        // Assert
+        Assert.Contains(LintingCodes.HoleShapedText, diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_leave_a_call_whose_method_takes_no_values_after_its_key_uncounted()
+    {
+        // Act — the method may fill the key's holes from values of its own.
+        var diagnostics = SourceLinterTestFactory.Lint("""
+            private static string Count<TSource>([LocaleKey] string key, int count) => key;
+            public string Read() => Count<Widget>("{Count} of {Total} items", 3);
+            """);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_leave_a_call_marking_its_key_passed_to_string_format_alone()
+    {
+        // Act — what the method returns is its own, so the rule can't read it as a lookup's result.
+        var diagnostics = SourceLinterTestFactory.Lint("""
+            private static string Label<TSource>([LocaleKey] string key) => key;
+            public string Show() => string.Format(Label<Widget>("Stored items."), 1);
+            """);
+
+        // Assert
+        Assert.DoesNotContain(LintingCodes.ReformattedLookup, diagnostics.Codes());
+    }
+
     [Theory]
     [InlineData("Value: {0}")]
     [InlineData("Value: {0,5}")]

@@ -14,10 +14,11 @@ internal static class SemanticCallsiteReader
     /// <summary>The lookup its arguments describe, or null when the key is not readable text.</summary>
     /// <param name="lookup">The lookup operation.</param>
     /// <param name="arguments">The arguments the lookup bound.</param>
-    public static LocalizerLookup? Read(IOperation lookup, ImmutableArray<IArgumentOperation> arguments)
+    /// <param name="keyOrdinal">The ordinal of the parameter the key binds to, whose following parameters take the values.</param>
+    public static LocalizerLookup? Read(IOperation lookup, ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
     {
         // The compiler folds a constant, so a key written as one is as readable as a literal spelled out.
-        if (Key(arguments)?.Value is not { ConstantValue: { HasValue: true, Value: string text } } value)
+        if (Key(arguments, keyOrdinal)?.Value is not { ConstantValue: { HasValue: true, Value: string text } } value)
         {
             return null;
         }
@@ -25,13 +26,14 @@ internal static class SemanticCallsiteReader
         // The span covers a reference rather than a quoted literal, so the key starts where the span does.
         var offset = Unconverted(value) is ILiteralOperation literal ? Offset(literal) : 0;
 
-        return new LocalizerLookup(new LocalizationKeyReference(text, Span(value), offset), Supplies(arguments), IsFormatString(lookup));
+        return new LocalizerLookup(new LocalizationKeyReference(text, Span(value), offset), Supplies(arguments, keyOrdinal), IsFormatString(lookup));
     }
 
     /// <summary>Where a lookup writes its key as an interpolated string with holes, or null when it does not.</summary>
     /// <param name="arguments">The arguments the lookup bound.</param>
-    public static FileLinePositionSpan? InterpolatedKey(ImmutableArray<IArgumentOperation> arguments)
-        => Key(arguments)?.Value is { } value
+    /// <param name="keyOrdinal">The ordinal of the parameter the key binds to.</param>
+    public static FileLinePositionSpan? InterpolatedKey(ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
+        => Key(arguments, keyOrdinal)?.Value is { } value
             && Unconverted(value) is IInterpolatedStringOperation interpolated
             && interpolated.Parts.OfType<IInterpolationOperation>().Any()
             ? Span(value)
@@ -39,12 +41,21 @@ internal static class SemanticCallsiteReader
 
     /// <summary>Where a lookup writes the key that could not be read, or null when it writes no key at all.</summary>
     /// <param name="arguments">The arguments the lookup bound.</param>
-    public static FileLinePositionSpan? UnreadableKey(ImmutableArray<IArgumentOperation> arguments)
-        => Key(arguments) is { } key ? Span(key) : null;
+    /// <param name="keyOrdinal">The ordinal of the parameter the key binds to.</param>
+    public static FileLinePositionSpan? UnreadableKey(ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
+        => Key(arguments, keyOrdinal) is { } key ? Span(key) : null;
 
-    // The key is the lookup's first parameter, wherever a named argument writes it.
-    private static IArgumentOperation? Key(ImmutableArray<IArgumentOperation> arguments)
-        => arguments.FirstOrDefault(argument => argument.Parameter is { Ordinal: 0 });
+    /// <summary>Whether a lookup's key is a parameter that is itself marked as a localization key, which its own callers write.</summary>
+    /// <param name="arguments">The arguments the lookup bound.</param>
+    /// <param name="keyOrdinal">The ordinal of the parameter the key binds to.</param>
+    public static bool ForwardsKey(ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
+        => Key(arguments, keyOrdinal)?.Value is { } value
+            && Unconverted(value) is IParameterReferenceOperation { Parameter: var parameter }
+            && LocalizerContract.IsKey(parameter);
+
+    // The key binds to one parameter, wherever a named argument writes it.
+    private static IArgumentOperation? Key(ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
+        => arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == keyOrdinal);
 
     // A value passed alongside the format text is no less an argument to string.Format, so the parameter the
     // lookup actually bound to is what decides this, not where it sits in the source; a named argument can
@@ -64,9 +75,9 @@ internal static class SemanticCallsiteReader
         };
     }
 
-    private static LocalizerArguments Supplies(ImmutableArray<IArgumentOperation> arguments)
+    private static LocalizerArguments Supplies(ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
     {
-        var values = arguments.Where(argument => argument.Parameter is { Ordinal: > 0 }).ToArray();
+        var values = arguments.Where(argument => argument.Parameter?.Ordinal > keyOrdinal).ToArray();
         if (values.Length == 0)
         {
             return LocalizerArguments.None;

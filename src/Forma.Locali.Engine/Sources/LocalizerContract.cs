@@ -17,6 +17,40 @@ public static class LocalizerContract
     /// <summary>The name a lookup goes through when it is not an indexer.</summary>
     public const string ResolveMethod = "Resolve";
 
+    /// <summary>The metadata name of the attribute marking a parameter whose argument is a localization key.</summary>
+    public const string KeyAttributeMetadataName = "Forma.Framework.Localization.LocaleKeyAttribute";
+
+    private const string KeyAttributeName = "LocaleKeyAttribute";
+
+    /// <summary>Whether the parameter carries the attribute marking its argument as a localization key.</summary>
+    /// <param name="parameter">The parameter to judge.</param>
+    public static bool IsKey(IParameterSymbol parameter)
+    {
+        ArgumentNullException.ThrowIfNull(parameter);
+
+        return parameter.GetAttributes().Any(attribute =>
+            attribute.AttributeClass is { Name: KeyAttributeName } type && type.ToDisplayString() == KeyAttributeMetadataName);
+    }
+
+    /// <summary>The ordinal of the method's first parameter whose argument is a localization key, or null when none is.</summary>
+    /// <param name="method">The method a call binds to.</param>
+    public static int? KeyOrdinal(IMethodSymbol method)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+
+        return method.Parameters.FirstOrDefault(IsKey)?.Ordinal;
+    }
+
+    /// <summary>The type whose translations a call's key is read in, the method's one type argument, or null when it has not exactly one.</summary>
+    /// <param name="method">The method a call binds to.</param>
+    public static INamedTypeSymbol? ResourceOf(IMethodSymbol method)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+
+        // The factory reads an open definition, as it does for the generic contract's argument.
+        return method.TypeArguments is [INamedTypeSymbol resource] ? resource.OriginalDefinition : null;
+    }
+
     /// <summary>The type whose translations the receiver reads, or null when it names none.</summary>
     /// <param name="receiver">The type the lookup was made through.</param>
     /// <param name="generic">The generic contract as the compilation resolved it.</param>

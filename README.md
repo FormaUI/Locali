@@ -160,9 +160,15 @@ rather than the severity — and a `diagnostics` array of `path`, `line`, `colum
 Callsites are found semantically where the compilation binds `IStringLocale`, and syntactically
 otherwise. The semantic path reads the operation tree the compiler binds, which has one shape
 for every language it compiles, and asks it only about the nodes a lookup can be written as, an
-element access or a call named `Resolve`, so a member holding neither is never bound; the
-syntactic path reads C# or Visual Basic syntax, cannot resolve overloads, and so leaves the rules
-that count values silent.
+element access, a call named `Resolve` or a call to a method marked with a key, so a member
+holding none is never bound; the syntactic path reads C# or Visual Basic syntax, cannot resolve
+overloads, and so leaves the rules that count values silent.
+
+A call to a method whose parameter carries `[LocaleKey]`, as `LocalizableText.For<TSource>`'s
+key does, is a lookup on the semantic path: the argument for that parameter is its key, read in
+the translations of the method's one type argument, and its values are counted where one `params`
+parameter follows the key, as a lookup's are. A key a method passes on from a `[LocaleKey]`
+parameter of its own is checked where that method is called.
 
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no

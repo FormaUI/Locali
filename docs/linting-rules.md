@@ -434,6 +434,19 @@ a constant is folded by the compiler and checked like a literal on the semantic 
 inside a type that implements `IStringLocale` is left alone throughout, since such a type
 forwards the key its own caller wrote.
 
+A call to a method whose parameter carries `[LocaleKey]` is a lookup too, found on the semantic
+path alone: the argument for that parameter is the key, read in the translations of the method's
+one type argument, and the values are what one `params` parameter after the key gathers. A key
+passed on from a parameter that carries `[LocaleKey]` itself is left alone, since it is checked
+where its own method is called:
+
+```csharp
+LocalizableText.For<SectionMenu>("{Count} results today", 12)     // right: one value for its one hole
+LocalizableText.For<SectionMenu>("{Count} results today", 12, 3)  // LOC0201: one hole, two values
+LocalizableText Title([LocaleKey] string key)
+    => LocalizableText.For<SectionMenu>(key);                     // right: Title's callers write the key
+```
+
 Values pair to a key's distinct holes by position, in the order the holes first appear, and a
 plural expression's bracketed argument names a value the way a brace hole does:
 
@@ -466,7 +479,8 @@ such hole and whose lookup supplies no such value.
 **Silent where.** The values arrive as one collection, `object?[]` into
 `params ReadOnlySpan<object?>`, whose count only the run knows; an `int[]` in the same position
 cannot convert, arrives as one boxed value, and is counted. Also silent on the syntactic path,
-where no overload resolved.
+where no overload resolved, and for a call through `[LocaleKey]` whose method takes anything but
+one `params` parameter after its key, since the method may fill the holes itself.
 
 ### LOC0202 — An expression naming no argument is given no value
 
@@ -530,9 +544,10 @@ with a JSON `null`: `"Email": null`. A null entry is *found* — `ResourceNotFou
 genuinely missing cannot use it, and the warning is the honest answer there.
 
 **Silent where.** The type has no translations at all, since it is unlocalized rather than
-under-translated; the lookup is through the unbound `IStringLocale`, which names no type; a
-parent culture answers, since `es-419` reads `es` for what it does not declare; or the run did
-not name the project's files.
+under-translated; the lookup is through the unbound `IStringLocale`, which names no type, or is
+a call through `[LocaleKey]` to a method without exactly one type argument; a parent culture
+answers, since `es-419` reads `es` for what it does not declare; or the run did not name the
+project's files.
 
 ### LOC0208 — A lookup writes its key as an expression
 
@@ -543,6 +558,9 @@ silent would let a run read as complete when part of it was never looked at.
 
 **What fixes it.** Write the key as a literal or a constant, which the compiler folds and every
 rule reads.
+
+**Silent where.** The key is a parameter that carries `[LocaleKey]` itself, which the method's
+own callers write and the rules read there.
 
 ### LOC0209 — A key with holes and no words
 
@@ -598,4 +616,5 @@ the moment any culture is active.
 **Silent where.** The lookup is a value beside the format text, `string.Format("Found {0}.",
 L[key])`; or the result is stored, formatted later or passed through a method, which the rule
 cannot follow. Without a bound compilation, only the lookup written as the unnamed or
-`format`-named first argument is certain.
+`format`-named first argument is certain. A call through `[LocaleKey]` is never read as format
+text, since what its method returns is its own.

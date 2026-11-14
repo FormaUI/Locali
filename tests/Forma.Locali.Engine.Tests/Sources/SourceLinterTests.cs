@@ -220,6 +220,55 @@ public sealed class SourceLinterTests
         Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
     }
 
+    [Fact]
+    public void Should_report_a_key_a_call_writes_as_an_expression()
+    {
+        // Act
+        var diagnostics = Lint("""
+            private static LocalizableText Label<TSource>([LocaleKey] string key) => LocalizableText.For<TSource>(key);
+            public void Show(object column) => _ = Label<Widget>(column.ToString()!);
+            """);
+
+        // Assert
+        Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
+    }
+
+    [Fact]
+    public void Should_report_an_interpolated_key_a_call_writes()
+    {
+        // Act
+        var diagnostics = Lint("""public void Show(int count) => _ = LocalizableText.For<Widget>($"Stored {count}.");""", LintingCodes.InterpolatedKey);
+
+        // Assert
+        Assert.Equal(LintingCodes.InterpolatedKey, Assert.Single(diagnostics).Code);
+    }
+
+    [Fact]
+    public void Should_leave_a_key_forwarded_from_a_parameter_marked_as_a_key_alone()
+    {
+        // Arrange — the key is written where the method is called, and checked there.
+        var compilation = Compile("""
+            public LocalizedText Show([LocaleKey] string key) => L[key];
+            public LocalizableText Carry([LocaleKey] string key) => LocalizableText.For<Widget>(key);
+            """);
+
+        // Act
+        var diagnostics = Reported(compilation);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_a_key_forwarded_from_a_parameter_that_is_not_marked()
+    {
+        // Act
+        var diagnostics = Lint("""public LocalizableText Carry(string key) => LocalizableText.For<Widget>(key);""");
+
+        // Assert
+        Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
+    }
+
     private static IReadOnlyList<LintingDiagnostic> Lint(string body)
         => Reported(Compile(body));
 

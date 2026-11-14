@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.Operations;
 using CSharp = Microsoft.CodeAnalysis.CSharp.Syntax;
 using VisualBasic = Microsoft.CodeAnalysis.VisualBasic.Syntax;
 
-/// <summary>Finds callsites by binding the receiver to the localizer contract.</summary>
+/// <summary>Finds callsites by binding the receiver to the localizer contract, and calls by binding a parameter marked as a localization key.</summary>
 public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 {
     /// <inheritdoc />
@@ -32,15 +32,17 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 
     // The operation tree is what the compiler bound, in the same shape for every language it reads, so the
     // walk reads it rather than the syntax; an indexer and a default property are one operation there.
-    private static (IOperation? Receiver, ImmutableArray<IArgumentOperation> Arguments)? Lookup(IOperation operation, INamedTypeSymbol contract)
+    private static BoundLookup? Lookup(IOperation operation, INamedTypeSymbol contract, INamedTypeSymbol? generic)
         => operation switch
         {
             IPropertyReferenceOperation { Arguments.Length: > 0 } indexer
                 when LocalizerContract.Implements(indexer.Property.ContainingType, contract)
-                => (indexer.Instance, indexer.Arguments),
+                => new(indexer.Arguments, 0, Resource(indexer.Instance, generic), KeyedMethod: null),
             IInvocationOperation { TargetMethod.Name: LocalizerContract.ResolveMethod } invocation
                 when LocalizerContract.Implements(invocation.TargetMethod.ContainingType, contract)
-                => (invocation.Instance, invocation.Arguments),
+                => new(invocation.Arguments, 0, Resource(invocation.Instance, generic), KeyedMethod: null),
+            IInvocationOperation invocation when LocalizerContract.KeyOrdinal(invocation.TargetMethod) is { } ordinal
+                => new(invocation.Arguments, ordinal, LocalizerContract.ResourceOf(invocation.TargetMethod), invocation.TargetMethod),
             _ => null,
         };
 
@@ -52,27 +54,30 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         var unreadable = new List<FileLinePositionSpan>();
         var interpolated = new List<FileLinePositionSpan>();
 
-        foreach (var node in Candidates(tree.GetRoot(), compilation.Language))
+        foreach (var node in Candidates(compilation, tree))
         {
             // A lookup is read at the node its operation stands on, so a node inside it does not read it again.
             if (model.GetOperation(node) is not { } operation
                 || operation.Syntax != node
-                || Lookup(operation, contract) is not var (receiver, arguments))
+                || Lookup(operation, contract, generic) is not { } lookup)
             {
                 continue;
             }
 
-            if (SemanticCallsiteReader.Read(operation, arguments) is { } site)
+            if (SemanticCallsiteReader.Read(operation, lookup.Arguments, lookup.KeyOrdinal) is { } site)
             {
-                lookups.Add(site with { ResourceType = Resource(receiver, generic) });
+                var resolved = site with { ResourceType = lookup.Resource };
+
+                lookups.Add(lookup.KeyedMethod is { } method ? Keyed(resolved, method, lookup.KeyOrdinal) : resolved);
             }
-            else if (!LocalizerContract.InsideLocalizer(model.GetEnclosingSymbol(node.SpanStart), contract))
+            else if (!LocalizerContract.InsideLocalizer(model.GetEnclosingSymbol(node.SpanStart), contract)
+                && !SemanticCallsiteReader.ForwardsKey(lookup.Arguments, lookup.KeyOrdinal))
             {
-                if (SemanticCallsiteReader.InterpolatedKey(arguments) is { } key)
+                if (SemanticCallsiteReader.InterpolatedKey(lookup.Arguments, lookup.KeyOrdinal) is { } key)
                 {
                     interpolated.Add(key);
                 }
-                else if (SemanticCallsiteReader.UnreadableKey(arguments) is { } location)
+                else if (SemanticCallsiteReader.UnreadableKey(lookup.Arguments, lookup.KeyOrdinal) is { } location)
                 {
                     unreadable.Add(location);
                 }
@@ -82,22 +87,39 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         return new LocalizerLookups(lookups, unreadable, interpolated);
     }
 
-    // The compiler binds a whole member the moment any node in it is asked about, and a lookup is written as an
-    // element access or a call named Resolve, so only nodes of those shapes are asked and a member holding neither
-    // is never bound at all.
-    private static IEnumerable<SyntaxNode> Candidates(SyntaxNode root, string language)
-        => language switch
+    // A method marked with a key passes its values on as a lookup does only where one params parameter follows the
+    // key, and what it returns is its own, so its values are counted there alone and its result is never format text.
+    private static LocalizerLookup Keyed(LocalizerLookup site, IMethodSymbol method, int keyOrdinal)
+        => site with
         {
-            LanguageNames.CSharp => root.DescendantNodes().Where(IsCSharpCandidate),
-            LanguageNames.VisualBasic => root.DescendantNodes().Where(IsVisualBasicCandidate),
-            _ => root.DescendantNodes(),
+            Arguments = method.Parameters.Length == keyOrdinal + 2 && method.Parameters[^1].IsParams ? site.Arguments : LocalizerArguments.Unknown,
+            IsFormatString = false,
         };
 
-    private static bool IsCSharpCandidate(SyntaxNode node)
+    // The compiler binds a whole member the moment any node in it is asked about, and a lookup is written as an
+    // element access, a call named Resolve or a call to a method marked with a key, so only nodes of those shapes are
+    // asked and a member holding none is never bound at all.
+    private static IEnumerable<SyntaxNode> Candidates(Compilation compilation, SyntaxTree tree)
+    {
+        var nodes = tree.GetRoot().DescendantNodes();
+
+        return compilation.Language switch
+        {
+            LanguageNames.CSharp => CSharpCandidates(nodes, LocaleKeyMethodNames.Get(compilation)),
+            LanguageNames.VisualBasic => nodes.Where(IsVisualBasicCandidate),
+            _ => nodes,
+        };
+    }
+
+    private static IEnumerable<SyntaxNode> CSharpCandidates(IEnumerable<SyntaxNode> nodes, IReadOnlySet<string> keyed)
+        => nodes.Where(node => IsCSharpCandidate(node, keyed));
+
+    private static bool IsCSharpCandidate(SyntaxNode node, IReadOnlySet<string> keyed)
         => node switch
         {
             CSharp.ElementAccessExpressionSyntax or CSharp.ElementBindingExpressionSyntax => true,
-            CSharp.InvocationExpressionSyntax invocation => Invoked(invocation.Expression) == LocalizerContract.ResolveMethod,
+            CSharp.InvocationExpressionSyntax invocation => Invoked(invocation.Expression) is { } name
+                && (name == LocalizerContract.ResolveMethod || keyed.Contains(name)),
             _ => false,
         };
 
@@ -117,4 +139,12 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
     // The indexer is declared on the unbound contract, so the type it translates is only on the receiver.
     private static INamedTypeSymbol? Resource(IOperation? receiver, INamedTypeSymbol? generic)
         => generic is null || receiver is null ? null : LocalizerContract.ResourceOf(receiver.Type, generic);
+
+    // A lookup as the compiler bound it: its arguments, the ordinal its key binds to, the type its key is read in,
+    // and the method a call marked with a key binds to.
+    private readonly record struct BoundLookup(
+        ImmutableArray<IArgumentOperation> Arguments,
+        int KeyOrdinal,
+        INamedTypeSymbol? Resource,
+        IMethodSymbol? KeyedMethod);
 }
