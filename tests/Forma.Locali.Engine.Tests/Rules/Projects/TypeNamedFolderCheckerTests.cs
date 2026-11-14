@@ -30,6 +30,34 @@ public sealed class TypeNamedFolderCheckerTests
     }
 
     [Fact]
+    public void Should_report_a_folder_named_for_a_type_outside_any_folder_of_locale_files()
+    {
+        // Arrange — the default reading takes the file wherever it sits, its folders standing for its name.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", "Widget", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostic = Assert.Single(Lint(directory, Widget, file));
+
+        // Assert
+        Assert.Contains("'Scratch.Components.Widget'", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_leave_a_types_own_file_in_a_culture_folder_alone()
+    {
+        // Arrange — the file's own name is the type's, whatever folder holds its culture.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "he", "Components", "Widget.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostics = Lint(directory, Widget, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_leave_a_namespaces_folder_alone()
     {
         // Arrange
