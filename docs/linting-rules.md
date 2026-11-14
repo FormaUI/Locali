@@ -446,9 +446,11 @@ one of two wordings is shown and the other is never seen.
 **What fixes it.** Give the entry one text, or keep it in one file. A later source is no
 conflict: a pack's text wins over the assembly's own as the runtime's order says.
 
-**Silent where.** Two files give the entry the same text; no type of the project reads the entry,
-since a section naming no type is LOC0112's; one file gives it twice, which LOC0113 reports; or
-the files belong to two sources.
+**Silent where.** Two files give the entry the same text; no type reads the entry, of the
+project or, for an application's file, of the assembly its name starts with, since a section
+naming no type is LOC0112's; one file gives it twice, which LOC0113 reports; the files belong to
+two sources; or the files are copied beside the application, a folder the runtime merges from
+every project's copies, which no one project shows whole.
 
 ## Callsites (LOC0200–LOC0299)
 
