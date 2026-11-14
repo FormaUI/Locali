@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.13`
 
-*Unreleased*
+*November 14, 2026*
 
 - Locale files are read as `Forma.Framework.Localization` now reads them. A file's culture is the first part of its
   name, folders included, that is a culture written exactly as .NET names it, so `.locales/es/Components.json` is a
