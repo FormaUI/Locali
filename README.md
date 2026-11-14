@@ -50,36 +50,39 @@ project tree, so it places a file exactly where the application will. One type,
 ```text
 src/Forma.Blazor/.locales/he.json                                   { "Components.Bars.FormaToolbar": { "Bold": "מודגש" } }
 src/Forma.Blazor/Components/Bars/.locales/he.json                   { "FormaToolbar": { "Bold": "מודגש" } }
+src/Forma.Blazor/.locales/he/Components.Bars.json                   { "FormaToolbar": { "Bold": "מודגש" } }
 src/Forma.Blazor/Components/Bars/.locales/FormaToolbar.he.json      { "Bold": "מודגש" }
 src/Forma.Blazor/Strings/.locales/he.json                           { "@.Components.Bars.FormaToolbar": { "Bold": "מודגש" } }
 ```
 
 A folder is a namespace; a file is the folder's, named for the culture and sectioned by type, or
 a type's own, named for the type; a section starting with `@.` names a type from the assembly's
-root from anywhere. A folder and a dot separate a name alike, and the culture is the first part
-of the name, folders included, that is a culture written exactly as .NET names it, so
-`.locales/he/Components.Bars.json` stands for the same name as the second file. An application
-overrides any of them in a file whose name starts with the assembly's name, such as one in the
-`.locales` folder at its root, which its build embeds and a project file may copy beside the
-application instead:
+root from anywhere. A folder and a dot separate a name alike, a `.locales` folder is left out
+wherever it sits, and the culture is the first part of the name, folders included, that is a
+culture written exactly as .NET names it, so the second and the third file stand for one name. A
+source reads one entry per key: a type's own over a shared one, and of two files giving one key
+different texts, the file whose name sorts last, which LOC0120 reports. An application overrides
+any of them in a file whose name starts with the assembly's name, the culture before it or after
+it, which its build embeds as it does every locale file:
 
 ```text
 .locales/Forma.Blazor/Components/Bars/he.json                       { "FormaToolbar": { "Bold": "עבה" } }
-.locales/Forma.Blazor/Components/Bars/FormaToolbar.he.json          { "Bold": "עבה" }
+.locales/he/Forma.Blazor/Components.Bars.json                       { "FormaToolbar": { "Bold": "עבה" } }
 ```
 
 The rules that read a type's files, LOC0112 and LOC0207 among them, read a project's own
 embedded files, whatever folder they sit in. An application's file whose name starts with an
 assembly's name localizes that assembly's types, so LOC0112 and LOC0120 hold it to that
-assembly's types where a project of the run builds it, and a host's file copied beside the
-application is read by the file rules alone. A locale pack, a project declaring `IsLocalePack`,
-is an application's files for other assemblies shipped as an assembly: each file's name starts
-with the name of the assembly it localizes, the culture before it or after it, and goes on from
-the root namespace that assembly declares. The type-bound rules read a pack's file for the
-project building the longest assembly name it starts with, so it is held to that project's types
-and callsites as its own files are, LOC0120 reads each pack as a source of its own, and LOC0024
-reports a file whose name starts with no assembly the solution builds or references.
-`Forma.Framework.Localization`'s README walks the whole layout; this document covers the linter.
+assembly's types where a project of the run builds it, and a host's file, one the project copies
+beside the application rather than embeds, is read by the file rules alone. A locale pack, a
+project declaring `IsLocalePack`, is an application's files for other assemblies shipped as an
+assembly: each file's name starts with the name of the assembly it localizes, the culture before
+it or after it, and goes on from the root namespace that assembly declares. The type-bound rules
+read a pack's file for the project building the longest assembly name it starts with, so it is
+held to that project's types and callsites as its own files are, LOC0120 reads each pack as a
+source of its own, and LOC0024 reports a file whose name starts with no assembly the solution
+builds or references. `Forma.Framework.Localization`'s README walks the whole layout; this
+document covers the linter.
 
 ## Options
 
@@ -255,7 +258,7 @@ root namespace `Forma.Locali`, so a folder's namespace is the same in either pro
 | Engine | `Rules/Files/` | Rules over a locale file |
 | Engine | `Rules/Sources/` | Rules over a callsite |
 | Engine | `Rules/Projects/` | Rules over a project's locale files read whole |
-| Engine | `Sources/` | Finding callsites, and resolving a project's locale files, and the locale packs carrying files for it, for the project rules |
+| Engine | `Sources/` | Finding callsites, and resolving a project's locale files, the locale packs carrying files for it, and the assemblies of the run an application's files are read for, for the project rules |
 | Tool | `Cli/` | Argument parsing and exit codes |
 | Tool | `Projects/` | Binding Roslyn to the SDK's copy |
 | Tool | `Reporting/` | Console and JSON reporters |
