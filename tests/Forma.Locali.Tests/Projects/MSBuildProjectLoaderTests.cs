@@ -34,7 +34,7 @@ public sealed class MSBuildProjectLoaderTests
     [Fact]
     public async Task Should_leave_an_applications_file_named_for_an_assembly_to_that_assembly()
     {
-        // Arrange — an executable is the application, which reads a file whose name starts with an assembly's for that assembly's types, here its own by its name.
+        // Arrange — an executable is the application, which reads a file whose name starts with an assembly's for that assembly's types, here its own by its name, where a library's own reading reaches no type.
         using var directory = new TempDirectory();
         var project = directory.Write("Contoso.Host.csproj", """
             <Project Sdk="Microsoft.NET.Sdk">
@@ -47,7 +47,8 @@ public sealed class MSBuildProjectLoaderTests
               </ItemGroup>
             </Project>
             """);
-        directory.Write(Path.Combine(".locales", "Contoso.Host", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+        directory.Write("Widget.cs", "namespace Contoso.Host.Bars; public sealed class Widget;");
+        directory.Write(Path.Combine(".locales", "Contoso.Host", "Bars", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
 
         // Act
         var (exitCode, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", project);

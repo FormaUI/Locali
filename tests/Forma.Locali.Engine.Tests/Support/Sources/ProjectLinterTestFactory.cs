@@ -31,17 +31,19 @@ public static class ProjectLinterTestFactory
     /// <param name="localizationFiles">The locale files the project owns.</param>
     /// <param name="callsites">The callsites the source pass found, none unless given.</param>
     /// <param name="packs">Every locale pack of the run, none unless given.</param>
+    /// <param name="builtAssemblies">Every assembly a project of the run builds, none unless given.</param>
     public static IReadOnlyList<LintingDiagnostic> Check(
         IProjectRuleChecker checker,
         LoadedProject project,
         IReadOnlyList<string> localizationFiles,
         IReadOnlyList<LocalizerLookup>? callsites = null,
-        IReadOnlyList<LocalePack>? packs = null)
+        IReadOnlyList<LocalePack>? packs = null,
+        IReadOnlyList<BuiltAssembly>? builtAssemblies = null)
     {
         ArgumentNullException.ThrowIfNull(checker);
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
-        return new ProjectLinter([checker], LocaleFormatTestFactory.Json).Lint(project, localizationFiles, callsites ?? [], packs ?? [], []);
+        return new ProjectLinter([checker], LocaleFormatTestFactory.Json).Lint(project, localizationFiles, callsites ?? [], packs ?? [], builtAssemblies ?? []);
     }
 }

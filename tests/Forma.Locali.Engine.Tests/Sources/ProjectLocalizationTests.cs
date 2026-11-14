@@ -43,7 +43,7 @@ public sealed class ProjectLocalizationTests
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine(".locales", "Contoso.Server", "he.json"), LocalizationFileFakeData.Valid);
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced("namespace Scratch;"), false, false);
-        var localization = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file], builtAssemblyNames: ["Contoso.Server"])!;
+        var localization = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file], builtAssemblies: [new BuiltAssembly("Contoso.Server", [], "Contoso.Server")])!;
 
         // Act
         var named = localization.GetNamedAssemblies(Assert.Single(localization.Files));
@@ -97,7 +97,7 @@ public sealed class ProjectLocalizationTests
         var file = directory.Write(Path.Combine(".locales", "Scratch.App.Core", "he.json"), LocalizationFileFakeData.Valid);
         var compilation = CompilationTestFactory.Unreferenced("namespace Scratch.App;").WithAssemblyName("Scratch.App");
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.App.csproj"), compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)), false, false);
-        var localization = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file], builtAssemblyNames: ["Scratch.App.Core"])!;
+        var localization = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file], builtAssemblies: [new BuiltAssembly("Scratch.App.Core", [], "Scratch.App.Core")])!;
 
         // Act
         var isForAnotherAssembly = localization.IsForAnotherAssembly(Assert.Single(localization.Files));

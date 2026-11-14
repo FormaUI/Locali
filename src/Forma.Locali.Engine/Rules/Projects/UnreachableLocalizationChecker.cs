@@ -30,8 +30,8 @@ public sealed class UnreachableLocalizationChecker : IProjectRuleChecker
         // What the linting configuration leaves out is left to the caller to apply, so a run can still count and brief it.
         foreach (var file in localization.Files)
         {
-            // An application's file whose name starts with an assembly's is read for that assembly's types too, which the project's own do not show.
-            if (localization.IsApplication && localization.GetNamedAssemblies(file).Count > 0)
+            // An application's file read for an assembly whose types are out of reach may reach one of them.
+            if (localization.IsReadOutOfReach(file))
             {
                 continue;
             }
@@ -48,10 +48,17 @@ public sealed class UnreachableLocalizationChecker : IProjectRuleChecker
                 continue;
             }
 
-            var anchorNames = localization.GetAnchorNames(file);
+            IReadOnlyList<string> anchorNames = [.. localization.GetAnchorNames(file), .. localization.GetApplicationAnchorNames(file)];
             if (anchorNames.Count == 0)
             {
                 context.Report(Code, file.Path, "No type reads this file: no locale path in force where it sits reads a file by its name.");
+                continue;
+            }
+
+            // A library's files are read for its own types alone, so a name starting with an assembly's is one only an application or a pack reads by.
+            if (read.Count == 0 && !localization.IsApplication && localization.GetNamedAssemblies(file).MaxBy(assemblyName => assemblyName.Length) is { } assemblyName)
+            {
+                context.Report(Code, file.Path, $"No type reads this file: neither {FormatNames(anchorNames, "nor")} nor any section in the file names one, and its name starts with the assembly name '{assemblyName}', which only an application or a locale pack reads a file by, while this project is a library.");
                 continue;
             }
 
@@ -77,21 +84,21 @@ public sealed class UnreachableLocalizationChecker : IProjectRuleChecker
     {
         var reachable = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
 
-        foreach (var typeName in localization.TypeNames)
+        foreach (var culture in localization.Cultures)
         {
-            foreach (var culture in localization.Cultures)
-            {
-                foreach (var section in localization.GetSections(typeName, culture))
-                {
-                    if (localization.GetFile(section.FileName) is { } file)
-                    {
-                        if (!reachable.TryGetValue(file.Path, out var sections))
-                        {
-                            reachable[file.Path] = sections = [with(StringComparer.Ordinal)];
-                        }
+            // An application reads its files for the assemblies their names start with as well, so what those readings reach is reached.
+            var read = localization.TypeNames.SelectMany(typeName => localization.GetSections(typeName, culture)).Concat(localization.GetApplicationSections(culture));
 
-                        sections.Add(section.TypeName);
+            foreach (var section in read)
+            {
+                if (localization.GetFile(section.FileName) is { } file)
+                {
+                    if (!reachable.TryGetValue(file.Path, out var sections))
+                    {
+                        reachable[file.Path] = sections = [with(StringComparer.Ordinal)];
                     }
+
+                    sections.Add(section.TypeName);
                 }
             }
         }

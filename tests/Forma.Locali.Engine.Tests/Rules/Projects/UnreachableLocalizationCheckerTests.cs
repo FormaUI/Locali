@@ -301,9 +301,84 @@ public sealed class UnreachableLocalizationCheckerTests
     }
 
     [Fact]
-    public void Should_leave_an_applications_file_for_another_assembly_alone()
+    public void Should_report_a_section_an_applications_file_gives_an_assembly_of_the_run_that_names_none_of_its_types()
     {
-        // Arrange — an application's file whose name starts with an assembly's is read for that assembly's types, which the project does not declare.
+        // Arrange — the application reads its file for Contoso.Widgets, whose types the run knows, so the file is held to them.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.WithSections(("Widget", "Today", "היום"), ("Gadget", "Today", "היום")));
+        var widgets = new BuiltAssembly("Contoso.Widgets", ["Contoso.Widgets.Bars.Widget"], "Contoso.Widgets");
+
+        // Act
+        var diagnostic = Assert.Single(ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), Application(directory), [file], builtAssemblies: [widgets]));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(file, diagnostic.Path),
+            () => Assert.Contains("'Gadget'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Should_leave_an_applications_file_a_type_of_another_assembly_of_the_run_reads_alone()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "he", "Contoso.Widgets", "Bars.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var widgets = new BuiltAssembly("Contoso.Widgets", ["Contoso.Widgets.Bars.Widget"], "Contoso.Widgets");
+
+        // Act
+        var diagnostics = ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), Application(directory), [file], builtAssemblies: [widgets]);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_an_applications_file_laid_out_under_a_namespace_of_its_own_that_no_type_reads()
+    {
+        // Arrange — the name starts a namespace of the application's own, so no assembly the run does not know could start it.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", "Gallery", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostic = Assert.Single(ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), Application(directory), [file]));
+
+        // Assert
+        Assert.Contains("'Scratch.Components.Gallery'", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_leave_an_applications_file_whose_name_goes_on_past_its_own_into_no_namespace_of_its_own_alone()
+    {
+        // Arrange — Scratch.Plugin may be an assembly the application loads at run time, which the run does not know.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Scratch.Plugin", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostics = ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), Application(directory), [file]);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_a_librarys_file_named_for_an_assembly_no_type_of_its_own_reads()
+    {
+        // Arrange — only an application or a pack reads a file by an assembly's name, so a library's such file is read for its own types alone.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Forma.Framework.Localization", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Referenced(Widget), false, false);
+
+        // Act
+        var diagnostic = Assert.Single(ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), project, [file]));
+
+        // Assert
+        Assert.Contains("the assembly name 'Forma.Framework.Localization'", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_leave_an_applications_file_for_an_assembly_no_project_of_the_run_builds_alone()
+    {
+        // Arrange — the application reads the file for an assembly it references from a package, whose types are out of reach.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine(".locales", "Forma.Framework.Localization", "Components", "he.json"), LocalizationFileFakeData.Valid);
         var compilation = CompilationTestFactory.Referenced(Widget);
@@ -331,6 +406,13 @@ public sealed class UnreachableLocalizationCheckerTests
 
     private static IReadOnlyList<LintingDiagnostic> Lint(TempDirectory directory, string source, params string[] files)
         => Lint(directory, source, null, files);
+
+    private static LoadedProject Application(TempDirectory directory)
+    {
+        var compilation = CompilationTestFactory.Unreferenced(Widget);
+
+        return new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)), false, false);
+    }
 
     private static IReadOnlyList<LintingDiagnostic> Lint(TempDirectory directory, string source, IReadOnlyDictionary<string, string>? resourceNames, params string[] files)
     {

@@ -69,16 +69,16 @@ application instead:
 
 The rules that read a type's files, LOC0112 and LOC0207 among them, read a project's own
 embedded files, whatever folder they sit in. An application's file whose name starts with an
-assembly's name localizes that assembly's types, so LOC0112 leaves it to that assembly, and a
-host's file copied beside the application is read by the file rules alone. A locale pack, a
-project declaring `IsLocalePack`, is an application's files for other assemblies shipped as an
-assembly: each file's name starts with the name of the assembly it localizes, the culture before
-it or after it, and goes on from the root namespace that assembly declares. The type-bound rules
-read a pack's file for the project building the longest assembly name it starts with, so it is
-held to that project's types and callsites as its own files are, LOC0120 reads each pack as a
-source of its own, and LOC0024 reports a file whose name starts with no assembly the solution
-builds or references. `Forma.Framework.Localization`'s README walks the whole layout; this
-document covers the linter.
+assembly's name localizes that assembly's types, so LOC0112 and LOC0120 hold it to that
+assembly's types where a project of the run builds it, and a host's file copied beside the
+application is read by the file rules alone. A locale pack, a project declaring `IsLocalePack`,
+is an application's files for other assemblies shipped as an assembly: each file's name starts
+with the name of the assembly it localizes, the culture before it or after it, and goes on from
+the root namespace that assembly declares. The type-bound rules read a pack's file for the
+project building the longest assembly name it starts with, so it is held to that project's types
+and callsites as its own files are, LOC0120 reads each pack as a source of its own, and LOC0024
+reports a file whose name starts with no assembly the solution builds or references.
+`Forma.Framework.Localization`'s README walks the whole layout; this document covers the linter.
 
 ## Options
 

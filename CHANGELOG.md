@@ -11,8 +11,9 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   name, folders included, that is a culture written exactly as .NET names it, so `.locales/es/Components.json` is a
   Spanish file, and a JSON file in a `.locales` folder, or whose file name ends in a culture, is read as a locale
   file, so LOC0101 reports one without `$localization`. An application, an executable or an assembly its build
-  marks, reads its files for every assembly their names start with, and LOC0112 leaves such a file to that
-  assembly.
+  marks, reads its files for every assembly their names start with, and LOC0112 and LOC0120 hold such a file to
+  the types of that assembly where a project of the run builds it. LOC0112 reports a library's file whose name starts
+  with an assembly's as one only an application or a locale pack reads by that name.
 - A locale pack's file is read for the longest assembly name its name starts with, the culture before the name or
   after it, rather than for its first folder. LOC0024 reports a pack file whose name starts with no assembly the
   solution builds or references, at the file.

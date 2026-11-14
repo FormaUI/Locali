@@ -14,7 +14,7 @@ public static class CompilationTestFactory
             .Select(path => MetadataReference.CreateFromFile(path)),
     ];
 
-    /// <summary>A compilation carrying no references, so no symbol in it binds to anything.</summary>
+    /// <summary>A library's compilation carrying no references, so no symbol in it binds to anything.</summary>
     /// <param name="sources">The C# sources to parse.</param>
     public static Compilation Unreferenced(params string[] sources)
     {
@@ -22,10 +22,11 @@ public static class CompilationTestFactory
 
         return CSharpCompilation.Create(
             "Scratch",
-            sources.Select(source => CSharpSyntaxTree.ParseText(source)));
+            sources.Select(source => CSharpSyntaxTree.ParseText(source)),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }
 
-    /// <summary>A Visual Basic compilation carrying no references, so no symbol in it binds to anything.</summary>
+    /// <summary>A Visual Basic library's compilation carrying no references, so no symbol in it binds to anything.</summary>
     /// <param name="sources">The Visual Basic sources to parse.</param>
     public static Compilation UnreferencedVisualBasic(params string[] sources)
     {
@@ -33,10 +34,11 @@ public static class CompilationTestFactory
 
         return VisualBasicCompilation.Create(
             "Scratch",
-            sources.Select(source => VisualBasicSyntaxTree.ParseText(source)));
+            sources.Select(source => VisualBasicSyntaxTree.ParseText(source)),
+            options: new VisualBasicCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }
 
-    /// <summary>A compilation carrying no references, building the assembly named, so the projects of a run can be told apart by name.</summary>
+    /// <summary>A library's compilation carrying no references, building the assembly named, so the projects of a run can be told apart by name.</summary>
     /// <param name="assemblyName">The name of the assembly the compilation builds.</param>
     /// <param name="sources">The C# sources to parse.</param>
     public static Compilation Building(string assemblyName, params string[] sources)
@@ -46,7 +48,8 @@ public static class CompilationTestFactory
 
         return CSharpCompilation.Create(
             assemblyName,
-            sources.Select(source => CSharpSyntaxTree.ParseText(source)));
+            sources.Select(source => CSharpSyntaxTree.ParseText(source)),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }
 
     /// <summary>A compilation carrying everything the test run loaded, so the localizer contract binds.</summary>

@@ -15,18 +15,18 @@ public sealed class ProjectLinter(IEnumerable<IProjectRuleChecker> checkers, ILo
     private readonly ILocaleFormat _localeFormat = localeFormat ?? throw new ArgumentNullException(nameof(localeFormat));
 
     /// <inheritdoc />
-    public IReadOnlyList<LintingDiagnostic> Lint(LoadedProject project, IReadOnlyList<string> localizationFiles, IReadOnlyList<LocalizerLookup> callsites, IReadOnlyList<LocalePack> packs, IReadOnlyCollection<string> builtAssemblyNames)
+    public IReadOnlyList<LintingDiagnostic> Lint(LoadedProject project, IReadOnlyList<string> localizationFiles, IReadOnlyList<LocalizerLookup> callsites, IReadOnlyList<LocalePack> packs, IReadOnlyList<BuiltAssembly> builtAssemblies)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
         ArgumentNullException.ThrowIfNull(callsites);
         ArgumentNullException.ThrowIfNull(packs);
-        ArgumentNullException.ThrowIfNull(builtAssemblyNames);
+        ArgumentNullException.ThrowIfNull(builtAssemblies);
 
         var context = new ProjectContext(
             project,
             localizationFiles,
-            ProjectLocaleFiles.Resolve(_localeFormat.RuntimeFormat, project, localizationFiles, packs, builtAssemblyNames),
+            ProjectLocaleFiles.Resolve(_localeFormat.RuntimeFormat, project, localizationFiles, packs, builtAssemblies),
             callsites,
             packs.FirstOrDefault(pack => pack.Project == project));
 

@@ -322,7 +322,8 @@ LOC0113 reads instead.
 
 **Reports.** A file no type reads, a section naming no type, or the entries outside any section
 in a file read for its sections alone; and a file no path in force places. Every report names
-the anchors the runtime places the file at.
+the anchors the runtime places the file at, and a library's file whose name starts with an
+assembly's name is reported as one only an application or a locale pack reads by that name.
 
 **Why it matters.** The runtime resolves translations by the owning type's full name, from a
 file's position and the sections inside it, so a moved folder, a renamed type or a misspelled
@@ -334,14 +335,18 @@ runtime's own source, from the root down to the type, for every type the project
 every culture its files carry, under the name the build gives each file, an explicit
 `LogicalName` included, and through the `.locale.json` the project embeds. A locale pack's files
 whose longest assembly name is the project's are read the same way, from the project's root
-namespace, so a pack's file is reported where it sits in the pack.
+namespace, so a pack's file is reported where it sits in the pack. An application's file is read
+as well for every assembly of the run its name starts with, from that assembly's root namespace,
+and held to that assembly's types.
 
 **Silent where.** The run did not name the project's files; the file is a host's, one the
 project does not embed; the project is an application, an executable or a library its build
-marks as one, and the file's name starts with the name of an assembly the application builds or
-references, which the runtime reads the file for as well; or the file is a locale pack's whose
-name starts with no assembly a project of the run builds, which LOC0024 reports where it starts
-with none the solution builds or references.
+marks as one, and the file's name starts with the name of an assembly no project of the run
+builds, whose types are out of reach, or goes on, past the longest assembly name it starts with
+or the application's own root, into a part that starts no namespace of that assembly's types,
+which an assembly the run does not know, loaded at run time, could start; or the file is a
+locale pack's whose name starts with no assembly a project of the run builds, which LOC0024
+reports where it starts with none the solution builds or references.
 
 ### LOC0113 — A key translated two ways across sections
 
@@ -430,7 +435,8 @@ type's own and counts.
 different texts, at the file whose name sorts first, naming the other. A shared entry is reported
 for the namespace whose `$shared` holds it. The rule collects every type's entries as the runtime
 does, from a project's embedded files as one source and each locale pack's files for the project
-as another.
+as another; an application's files are read as well for every assembly of the run their names
+start with.
 
 **Why it matters.** Two files of one source may stand for one name, a culture folder and a
 folder's own `.locales` among them, and the runtime reads both. Where they disagree it keeps the

@@ -3,6 +3,8 @@ namespace Forma.Locali.Tests.Rules.Projects;
 using Forma.Locali.Projects;
 using Forma.Locali.Rules.Projects;
 
+using Microsoft.CodeAnalysis;
+
 public sealed class EntryConflictCheckerTests
 {
     private const string Widget = """
@@ -105,6 +107,24 @@ public sealed class EntryConflictCheckerTests
 
         // Assert
         Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_an_entry_two_of_an_applications_files_give_another_assembly_of_the_run_different_texts()
+    {
+        // Arrange — the application reads both files for Contoso.Widgets, a culture folder before the assembly's name and one after it.
+        using var directory = new TempDirectory();
+        var first = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var second = directory.Write(Path.Combine(".locales", "he", "Contoso.Widgets", "Bars.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "עכשיו"));
+        var compilation = CompilationTestFactory.Unreferenced(Widget);
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)), false, false);
+        var widgets = new BuiltAssembly("Contoso.Widgets", ["Contoso.Widgets.Bars.Widget"], "Contoso.Widgets");
+
+        // Act
+        var diagnostic = Assert.Single(ProjectLinterTestFactory.Check(new EntryConflictChecker(), project, [first, second], builtAssemblies: [widgets]));
+
+        // Assert
+        Assert.Contains("for 'Contoso.Widgets.Bars.Widget'", diagnostic.Message, StringComparison.Ordinal);
     }
 
     [Fact]

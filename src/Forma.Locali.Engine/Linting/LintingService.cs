@@ -144,12 +144,12 @@ public sealed class LintingService(
         // The project rules wait for every project, since a locale pack's folders are resolved against the whole run and read for the projects they name.
         var projects = new LoadedProjects([.. linted.Select(entry => entry.Project)], target.IsSolution);
         var packs = LocalePackFiles.ResolveAll(_localeFormat.RuntimeFormat, projects, target.LocalizationFilesOf);
-        string[] builtAssemblyNames = [.. projects.All.Select(project => project.Compilation?.AssemblyName).OfType<string>()];
+        var builtAssemblies = BuiltAssemblies.ResolveAll(projects);
 
         foreach (var (project, sources) in linted)
         {
             diagnostics.AddRange(sources.Diagnostics);
-            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), sources.Callsites, packs, builtAssemblyNames));
+            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), sources.Callsites, packs, builtAssemblies));
         }
 
         return diagnostics;

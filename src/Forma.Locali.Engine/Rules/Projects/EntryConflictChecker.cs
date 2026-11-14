@@ -26,15 +26,15 @@ public sealed class EntryConflictChecker : IProjectRuleChecker
 
         foreach (var culture in localization.Cultures)
         {
-            foreach (var typeName in localization.TypeNames)
+            // An application's own source reads its files for the assemblies their names start with as well, and meets their conflicts there.
+            var conflicts = localization.TypeNames.SelectMany(typeName => localization.GetConflicts(typeName, culture)).Concat(localization.GetApplicationConflicts(culture));
+
+            foreach (var conflict in conflicts)
             {
-                foreach (var conflict in localization.GetConflicts(typeName, culture))
+                // One file giving one name twice is a key worded two ways across its sections, which LOC0113 reports.
+                if (conflict.FileName != conflict.OtherFileName && met.Add((conflict, culture.Name)))
                 {
-                    // One file giving one name twice is a key worded two ways across its sections, which LOC0113 reports.
-                    if (conflict.FileName != conflict.OtherFileName && met.Add((conflict, culture.Name)))
-                    {
-                        Report(context, localization, conflict, culture.Name);
-                    }
+                    Report(context, localization, conflict, culture.Name);
                 }
             }
         }

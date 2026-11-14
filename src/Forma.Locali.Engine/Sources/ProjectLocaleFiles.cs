@@ -17,13 +17,13 @@ public static class ProjectLocaleFiles
     /// <param name="project">The project the files belong to.</param>
     /// <param name="localizationFiles">The locale files this project owns, which the target attributed.</param>
     /// <param name="packs">Every locale pack of the run, none unless given.</param>
-    /// <param name="builtAssemblyNames">The name of every assembly a project of the run builds, none unless given.</param>
+    /// <param name="builtAssemblies">Every assembly a project of the run builds, none unless given.</param>
     public static ProjectLocalization? Resolve(
         ILocaleFileFormat format,
         LoadedProject project,
         IReadOnlyCollection<string> localizationFiles,
         IReadOnlyList<LocalePack>? packs = null,
-        IReadOnlyCollection<string>? builtAssemblyNames = null)
+        IReadOnlyList<BuiltAssembly>? builtAssemblies = null)
     {
         ArgumentNullException.ThrowIfNull(format);
         ArgumentNullException.ThrowIfNull(project);
@@ -88,7 +88,8 @@ public static class ProjectLocaleFiles
         {
             foreach (var assembly in pack.Assemblies.Where(assembly => assembly.Target == project))
             {
-                packLocalizations.Add(new PackLocalization(pack, assembly, new PackLocaleSource(GetPackName(pack), pack.Files, source.GetRootNamespace, format)));
+                var packSource = new AssemblyNamedLocaleSource($"{GetPackName(pack)}/", pack.Files.Select(file => (file.Name, file)), source.GetRootNamespace, format);
+                packLocalizations.Add(new PackLocalization(pack, assembly, packSource));
             }
         }
 
@@ -99,15 +100,18 @@ public static class ProjectLocaleFiles
             source,
             packLocalizations,
             IsApplication(compilation),
-            [.. compilation.ReferencedAssemblyNames.Select(identity => identity.Name), .. builtAssemblyNames ?? []]);
+            [.. compilation.ReferencedAssemblyNames.Select(identity => identity.Name)],
+            builtAssemblies ?? [],
+            format);
     }
 
     // The runtime reports a pack's file under the pack assembly's name, which its project file also spells where it did not compile.
     private static string GetPackName(LocalePack pack)
         => pack.Project.Compilation?.AssemblyName is { Length: > 0 } assemblyName ? assemblyName : Path.GetFileNameWithoutExtension(pack.Project.Path);
 
-    // The runtime reads the config files an assembly embeds beside its translations, so a folder's own settings decide what is read there.
-    private static Dictionary<string, string> GetConfigPaths(LoadedProject project)
+    /// <summary>The full path of each config file the project embeds, keyed by the name the build embeds it under, which the runtime reads the assembly's settings from.</summary>
+    /// <param name="project">The project.</param>
+    internal static Dictionary<string, string> GetConfigPaths(LoadedProject project)
     {
         var configPaths = new Dictionary<string, string>(StringComparer.Ordinal);
 
