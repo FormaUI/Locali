@@ -104,7 +104,7 @@ public sealed class SharedEntryCheckerTests
     }
 
     [Fact]
-    public void Should_leave_a_shared_section_holding_translations_alone_alone()
+    public void Should_leave_a_shared_section_holding_entries_alone_alone()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(

@@ -17,12 +17,12 @@ public sealed class LocalizedTextHoleShapeChecker : ILocalizationFileRuleChecker
 
         foreach (var entry in context.Document.Entries)
         {
-            if (!entry.IsText || entry.Value is not { } translation || entry.Name == LocalizationSchema.Marker)
+            if (!entry.IsText || entry.Value is not { } text || entry.Name == LocalizationSchema.Marker)
             {
                 continue;
             }
 
-            foreach (var suspect in HoleShapes.Suspect(translation))
+            foreach (var suspect in HoleShapes.Suspect(text))
             {
                 context.Report(
                     Code,

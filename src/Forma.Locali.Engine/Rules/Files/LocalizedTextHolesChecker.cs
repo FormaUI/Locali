@@ -19,18 +19,18 @@ public sealed class LocalizedTextHolesChecker : ILocalizationFileRuleChecker
         foreach (var entry in context.Document.Entries)
         {
             // The metadata entry declares what the file is, and a null value is the key left as written.
-            if (!entry.IsText || entry.Value is not { } translation || entry.Name == LocalizationSchema.Marker)
+            if (!entry.IsText || entry.Value is not { } text || entry.Name == LocalizationSchema.Marker)
             {
                 continue;
             }
 
-            Compare(context, entry, translation);
+            Compare(context, entry, text);
         }
     }
 
-    private void Compare(LocalizationFileContext context, LocalizationEntry entry, string translation)
+    private void Compare(LocalizationFileContext context, LocalizationEntry entry, string text)
     {
-        var filled = HoleNames.Filled(translation);
+        var filled = HoleNames.Filled(text);
 
         if (filled.Count == 0)
         {

@@ -18,7 +18,7 @@ Each source project has one test project: `tests/Forma.Locali.Engine.Tests` test
 
 Every fake, factory, and fixture lives under its test project's `Support/`, in a folder mirroring the production area it serves; what no single area owns sits at the root, such as `TempDirectory`. The tool's tests link `TempDirectory` and `LocalizationFileFakeData` from the engine's rather than keeping copies.
 
-- Do build translation-file fixtures from `LocalizationFileFakeData` and read them through `LocalizationDocumentTestFactory` rather than inlining JSON, except where the malformation under test *is* the content.
+- Do build locale-file fixtures from `LocalizationFileFakeData` and read them through `LocalizationDocumentTestFactory` rather than inlining JSON, except where the malformation under test *is* the content.
 - Do hand `LocaleFormatTestFactory.Json` to whatever takes the locale format, and its `RuntimeFormat` to the `Sources/` resolvers, so a test reads files as the shipped linter does; `StubLocaleFormat` stands in only where the format in force is what the test is about.
 - Do test a callsite rule through `SourceLinterTestFactory.Lint`, which compiles a class body against the real `IStringLocale` and runs the shipped checkers over the bound compilation; a rule tested against a stub proves nothing about how the semantic finder feeds it.
 - Do test a project rule through `ProjectLinterTestFactory.Check`, which resolves a project's files as the linter does and runs the one rule over them, or over placed files read as the host's folder, with the locale packs of the run passed as `packs`; `LocalePackTestFactory.Resolve` builds one from files written under its `Folder`, named apart where a test needs a pack per culture.

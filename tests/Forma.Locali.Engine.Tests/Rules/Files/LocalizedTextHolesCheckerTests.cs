@@ -3,7 +3,7 @@ namespace Forma.Locali.Tests.Rules.Files;
 public sealed class LocalizedTextHolesCheckerTests
 {
     [Fact]
-    public void Should_report_a_translation_filling_a_hole_the_key_does_not_name()
+    public void Should_report_a_text_filling_a_hole_the_key_does_not_name()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -18,7 +18,7 @@ public sealed class LocalizedTextHolesCheckerTests
     }
 
     [Fact]
-    public void Should_accept_a_translation_that_reorders_the_key_s_holes()
+    public void Should_accept_a_text_that_reorders_the_key_s_holes()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -33,7 +33,7 @@ public sealed class LocalizedTextHolesCheckerTests
     }
 
     [Fact]
-    public void Should_accept_a_translation_that_drops_a_hole()
+    public void Should_accept_a_text_that_drops_a_hole()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -48,7 +48,7 @@ public sealed class LocalizedTextHolesCheckerTests
     }
 
     [Fact]
-    public void Should_accept_a_translation_that_is_deliberately_the_key()
+    public void Should_accept_a_text_that_is_deliberately_the_key()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -63,7 +63,7 @@ public sealed class LocalizedTextHolesCheckerTests
     }
 
     [Fact]
-    public void Should_not_read_the_metadata_entry_as_a_translation()
+    public void Should_not_read_the_metadata_entry_as_a_text()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -78,7 +78,7 @@ public sealed class LocalizedTextHolesCheckerTests
     }
 
     [Fact]
-    public void Should_accept_a_translation_naming_the_key_s_hole_as_a_plural_argument()
+    public void Should_accept_a_text_naming_the_key_s_hole_as_a_plural_argument()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -112,7 +112,7 @@ public sealed class LocalizedTextHolesCheckerTests
     }
 
     [Fact]
-    public void Should_accept_a_translation_whose_key_names_its_hole_as_a_plural_argument()
+    public void Should_accept_a_text_whose_key_names_its_hole_as_a_plural_argument()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -159,7 +159,7 @@ public sealed class LocalizedTextHolesCheckerTests
     }
 
     [Fact]
-    public void Should_point_at_the_translation_that_carries_the_hole()
+    public void Should_point_at_the_text_that_carries_the_hole()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(

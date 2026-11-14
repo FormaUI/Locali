@@ -214,7 +214,7 @@ public sealed class LocalizationCoverageCheckerTests
     }
 
     [Fact]
-    public async Task Should_leave_a_type_that_owns_no_translations_alone()
+    public async Task Should_leave_a_type_that_owns_no_entries_alone()
     {
         // Arrange
         using var directory = new TempDirectory();

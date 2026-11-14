@@ -3,7 +3,7 @@ namespace Forma.Locali.Tests.Rules.Files;
 public sealed class InconsistentLocalizationCheckerTests
 {
     [Fact]
-    public void Should_report_a_key_two_sections_translate_differently()
+    public void Should_report_a_key_two_sections_word_differently()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -18,7 +18,7 @@ public sealed class InconsistentLocalizationCheckerTests
     }
 
     [Fact]
-    public void Should_leave_a_key_two_sections_translate_alike_alone()
+    public void Should_leave_a_key_two_sections_word_alike_alone()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -33,7 +33,7 @@ public sealed class InconsistentLocalizationCheckerTests
     }
 
     [Fact]
-    public void Should_leave_two_sections_translating_different_keys_alone()
+    public void Should_leave_two_sections_wording_different_keys_alone()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -63,7 +63,7 @@ public sealed class InconsistentLocalizationCheckerTests
     }
 
     [Fact]
-    public void Should_name_the_section_the_translation_differs_from()
+    public void Should_name_the_section_the_text_differs_from()
     {
         // Arrange
         var document = LocalizationDocumentTestFactory.Read(
@@ -99,7 +99,7 @@ public sealed class InconsistentLocalizationCheckerTests
     }
 
     [Fact]
-    public void Should_read_a_null_translation_as_the_key_text()
+    public void Should_read_a_null_text_as_the_key_text()
     {
         // Arrange — one section leaves the key as written, the other writes the key text out.
         var content = """
@@ -119,7 +119,7 @@ public sealed class InconsistentLocalizationCheckerTests
     }
 
     [Fact]
-    public void Should_report_a_null_translation_against_one_that_differs_from_the_key()
+    public void Should_report_a_null_text_against_one_that_differs_from_the_key()
     {
         // Arrange
         var content = """

@@ -8,7 +8,7 @@ public sealed class CultureCoverageCheckerTests
     private const string Widget = "namespace Contoso.Widgets; public sealed class Widget;";
 
     [Fact]
-    public void Should_report_a_type_translated_in_one_pack_culture_and_left_out_of_another()
+    public void Should_report_a_type_localized_in_one_pack_culture_and_left_out_of_another()
     {
         // Arrange — Hebrew answers Widget, and the Spanish pack that also targets the project carries nothing for it.
         using var directory = new TempDirectory();
