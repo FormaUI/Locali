@@ -473,6 +473,28 @@ naming no type is LOC0112's; one file gives it twice, which LOC0113 reports; the
 two sources; or the files are copied beside the application, a folder the runtime merges from
 every project's copies, which no one project shows whole.
 
+### LOC0122 — A culture written in another case
+
+**Reports.** A part of the name a locale file is embedded under, a folder or a part between dots,
+that is a culture written in another case than .NET names it, `ES` or `He` or `en-us`, where the
+runtime then misreads the file: the name carries no culture at all, or the part names no type,
+namespace or assembly the run knows. It is reported at the file, saying what the runtime makes of
+the name.
+
+**Why it matters.** The runtime compares a culture exactly, so `.locales/ES/Components.json`
+carries no culture and is never read, and `Components.Es.he.json` stands for a type named `Es`
+that does not exist, which LOC0112 reports as well; either way its entries are read for no
+reader.
+
+**What fixes it.** Write the culture as .NET names it: `es`, `he`, `en-US`.
+
+**Silent where.** The name carries a culture and the part names a type, a namespace or an
+assembly the run knows, as `Id` may, which the runtime reads as part of a name on purpose; the
+part is in the root namespace, which LOC0027 reads; the file is an application's read for an
+assembly whose types are out of reach; the project does not embed the file, or its items could
+not be read; the project did not compile, so its types cannot be told; or the project is a locale
+pack, whose files name other assemblies' types, which its own project does not show.
+
 ## Callsites (LOC0200–LOC0299)
 
 Callsites are found semantically where the compilation binds `IStringLocale`, and syntactically

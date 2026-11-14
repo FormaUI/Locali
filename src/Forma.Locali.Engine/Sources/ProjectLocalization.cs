@@ -14,6 +14,7 @@ public sealed class ProjectLocalization
     private readonly Dictionary<string, BuiltAssembly> _builtAssemblies = [with(StringComparer.Ordinal)];
     private readonly string[] _assemblyNames;
     private readonly Lazy<AssemblyNamedLocaleSource?> _applicationSource;
+    private readonly Lazy<HashSet<string>> _nameSegments;
 
     /// <summary>Resolves the files against the types.</summary>
     /// <param name="assemblyName">The name of the assembly the project builds.</param>
@@ -55,6 +56,7 @@ public sealed class ProjectLocalization
 
         _assemblyNames = [.. referencedAssemblyNames.Concat(_builtAssemblies.Keys).Prepend(assemblyName).Distinct(StringComparer.Ordinal)];
         _applicationSource = new(() => isApplication ? CreateApplicationSource(format) : null);
+        _nameSegments = new(() => [.. typeNames.Concat(_assemblyNames).Concat(_builtAssemblies.Values.SelectMany(built => built.TypeNames)).SelectMany(name => name.Split('.'))]);
         TypeNames = typeNames;
         EmbeddedFiles = embeddedFiles;
         Source = source;
@@ -203,6 +205,15 @@ public sealed class ProjectLocalization
 
             return conflicts;
         })];
+    }
+
+    /// <summary>Whether a part spells a segment of a name the run knows: one of the project's types, an assembly it references or the run builds, or one of the types the run builds.</summary>
+    /// <param name="part">The part.</param>
+    public bool IsNameSegment(string part)
+    {
+        ArgumentNullException.ThrowIfNull(part);
+
+        return _nameSegments.Value.Contains(part);
     }
 
     /// <summary>Whether a file is an application's for another assembly: the longest assembly name its name starts with is not the project's, so it is laid out from that assembly's root namespace.</summary>

@@ -217,6 +217,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0118 | Warning | A folder of locale files is named for a type |
 | LOC0119 | Warning | A type is translated in one culture family the project's files or packs carry and left out of another |
 | LOC0120 | Error | Two files of one source give an entry a type reads different texts |
+| LOC0122 | Warning | A part of a locale file's name is a culture written in another case than .NET names it, and names no type |
 | LOC0200 | Error | An expression reads a name nothing supplies |
 | LOC0201 | Error | The value count does not match the key's distinct holes |
 | LOC0202 | Error | An expression naming no argument is given no value |

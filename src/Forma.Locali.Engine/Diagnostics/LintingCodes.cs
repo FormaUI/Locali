@@ -37,6 +37,7 @@ public static class LintingCodes
             TypeNamedFolder,
             MissingCultureCoverage,
             EntryConflict,
+            CultureInAnotherCase,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
@@ -220,6 +221,12 @@ public static class LintingCodes
         "LOC0120",
         LintingSeverity.Error,
         "Two files of one source give an entry a type reads different texts, so the runtime keeps the text of the file whose name sorts last and logs the conflict.");
+
+    /// <summary>A part of a locale file's name is a culture written in another case than .NET names it, and names no type.</summary>
+    public static LintingCode CultureInAnotherCase { get; } = new(
+        "LOC0122",
+        LintingSeverity.Warning,
+        "A part of a locale file's name is a culture written in another case than .NET names it, and names no type, so the runtime reads it as part of the name rather than as the file's culture.");
 
     /// <summary>An expression names an argument the lookup never supplies.</summary>
     public static LintingCode UnsuppliedPluralArgument { get; } = new(

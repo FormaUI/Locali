@@ -22,6 +22,8 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 - LOC0027 warns where a part of the root namespace a project's locale files are embedded under, the assembly's name
   unless the project names another, is a culture, which the runtime reads as the culture of every file embedded
   under it.
+- LOC0122 warns where a part of a locale file's name is a culture written in another case than .NET names it, `ES`
+  or `He`, and names no type, so the runtime reads it as part of the name rather than as the file's culture.
 
 ## `1.0.0-preview.12`
 
