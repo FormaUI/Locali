@@ -196,6 +196,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0024 | Error | A locale pack's file has a name starting with no assembly the solution builds or references |
 | LOC0025 | Warning | A locale file comes from a source its `localeSources` line does not allow, a pack's file held to the line over the project it localizes |
 | LOC0026 | Warning | A `.locali.json` sits beneath the path the run was given, other than the one the run reads |
+| LOC0027 | Warning | A part of the root namespace a project's locale files are embedded under, the assembly's name unless the project names another, is a culture |
 | LOC0100 | Error | The file is not readable JSON |
 | LOC0101 | Error | The file carries no `$localization` entry |
 | LOC0102 | Warning | The metadata entry is not the file's first property |

@@ -189,6 +189,27 @@ there, and delete it.
 **Silent where.** The only `.locali.json` beneath the path is the one read. A run given a
 folder above every configuration reads none, and then reports each it finds.
 
+### LOC0027 — An assembly named for a culture
+
+**Reports.** A part of the root namespace the build embeds a project's locale files under, the
+assembly's name unless the project names another, that is a culture written exactly as .NET
+names it, `Contoso.my.Widgets`, where the project embeds a file under it. It is reported at the
+project, naming the part and a file the runtime misreads.
+
+**Why it matters.** The runtime takes the first part of a file's name that is a culture as the
+file's culture, and an embedded file's name starts with the root namespace, so every file the
+project embeds is read for that culture instead of its own, and a type renders in the source
+language for every reader of the culture its files were written in.
+
+**What fixes it.** Rename the assembly or the root namespace, here, where it is built, the one
+place the name can change.
+
+**Silent where.** The part is a culture in another case, `He`, which .NET does not name; the
+project embeds no locale file under the root namespace, or its items could not be read; the
+project did not compile; the project is a locale pack, whose files are embedded under their paths
+alone; or the assembly's name holds the culture and the root namespace another name, since the
+files the name misreads are then an application's or a pack's, and LOC0024 reports a pack's.
+
 ## Locale files (LOC0100–LOC0199)
 
 A JSON file is read as a locale file when it carries `$localization`, or is named as one: it

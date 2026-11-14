@@ -62,6 +62,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IProjectRuleChecker, EntryConflictChecker>();
         services.AddSingleton<IProjectRuleChecker, LocalePackAssemblyChecker>();
         services.AddSingleton<IProjectRuleChecker, LocaleSourceChecker>();
+        services.AddSingleton<IProjectRuleChecker, CultureInRootNamespaceChecker>();
 
         services.AddSingleton<ISchemaLinter, SchemaLinter>();
         services.AddSingleton<ISourceLinter, SourceLinter>();

@@ -23,6 +23,7 @@ public static class ProjectLinterTestFactory
             new EntryConflictChecker(),
             new LocalePackAssemblyChecker(),
             new LocaleSourceChecker(lintingConfiguration ?? new LintingConfiguration(Path.GetTempPath()), LocaleFormatTestFactory.Json),
+            new CultureInRootNamespaceChecker(),
         ];
 
     /// <summary>What one project rule reports over a project's files, resolved as the linter resolves them.</summary>

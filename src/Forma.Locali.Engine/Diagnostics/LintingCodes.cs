@@ -16,6 +16,7 @@ public static class LintingCodes
             UnknownLocalePackAssembly,
             DisallowedLocaleSource,
             UnreadConfiguration,
+            CultureInRootNamespace,
             InvalidJson,
             MissingMarker,
             MarkerNotFirst,
@@ -93,6 +94,12 @@ public static class LintingCodes
         "LOC0026",
         LintingSeverity.Warning,
         "A .locali.json sits beneath the path the run was given while the run reads only the one nearest above that path, so nothing in it applies.");
+
+    /// <summary>A part of the root namespace a project's locale files are embedded under, the assembly's name unless the project names another, is a culture.</summary>
+    public static LintingCode CultureInRootNamespace { get; } = new(
+        "LOC0027",
+        LintingSeverity.Warning,
+        "A part of the root namespace a project's locale files are embedded under is a culture, which the runtime reads as the culture of every file embedded under it.");
 
     /// <summary>The file is not readable JSON.</summary>
     public static LintingCode InvalidJson { get; } = new(

@@ -19,6 +19,9 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   solution builds or references, at the file.
 - LOC0117 is retired, since two files of one source may stand for one name. LOC0120 reports, as an error, an entry
   a type reads that two files of one source give different texts, at the file whose name sorts first.
+- LOC0027 warns where a part of the root namespace a project's locale files are embedded under, the assembly's name
+  unless the project names another, is a culture, which the runtime reads as the culture of every file embedded
+  under it.
 
 ## `1.0.0-preview.12`
 
