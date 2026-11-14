@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.12`
 
-*Unreleased*
+*November 14, 2026*
 
 - A call to a method whose parameter carries `[LocaleKey]`, as `LocalizableText.For<TSource>`'s key does, is read
   as a lookup: its key is checked as a lookup's is, against the translations of the method's type argument, and a
