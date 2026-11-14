@@ -70,16 +70,15 @@ application instead:
 The rules that read a type's files, LOC0112 and LOC0207 among them, read a project's own
 embedded files, whatever folder they sit in. An application's file whose name starts with an
 assembly's name localizes that assembly's types, so LOC0112 leaves it to that assembly, and a
-host's file copied beside the application is read by the file rules alone, while LOC0117 reads
-the copied files as a source of their own, as the runtime does. A locale pack, a project
-declaring `IsLocalePack`, is an application's files for other assemblies shipped as an assembly:
-each file's name starts with the name of the assembly it localizes, the culture before it or
-after it, and goes on from the root namespace that assembly declares. The type-bound rules read
-a pack's file for the project building the longest assembly name it starts with, so it is held
-to that project's types and callsites as its own files are, LOC0117 reads each pack as a source
-of its own, and LOC0024 reports a file whose name starts with no assembly the solution builds or
-references. `Forma.Framework.Localization`'s README walks the whole layout; this document covers
-the linter.
+host's file copied beside the application is read by the file rules alone. A locale pack, a
+project declaring `IsLocalePack`, is an application's files for other assemblies shipped as an
+assembly: each file's name starts with the name of the assembly it localizes, the culture before
+it or after it, and goes on from the root namespace that assembly declares. The type-bound rules
+read a pack's file for the project building the longest assembly name it starts with, so it is
+held to that project's types and callsites as its own files are, LOC0120 reads each pack as a
+source of its own, and LOC0024 reports a file whose name starts with no assembly the solution
+builds or references. `Forma.Framework.Localization`'s README walks the whole layout; this
+document covers the linter.
 
 ## Options
 
@@ -214,9 +213,9 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0114 | Warning | A reserved entry sits after an entry it has to precede |
 | LOC0115 | Error | A key or section is shaped like a reserved entry the runtime does not define |
 | LOC0116 | Error | The `$shared` entry is not an object holding translations alone |
-| LOC0117 | Warning | Two files of one source stand for one anchor in one culture |
 | LOC0118 | Warning | A folder of locale files is named for a type |
 | LOC0119 | Warning | A type is translated in one culture family the project's files or packs carry and left out of another |
+| LOC0120 | Error | Two files of one source give an entry a type reads different texts |
 | LOC0200 | Error | An expression reads a name nothing supplies |
 | LOC0201 | Error | The value count does not match the key's distinct holes |
 | LOC0202 | Error | An expression naming no argument is given no value |

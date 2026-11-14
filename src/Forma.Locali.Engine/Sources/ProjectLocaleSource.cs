@@ -42,17 +42,6 @@ public sealed class ProjectLocaleSource : LocaleSource
         return _files.GetValueOrDefault(name);
     }
 
-    /// <summary>The full name of every type or namespace the runtime reads a file for, none when no path in force reads it.</summary>
-    /// <param name="assemblyName">The name of the assembly the project builds.</param>
-    /// <param name="file">The file.</param>
-    public IReadOnlyList<string> GetAnchorNames(string assemblyName, ProjectLocaleFile file)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(assemblyName);
-        ArgumentNullException.ThrowIfNull(file);
-
-        return GetAnchorNames(assemblyName, file.Name, file.Culture.Name);
-    }
-
     /// <summary>Where an assembly's names begin among the source's, as the runtime takes them: the folder its config sits in, and the folder the config names beneath it, or the assembly's name where it embeds no config.</summary>
     /// <param name="assemblyName">The name of the assembly the project builds.</param>
     /// <exception cref="LocaleConfigException">The source holds more than one config file for the assembly.</exception>

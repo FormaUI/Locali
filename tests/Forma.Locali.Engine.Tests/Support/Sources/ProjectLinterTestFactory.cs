@@ -18,9 +18,9 @@ public static class ProjectLinterTestFactory
             new RootNamespaceWithoutTypesChecker(),
             new UnreachableLocalizationChecker(),
             new LocalizationCoverageChecker(),
-            new DuplicateAnchorFileChecker(),
             new TypeNamedFolderChecker(),
             new CultureCoverageChecker(),
+            new EntryConflictChecker(),
             new LocalePackAssemblyChecker(),
             new LocaleSourceChecker(lintingConfiguration ?? new LintingConfiguration(Path.GetTempPath()), LocaleFormatTestFactory.Json),
         ];
@@ -43,19 +43,5 @@ public static class ProjectLinterTestFactory
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
         return new ProjectLinter([checker], LocaleFormatTestFactory.Json).Lint(project, localizationFiles, callsites ?? [], packs ?? [], []);
-    }
-
-    /// <summary>What one project rule reports over files already placed, read as the host's folder.</summary>
-    /// <param name="checker">The rule to run.</param>
-    /// <param name="files">The placed files.</param>
-    public static IReadOnlyList<LintingDiagnostic> Check(IProjectRuleChecker checker, IReadOnlyList<PlacedLocaleFile> files)
-    {
-        ArgumentNullException.ThrowIfNull(checker);
-        ArgumentNullException.ThrowIfNull(files);
-
-        var context = new ProjectContext(new LoadedProject("Scratch.csproj", null, false, false), [], null, [], files);
-        checker.Check(context);
-
-        return context.Reported;
     }
 }

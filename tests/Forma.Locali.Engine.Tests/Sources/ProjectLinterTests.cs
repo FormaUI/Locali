@@ -5,22 +5,6 @@ using Forma.Locali.Projects;
 public sealed class ProjectLinterTests
 {
     [Fact]
-    public void Should_check_the_hosts_folder_of_a_project_that_did_not_compile()
-    {
-        // Arrange — no compilation leaves nothing to resolve the embedded files against, and the host's folder needs none.
-        using var directory = new TempDirectory();
-        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), null, false, false, EmbeddedResourceNames: new Dictionary<string, string>());
-        var nested = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", ".locales", "he.json"), LocalizationFileFakeData.Valid);
-        var flat = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
-
-        // Act
-        var diagnostics = new ProjectLinter(ProjectLinterTestFactory.Checkers(), LocaleFormatTestFactory.Json).Lint(project, [nested, flat], [], [], []);
-
-        // Assert
-        Assert.Equal([LintingCodes.DuplicateAnchorFile, LintingCodes.DuplicateAnchorFile], diagnostics.Codes());
-    }
-
-    [Fact]
     public void Should_report_a_refused_config_once_and_still_run_the_rules_that_do_not_read_it()
     {
         // Arrange — two configs for one assembly refuse every lookup, and the one beneath the root is misplaced besides.

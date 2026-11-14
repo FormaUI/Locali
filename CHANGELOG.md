@@ -16,6 +16,8 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 - A locale pack's file is read for the longest assembly name its name starts with, the culture before the name or
   after it, rather than for its first folder. LOC0024 reports a pack file whose name starts with no assembly the
   solution builds or references, at the file.
+- LOC0117 is retired, since two files of one source may stand for one name. LOC0120 reports, as an error, an entry
+  a type reads that two files of one source give different texts, at the file whose name sorts first.
 
 ## `1.0.0-preview.12`
 

@@ -386,20 +386,6 @@ type reached through its node gets unless a section of its own says otherwise.
 
 **What fixes it.** Keep translations only in it; put a nested section beside it.
 
-### LOC0117 — Two files stand for one anchor
-
-**Reports.** Two files of one source standing for one anchor in one culture. Each file is
-reported, naming the other.
-
-**Why it matters.** The runtime reads both, in the order of the paths that place them, so where
-they share a key the later wins without a word, and a file meant to be moved rather than copied
-keeps answering from where it was left.
-
-**What fixes it.** Keep one. The rule reads a project's embedded files as one source; the files
-the project copies beside the application from the `.locales` folder at its root as another;
-and each locale pack's files for the project as another. It is a warning because both files
-load.
-
 ### LOC0118 — A folder named for a type
 
 **Reports.** A file named for its culture alone whose folder is named for a type of the project,
@@ -437,6 +423,26 @@ one stands for the family; or the only entries a culture carries for the type co
 `$shared` block above it, a folder's or an outer type's, which answers for every type beneath
 and says nothing about this one. A `$shared` block in the type's own section or file is the
 type's own and counts.
+
+### LOC0120 — Two files give an entry different texts
+
+**Reports.** An entry, a key a type reads in one culture, that two files of one source give
+different texts, at the file whose name sorts first, naming the other. A shared entry is reported
+for the namespace whose `$shared` holds it. The rule collects every type's entries as the runtime
+does, from a project's embedded files as one source and each locale pack's files for the project
+as another.
+
+**Why it matters.** Two files of one source may stand for one name, a culture folder and a
+folder's own `.locales` among them, and the runtime reads both. Where they disagree it keeps the
+text of the file whose name sorts last, ordinally, and logs the conflict once as a warning, so
+one of two wordings is shown and the other is never seen.
+
+**What fixes it.** Give the entry one text, or keep it in one file. A later source is no
+conflict: a pack's text wins over the assembly's own as the runtime's order says.
+
+**Silent where.** Two files give the entry the same text; no type of the project reads the entry,
+since a section naming no type is LOC0112's; one file gives it twice, which LOC0113 reports; or
+the files belong to two sources.
 
 ## Callsites (LOC0200–LOC0299)
 

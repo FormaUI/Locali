@@ -57,9 +57,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IProjectRuleChecker, RootNamespaceWithoutTypesChecker>();
         services.AddSingleton<IProjectRuleChecker, UnreachableLocalizationChecker>();
         services.AddSingleton<IProjectRuleChecker, LocalizationCoverageChecker>();
-        services.AddSingleton<IProjectRuleChecker, DuplicateAnchorFileChecker>();
         services.AddSingleton<IProjectRuleChecker, TypeNamedFolderChecker>();
         services.AddSingleton<IProjectRuleChecker, CultureCoverageChecker>();
+        services.AddSingleton<IProjectRuleChecker, EntryConflictChecker>();
         services.AddSingleton<IProjectRuleChecker, LocalePackAssemblyChecker>();
         services.AddSingleton<IProjectRuleChecker, LocaleSourceChecker>();
 

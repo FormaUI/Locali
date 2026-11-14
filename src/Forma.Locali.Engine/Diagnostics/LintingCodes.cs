@@ -33,9 +33,9 @@ public static class LintingCodes
             ReservedEntryOutOfOrder,
             ReservedShapedKey,
             MalformedShared,
-            DuplicateAnchorFile,
             TypeNamedFolder,
             MissingCultureCoverage,
+            EntryConflict,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
@@ -196,12 +196,6 @@ public static class LintingCodes
         LintingSeverity.Error,
         "A shared entry is not an object, or nests a section, so the file does not load; a shared section holds translations alone.");
 
-    /// <summary>Two files of one source stand for one anchor in one culture.</summary>
-    public static LintingCode DuplicateAnchorFile { get; } = new(
-        "LOC0117",
-        LintingSeverity.Warning,
-        "Two files of one source stand for one anchor in one culture, so both are read and, where they share a key, the file the later path reads wins.");
-
     /// <summary>A folder of locale files is named for a type.</summary>
     public static LintingCode TypeNamedFolder { get; } = new(
         "LOC0118",
@@ -213,6 +207,12 @@ public static class LintingCodes
         "LOC0119",
         LintingSeverity.Warning,
         "A type is translated in one culture family the project's files or packs carry and left out of another, so it renders in the source language for every reader of the missing one.");
+
+    /// <summary>Two files of one source give an entry a type reads different texts.</summary>
+    public static LintingCode EntryConflict { get; } = new(
+        "LOC0120",
+        LintingSeverity.Error,
+        "Two files of one source give an entry a type reads different texts, so the runtime keeps the text of the file whose name sorts last and logs the conflict.");
 
     /// <summary>An expression names an argument the lookup never supplies.</summary>
     public static LintingCode UnsuppliedPluralArgument { get; } = new(

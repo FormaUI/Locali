@@ -9,14 +9,12 @@ using Forma.Locali.Sources;
 /// <param name="localizationFiles">The locale files the project owns, which the target attributed.</param>
 /// <param name="localization">The project's embedded locale files resolved against its types, or null when the project did not compile or is a locale pack.</param>
 /// <param name="callsites">The callsites the source pass found.</param>
-/// <param name="hostFiles">The files of the host's folder at the project's root the project does not embed, with the anchors the runtime places them at.</param>
 /// <param name="pack">The locale pack the project is, its folders resolved against the run, or null when the project is not a locale pack or its items were not read.</param>
 public sealed class ProjectContext(
     LoadedProject project,
     IReadOnlyList<string> localizationFiles,
     ProjectLocalization? localization,
     IReadOnlyList<LocalizerLookup> callsites,
-    IReadOnlyList<PlacedLocaleFile> hostFiles,
     LocalePack? pack = null)
 {
     private readonly List<LintingDiagnostic> _reported = [];
@@ -32,9 +30,6 @@ public sealed class ProjectContext(
 
     /// <summary>The callsites the source pass found.</summary>
     public IReadOnlyList<LocalizerLookup> Callsites { get; } = callsites ?? throw new ArgumentNullException(nameof(callsites));
-
-    /// <summary>The files of the host's folder at the project's root the project does not embed, with the anchors the runtime places them at.</summary>
-    public IReadOnlyList<PlacedLocaleFile> HostFiles { get; } = hostFiles ?? throw new ArgumentNullException(nameof(hostFiles));
 
     /// <summary>The locale pack the project is, its folders resolved against the run, or null when the project is not a locale pack or its items were not read.</summary>
     public LocalePack? Pack { get; } = pack;

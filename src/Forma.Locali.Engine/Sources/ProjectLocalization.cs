@@ -129,9 +129,22 @@ public sealed class ProjectLocalization
     public bool IsForAnotherAssembly(ProjectLocaleFile file)
         => IsApplication && GetNamedAssemblies(file).MaxBy(assemblyName => assemblyName.Length) is { } assemblyName && assemblyName != AssemblyName;
 
-    /// <summary>Every embedded file with the anchors the runtime places it at.</summary>
-    public IReadOnlyList<PlacedLocaleFile> GetPlacedFiles()
-        => [.. EmbeddedFiles.Select(file => new PlacedLocaleFile(file.Path, file.Culture.Name, GetAnchorNames(file)))];
+    /// <summary>Every entry two files of one source give different texts that a lookup for a type in one culture meets, as the runtime collects the type's entries, from the embedded files and then from each pack in turn.</summary>
+    /// <param name="typeName">The type's name, as the runtime resolves it.</param>
+    /// <param name="culture">The culture.</param>
+    public IReadOnlyList<LocaleConflict> GetConflicts(string typeName, CultureInfo culture)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(typeName);
+        ArgumentNullException.ThrowIfNull(culture);
+
+        var conflicts = new List<LocaleConflict>();
+        foreach (var source in (LocaleSource[])[Source, .. Packs.Select(pack => pack.Source)])
+        {
+            source.ReadEntries(AssemblyName, culture.Name).Collect(typeName, new Dictionary<string, LocaleSourceEntry>(StringComparer.Ordinal), conflicts);
+        }
+
+        return conflicts;
+    }
 
     /// <summary>Every section the runtime reads for a type in one culture, whether or not its entries win, from the embedded files and then from each pack in turn.</summary>
     /// <param name="typeName">The type's name, as the runtime resolves it.</param>
