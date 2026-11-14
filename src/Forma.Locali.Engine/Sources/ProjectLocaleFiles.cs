@@ -12,7 +12,7 @@ using Microsoft.CodeAnalysis;
 /// <summary>Resolves a project's locale files against the types the runtime finds them by.</summary>
 public static class ProjectLocaleFiles
 {
-    /// <summary>Every readable culture-named file the project embeds, and every pack folder naming its assembly, resolved against the compilation, or null when the project would not load or is a locale pack, whose files are other assemblies'.</summary>
+    /// <summary>Every readable culture-named file the project embeds, and every pack's files naming its assembly, resolved against the compilation, or null when the project would not load or is a locale pack, whose files are other assemblies'.</summary>
     /// <param name="format">The format the files are written in, read as the runtime reads it.</param>
     /// <param name="project">The project the files belong to.</param>
     /// <param name="localizationFiles">The locale files this project owns, which the target attributed.</param>
@@ -29,7 +29,7 @@ public static class ProjectLocaleFiles
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
-        // A pack embeds its files for the assemblies its folders are named for, and declares no type of its own to read them.
+        // A pack embeds its files for the assemblies their names start with, and declares no type of its own to read them.
         if (project.IsLocalePack || project.Compilation is not { AssemblyName.Length: > 0 } compilation)
         {
             return null;
@@ -86,9 +86,9 @@ public static class ProjectLocaleFiles
         List<PackLocalization> packLocalizations = [];
         foreach (var pack in packs ?? [])
         {
-            foreach (var folder in pack.Folders.Where(folder => folder.Target == project))
+            foreach (var assembly in pack.Assemblies.Where(assembly => assembly.Target == project))
             {
-                packLocalizations.Add(new PackLocalization(pack, folder, new PackLocaleSource(GetPackName(pack), pack.Files, source.GetRootNamespace, format)));
+                packLocalizations.Add(new PackLocalization(pack, assembly, new PackLocaleSource(GetPackName(pack), pack.Files, source.GetRootNamespace, format)));
             }
         }
 

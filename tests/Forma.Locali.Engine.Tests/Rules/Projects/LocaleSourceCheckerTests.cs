@@ -76,7 +76,7 @@ public sealed class LocaleSourceCheckerTests
     [Fact]
     public void Should_report_a_packs_file_for_a_project_whose_line_allows_embedding_alone()
     {
-        // Arrange — the add-on embeds its own translations, so a pack's folder for it keeps them where the repository said they are not.
+        // Arrange — the add-on embeds its own entries, so a pack's file for it keeps them where the repository said they are not.
         using var directory = new TempDirectory();
         directory.Write(".locali.json", """{ "localeSources": { "**": ["pack", "host"], "AddOns/**": ["embedded"] } }""");
         var target = Target(directory, Path.Combine("AddOns", "Contoso.Office"), "Contoso.Office");
@@ -91,6 +91,22 @@ public sealed class LocaleSourceCheckerTests
             () => Assert.Contains("carried by a locale pack", diagnostic.Message, StringComparison.Ordinal),
             () => Assert.Contains("matching it as a file of Contoso.Office.csproj, the project it localizes,", diagnostic.Message, StringComparison.Ordinal),
             () => Assert.Contains("naming embedded", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Should_hold_a_packs_file_whose_culture_stands_first_to_the_line_over_its_project()
+    {
+        // Arrange — the culture may stand before the assembly's name, which still says which project the file localizes.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["pack", "host"], "AddOns/**": ["embedded"] } }""");
+        var target = Target(directory, Path.Combine("AddOns", "Contoso.Office"), "Contoso.Office");
+        var file = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "he", "Contoso.Office.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostic = Assert.Single(CheckPack(directory, target, file));
+
+        // Assert
+        Assert.Contains("as a file of Contoso.Office.csproj", diagnostic.Message, StringComparison.Ordinal);
     }
 
     [Fact]

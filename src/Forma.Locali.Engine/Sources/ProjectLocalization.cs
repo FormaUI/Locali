@@ -17,7 +17,7 @@ public sealed class ProjectLocalization
     /// <param name="typeNames">The name of every type the project declares.</param>
     /// <param name="embeddedFiles">The locale files the project embeds.</param>
     /// <param name="source">The embedded files as the runtime's walk reads them.</param>
-    /// <param name="packs">Every locale pack folder naming the project's assembly, with the pack read as the runtime reads it for the project.</param>
+    /// <param name="packs">Every locale pack's files naming the project's assembly, with the pack read as the runtime reads it for the project.</param>
     /// <param name="isApplication">Whether the project builds an application, whose files the runtime also reads for every assembly their names start with.</param>
     /// <param name="knownAssemblyNames">The name of every assembly the project references or a project of the run builds.</param>
     public ProjectLocalization(
@@ -72,7 +72,7 @@ public sealed class ProjectLocalization
     /// <summary>The locale files the project embeds.</summary>
     public IReadOnlyList<ProjectLocaleFile> EmbeddedFiles { get; }
 
-    /// <summary>Every locale pack folder naming the project's assembly, with the pack read as the runtime reads it for the project.</summary>
+    /// <summary>Every locale pack's files naming the project's assembly, with the pack read as the runtime reads it for the project.</summary>
     public IReadOnlyList<PackLocalization> Packs { get; }
 
     /// <summary>Every locale file the project's types are read from: the ones it embeds, then each pack's for it.</summary>

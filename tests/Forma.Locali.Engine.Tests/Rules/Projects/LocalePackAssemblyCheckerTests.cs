@@ -5,14 +5,14 @@ using Forma.Locali.Rules.Projects;
 
 using Microsoft.CodeAnalysis;
 
-public sealed class LocalePackFolderCheckerTests
+public sealed class LocalePackAssemblyCheckerTests
 {
     private const string Widget = "namespace Contoso.Widgets; public sealed class Widget;";
 
     [Fact]
-    public void Should_report_a_folder_naming_no_assembly_of_the_solution()
+    public void Should_report_a_file_whose_name_starts_with_no_assembly_of_the_solution()
     {
-        // Arrange — a misspelled folder loads with the pack and answers no lookup.
+        // Arrange — a misspelled assembly name loads with the pack and answers no lookup.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine("Contoso.Widgetz", "Bars", "he.json"), LocalizationFileFakeData.Valid);
         var pack = Pack(directory, file);
@@ -24,12 +24,12 @@ public sealed class LocalePackFolderCheckerTests
         // Assert
         Assert.Multiple(
             () => Assert.Equal(LintingCodes.UnknownLocalePackAssembly, diagnostic.Code),
-            () => Assert.Equal(pack.Path, diagnostic.Path),
-            () => Assert.Contains("'Contoso.Widgetz'", diagnostic.Message, StringComparison.Ordinal));
+            () => Assert.Equal(file, diagnostic.Path),
+            () => Assert.Contains("'Contoso.Widgetz.Bars'", diagnostic.Message, StringComparison.Ordinal));
     }
 
     [Fact]
-    public void Should_leave_a_folder_naming_a_project_of_the_solution_alone()
+    public void Should_leave_a_file_whose_name_starts_with_a_project_of_the_solution_alone()
     {
         // Arrange
         using var directory = new TempDirectory();
@@ -45,9 +45,25 @@ public sealed class LocalePackFolderCheckerTests
     }
 
     [Fact]
-    public void Should_leave_a_folder_naming_an_assembly_a_project_references_alone()
+    public void Should_leave_a_file_whose_name_starts_with_the_assembly_after_a_culture_folder_alone()
     {
-        // Arrange — the assembly arrives from a package, so the folder names something real whose types are out of reach.
+        // Arrange — the culture may stand before the assembly's name.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("he", "Contoso.Widgets", "Bars.json"), LocalizationFileFakeData.Valid);
+        var pack = Pack(directory, file);
+        var target = Project(CompilationTestFactory.Building("Contoso.Widgets", Widget));
+
+        // Act
+        var diagnostics = Check(pack, [file], new LoadedProjects([pack, target], IsWholeSolution: true));
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_leave_a_file_whose_name_starts_with_an_assembly_a_project_references_alone()
+    {
+        // Arrange — the assembly arrives from a package, so the name starts with something real whose types are out of reach.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine("Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
         var pack = Pack(directory, file);
@@ -94,7 +110,7 @@ public sealed class LocalePackFolderCheckerTests
     [Fact]
     public void Should_leave_a_project_that_is_not_a_pack_alone()
     {
-        // Arrange — an ordinary project's folders are namespaces, not assemblies.
+        // Arrange — an ordinary project's names start from its own root namespace.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine("Contoso.Widgetz", "Bars", "he.json"), LocalizationFileFakeData.Valid);
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(Widget), false, false);
@@ -107,7 +123,7 @@ public sealed class LocalePackFolderCheckerTests
     }
 
     private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, IReadOnlyList<string> files, LoadedProjects projects)
-        => ProjectLinterTestFactory.Check(new LocalePackFolderChecker(), project, files, packs: LocalePackFiles.ResolveAll(LocaleFormatTestFactory.Json.RuntimeFormat, projects, _ => files));
+        => ProjectLinterTestFactory.Check(new LocalePackAssemblyChecker(), project, files, packs: LocalePackFiles.ResolveAll(LocaleFormatTestFactory.Json.RuntimeFormat, projects, _ => files));
 
     private static LoadedProject Pack(TempDirectory directory, params string[] files)
     {

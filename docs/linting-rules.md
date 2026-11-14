@@ -43,15 +43,15 @@ in `suppressedCount` and named in the console brief.
 `embedded`, a file the assembly embeds in itself, an application's for other assemblies
 included; `satellite`, one the build moves into a satellite assembly; `pack`, one a locale pack
 carries; and `host`, one in the `.locales` folder at the project's root that the project copies
-beside the application rather than embeds. An
-allow list cannot be merged, so the last line matching a file speaks for
-it: lines are written general first and specific after, and a line that allows nothing,
-`"**": []`, put first, makes every locale file one a later line has to claim. A file no line
-matches has no policy. A locale pack's file is matched where it stands in the project it
-localizes, the one building the assembly its folder names, so the line over that project says
-whether its translations may come from a pack; a folder naming no project of the run leaves its
-files matched where they sit. LOC0025 reports a file from a place its line does not allow, and
-LOC0021 a line that is the last match for no file.
+beside the application rather than embeds. An allow list cannot be merged, so the last line
+matching a file speaks for it: lines are written general first and specific after, and a line
+that allows nothing, `"**": []`, put first, makes every locale file one a later line has to
+claim. A file no line matches has no policy. A locale pack's file is matched where it stands in
+the project it localizes, the one building the longest assembly name its name starts with, at
+its path in the pack with that assembly's folder left out, so the line over that project says
+whether its entries may come from a pack; a file naming no project of the run is matched where
+it sits. LOC0025 reports a file from a place its line does not allow, and LOC0021 a line that is
+the last match for no file.
 
 ### LOC0020 — The linting configuration cannot be read
 
@@ -94,8 +94,8 @@ locale pack.
 **Why it matters.** The runtime passes over a key it does not read, so a misspelled one steers
 nothing; it refuses every lookup in an assembly that embeds two config files; it reads a file
 embedded beneath the root as the assembly's all the same, so the one place it may sit is stated
-at lint time; and it reads no config from a host's folder or a locale pack at all, laying each
-of their folders out by the root namespace the assembly it names declares for itself.
+at lint time; and it reads no config from a host's folder or a locale pack at all, reading each
+of their names from the root namespace the assembly it names declares for itself.
 
 **What fixes it.** Keep the keys to `rootNamespace`, `rootDir`, `localesDir` and `paths`, each
 as the runtime spells it; a malformed path is reported at the token that is wrong. Embed one
@@ -124,38 +124,38 @@ report names the project's own `RootNamespace` where the types sit under it.
 **Silent where.** A type of the project is under the root namespace, whatever the project's
 `RootNamespace` says, since the runtime never reads that; the project declares no types, or did
 not compile; the project's items could not be read, so no config file is known to be embedded;
-a locale pack's folder for the project spells full type names rather than the root, which the
+a locale pack's files for the project spell full type names rather than the root, which the
 runtime reads for a type outside it; or the config file will not read, which is LOC0022's.
 
-### LOC0024 — A pack folder names an assembly the solution does not have
+### LOC0024 — A pack file names an assembly the solution does not have
 
-**Reports.** A top-level folder of a locale pack, a project declaring `IsLocalePack`, whose name
-is no assembly a project of the solution builds or references. It is reported at the pack's
-project file, naming the folder.
+**Reports.** A culture-named file of a locale pack, a project declaring `IsLocalePack`, whose
+name, read without its culture, starts with no assembly a project of the solution builds or
+references. It is reported at the file, naming what the file stands for.
 
-**Why it matters.** A pack's folders are the only thing that says which assemblies it localizes,
-and the runtime matches a folder to an assembly by name and nothing else. A misspelled folder
-loads with the pack, answers no lookup, and every type it was written for renders in the source
-language without a word.
+**Why it matters.** A pack's file names are the only thing that says which assemblies it
+localizes, and the runtime matches a name to an assembly by its start and nothing else. A
+misspelled name loads with the pack, answers no lookup, and every type it was written for renders
+in the source language without a word.
 
-**What fixes it.** Name the folder for the assembly exactly, `Forma.Blazor.Composer` rather than
-the namespace its types share.
+**What fixes it.** Start the name with the assembly's exactly, `Forma.Blazor.Composer` rather than
+the namespace its types share, in a folder, `Forma.Blazor.Composer/he.json`, or after a culture
+folder, `he/Forma.Blazor.Composer.json`.
 
 **Silent where.** The run named a project or a directory rather than a solution, since only a
-solution lists every project a folder could name; a project of the solution did not compile, or
-is written in a language the linter does not read, so its assembly's name cannot be told; the
-folder names an assembly a project references from a package, whose types are out of reach; or
-the pack's items could not be read.
+solution lists every project a name could start with; a project of the solution did not compile,
+or is written in a language the linter does not read, so its assembly's name cannot be told; the
+name starts with an assembly a project references from a package, whose types are out of reach;
+or the pack's items could not be read.
 
 ### LOC0025 — A locale file from a source the configuration does not allow
 
 **Reports.** A culture-named locale file that comes from a source the last `localeSources` line
-matching it does not name: embedded in the assembly, moved into a satellite assembly, carried
-by a locale pack, or copied beside the application from the `.locales` folder at the project's
-root. A pack's file is held to the line over
-the project it localizes, so a pack folder for an assembly whose line allows embedding alone is
-reported file by file. It is reported at the file, naming the source it comes from and the
-sources the line allows.
+matching it does not name: embedded in the assembly, moved into a satellite assembly, carried by
+a locale pack, or copied beside the application from the `.locales` folder at the project's
+root. A pack's file is held to the line over the project it localizes, so a pack's files for an
+assembly whose line allows embedding alone are reported one by one. It is reported at the file,
+naming the source it comes from and the sources the line allows.
 
 **Why it matters.** The runtime reads every source it finds, so a repository that keeps its
 translations in packs cannot tell from a build that someone embedded a Hebrew file in an
@@ -331,15 +331,16 @@ section strands its translations while every other check stays green.
 the file's position, or from the assembly's root with a leading `@.`. The rule reads through the
 runtime's own source, from the root down to the type, for every type the project declares and
 every culture its files carry, under the name the build gives each file, an explicit
-`LogicalName` included, and through the `.locale.json` the project embeds. A locale pack's
-folder for the project is read the same way, laid out by the project's root namespace, so a
-pack's file is reported where it sits in the pack.
+`LogicalName` included, and through the `.locale.json` the project embeds. A locale pack's files
+whose longest assembly name is the project's are read the same way, from the project's root
+namespace, so a pack's file is reported where it sits in the pack.
 
 **Silent where.** The run did not name the project's files; the file is a host's, one the
 project does not embed; the project is an application, an executable or a library its build
 marks as one, and the file's name starts with the name of an assembly the application builds or
 references, which the runtime reads the file for as well; or the file is a locale pack's whose
-folder names no project of the run, which LOC0024 reports.
+name starts with no assembly a project of the run builds, which LOC0024 reports where it starts
+with none the solution builds or references.
 
 ### LOC0113 — A key translated two ways across sections
 
@@ -395,7 +396,7 @@ keeps answering from where it was left.
 
 **What fixes it.** Keep one. The rule reads a project's embedded files as one source; the files
 the project copies beside the application from the `.locales` folder at its root as another;
-and each locale pack's folder for the project as another. It is a warning because both files
+and each locale pack's files for the project as another. It is a warning because both files
 load.
 
 ### LOC0118 — A folder named for a type
@@ -411,8 +412,8 @@ same.
 `Components/.locales/Widget.he.json`.
 
 **Silent where.** A host's folder, which names other assemblies' types the compilation cannot
-tell from namespaces; a locale pack's folder is read for the project it names, and held to that
-project's types.
+tell from namespaces; a locale pack's file is read for the project building the longest
+assembly name its name starts with, and held to that project's types.
 
 ### LOC0119 — A type answered in one culture family and left out of another
 
@@ -544,7 +545,7 @@ build gate.
 
 **Reports.** A key written at a callsite that a culture translating its type leaves out, once
 per key per culture, at the first callsite writing it. The cultures translating a type are read
-from the project's own files and from every locale pack's folder for it alike.
+from the project's own files and from every locale pack's files for it alike.
 
 **Why it matters.** Falling back to the key is exactly what the runtime is defined to do, so the
 string renders in English and every other rule stays green; adding `L["Details columns"]` to a

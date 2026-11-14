@@ -1,17 +1,17 @@
 namespace Forma.Locali.Sources;
 
-/// <summary>A locale pack's folder for a project, with the pack read as the runtime reads it for the project's types.</summary>
-/// <param name="Pack">The pack the folder is in.</param>
-/// <param name="Folder">The folder, named for the project's assembly.</param>
+/// <summary>A locale pack's files naming a project's assembly, with the pack read as the runtime reads it for the project's types.</summary>
+/// <param name="Pack">The pack the files are in.</param>
+/// <param name="Assembly">The project's assembly, with the pack's files whose names start with its name.</param>
 /// <param name="Source">The pack as the runtime's walk reads it, laid out by the project's root namespace.</param>
-public sealed record PackLocalization(LocalePack Pack, LocalePackFolder Folder, PackLocaleSource Source)
+public sealed record PackLocalization(LocalePack Pack, LocalePackAssembly Assembly, PackLocaleSource Source)
 {
-    /// <summary>The pack's readable culture-named files beneath the folder.</summary>
+    /// <summary>The pack's readable culture-named files whose names start with the project's assembly name.</summary>
     public IReadOnlyList<ProjectLocaleFile> Files
-        => Folder.Files;
+        => Assembly.Files;
 
-    /// <summary>Every file of the folder with the anchors the runtime places it at for the assembly.</summary>
-    /// <param name="assemblyName">The name of the assembly the folder names.</param>
+    /// <summary>Every file naming the assembly with the anchors the runtime places it at for the assembly.</summary>
+    /// <param name="assemblyName">The name of the assembly the files name.</param>
     public IReadOnlyList<PlacedLocaleFile> GetPlacedFiles(string assemblyName)
     {
         ArgumentException.ThrowIfNullOrEmpty(assemblyName);

@@ -35,7 +35,7 @@ public sealed class LocaleSourceChecker(ILintingConfiguration lintingConfigurati
                 continue;
             }
 
-            // A pack's file is asked about where it stands in the project it localizes, whose line says where that assembly's translations may live.
+            // A pack's file is asked about where it stands in the project it localizes, whose line says where that assembly's entries may live.
             var target = GetPackTarget(context.Pack, fullPath);
 
             // The configuration is asked about every locale file before anything else, so an entry over a project whose items were not read still counts as one that governs a file.
@@ -63,28 +63,19 @@ public sealed class LocaleSourceChecker(ILintingConfiguration lintingConfigurati
         }
     }
 
-    // The project a pack's file localizes, found by the folder beneath the pack it sits in, with the path the file stands for inside that project; null for a file outside every assembly's folder or one naming no project of the run.
+    // The project a pack's file localizes, with the file's path in the pack placed in that project, its assembly's folder left out.
     private static (LoadedProject Project, string StandIn)? GetPackTarget(LocalePack? pack, string fullPath)
     {
-        if (pack is null)
+        if (pack?.FileNames.GetValueOrDefault(fullPath)?.AssemblyName is not { } assemblyName
+            || pack.Assemblies.FirstOrDefault(assembly => assembly.AssemblyName == assemblyName)?.Target is not { } target)
         {
             return null;
         }
 
         var relative = Path.GetRelativePath(Path.GetDirectoryName(Path.GetFullPath(pack.Project.Path))!, fullPath);
-        var separator = relative.IndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]);
-        if (separator <= 0)
-        {
-            return null;
-        }
+        var segments = relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-        var assemblyName = relative[..separator];
-        if (pack.Folders.FirstOrDefault(folder => folder.AssemblyName == assemblyName)?.Target is not { } target)
-        {
-            return null;
-        }
-
-        return (target, Path.Combine(Path.GetDirectoryName(Path.GetFullPath(target.Path))!, relative[(separator + 1)..]));
+        return (target, Path.Combine([Path.GetDirectoryName(Path.GetFullPath(target.Path))!, .. segments.Where(segment => segment != assemblyName)]));
     }
 
     // A pack's every file is the pack's; a file the project embeds is the assembly's own or a satellite's by what the build did with it, an application's included; a file in the project's own .locales folder that it does not embed is the host's.

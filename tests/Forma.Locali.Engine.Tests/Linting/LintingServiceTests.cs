@@ -474,9 +474,9 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
-    public async Task Should_report_a_pack_folder_naming_no_assembly_of_the_solution()
+    public async Task Should_report_a_pack_file_whose_name_starts_with_no_assembly_of_the_solution()
     {
-        // Arrange — the solution lists every project, so a folder matching none of them and nothing they reference names an assembly built nowhere.
+        // Arrange — the solution lists every project, so a name starting with none of them and nothing they reference names an assembly built nowhere.
         using var directory = new TempDirectory();
         var solution = directory.Write("Scratch.slnx", "<Solution />");
         var pack = directory.Write(Path.Combine("Packs", "Contoso.Widgets.Locales.Hebrew.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
@@ -493,12 +493,12 @@ public sealed class LintingServiceTests
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Multiple(
             () => Assert.Equal(LintingCodes.UnknownLocalePackAssembly, diagnostic.Code),
-            () => Assert.Equal(pack, diagnostic.Path),
+            () => Assert.Equal(file, diagnostic.Path),
             () => Assert.Contains("'Contoso.Widgetz'", diagnostic.Message, StringComparison.Ordinal));
     }
 
     [Fact]
-    public async Task Should_read_a_pack_for_the_project_its_folder_names()
+    public async Task Should_read_a_pack_for_the_project_its_files_name()
     {
         // Arrange — the pack's file is held to the target's types, and reported where it sits.
         using var directory = new TempDirectory();

@@ -71,13 +71,15 @@ The rules that read a type's files, LOC0112 and LOC0207 among them, read a proje
 embedded files, whatever folder they sit in. An application's file whose name starts with an
 assembly's name localizes that assembly's types, so LOC0112 leaves it to that assembly, and a
 host's file copied beside the application is read by the file rules alone, while LOC0117 reads
-the copied files as a source of their own, as the runtime does. A locale pack, a project declaring `IsLocalePack`, is a host's folder that ships as an
-assembly: its top-level folders name the assemblies it localizes, each laid out by the root
-namespace that assembly declares. The type-bound rules read a pack's folder for the project it
-names, so a pack's files are held to that project's types and callsites as its own files are,
-LOC0117 reads each pack as a source of its own, and LOC0024 reports a folder that names no
-assembly the solution builds or references. `Forma.Framework.Localization`'s README walks the
-whole layout; this document covers the linter.
+the copied files as a source of their own, as the runtime does. A locale pack, a project
+declaring `IsLocalePack`, is an application's files for other assemblies shipped as an assembly:
+each file's name starts with the name of the assembly it localizes, the culture before it or
+after it, and goes on from the root namespace that assembly declares. The type-bound rules read
+a pack's file for the project building the longest assembly name it starts with, so it is held
+to that project's types and callsites as its own files are, LOC0117 reads each pack as a source
+of its own, and LOC0024 reports a file whose name starts with no assembly the solution builds or
+references. `Forma.Framework.Localization`'s README walks the whole layout; this document covers
+the linter.
 
 ## Options
 
@@ -192,7 +194,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0021 | Warning | An entry in the linting configuration applied to no file the run reached |
 | LOC0022 | Error | The runtime's `.locale.json` is not readable, names a key the runtime does not read, gives a value it would refuse, is one of two for an assembly, sits anywhere but its project's root, or sits in a locale pack |
 | LOC0023 | Warning | The root namespace the runtime counts a type's name from holds none of the project's types |
-| LOC0024 | Error | A locale pack's folder names an assembly the solution neither builds nor references |
+| LOC0024 | Error | A locale pack's file has a name starting with no assembly the solution builds or references |
 | LOC0025 | Warning | A locale file comes from a source its `localeSources` line does not allow, a pack's file held to the line over the project it localizes |
 | LOC0026 | Warning | A `.locali.json` sits beneath the path the run was given, other than the one the run reads |
 | LOC0100 | Error | The file is not readable JSON |
@@ -374,7 +376,7 @@ resolves for one project, its SDKs and assembly references among it, serves the 
 builds one project after another on a thread of its own, the compiler turns each built project
 into a compilation on the cores beside it, several at a time, and a project's callsites are
 linted as soon as its compilation lands, in whatever order they land; the project rules run
-once every project is loaded, since a locale pack's folders resolve against the whole run. A
+once every project is loaded, since a locale pack's files resolve against the whole run. A
 referenced project is evaluated only where the assembly it builds is missing, in a tree that
 was never built, and its compilation stands in for the assembly.
 

@@ -2,7 +2,7 @@ namespace Forma.Locali.Sources;
 
 using Forma.Framework.Localization.Files;
 
-/// <summary>A locale pack's files, read from its source tree under the names its build embeds them by and laid out as the runtime lays a pack out: a folder per assembly, by the root namespace the assembly's own config declares, with no config of the pack's own.</summary>
+/// <summary>A locale pack's files, read from its source tree under the names its build embeds them by and read as the runtime reads a pack: each name starting with the name of the assembly it localizes and going on from the root namespace that assembly's own config declares, with no config of the pack's own.</summary>
 public sealed class PackLocaleSource : LocaleSource
 {
     private readonly string _packName;
@@ -12,7 +12,7 @@ public sealed class PackLocaleSource : LocaleSource
 
     /// <summary>Indexes the files by the name the build embeds each under.</summary>
     /// <param name="packName">The name of the assembly the pack builds, which every file is reported under.</param>
-    /// <param name="files">Every locale file of the pack, whatever assembly its folder names.</param>
+    /// <param name="files">Every locale file of the pack, whatever assembly its name starts with.</param>
     /// <param name="rootNamespaces">The root namespace each assembly's own config declares, by the assembly's name, or null where it declares none.</param>
     /// <param name="format">The format the files are written in.</param>
     public PackLocaleSource(string packName, IReadOnlyList<ProjectLocaleFile> files, Func<string, string?> rootNamespaces, ILocaleFileFormat format)
@@ -42,7 +42,7 @@ public sealed class PackLocaleSource : LocaleSource
     }
 
     /// <summary>The full name of every type or namespace the runtime reads a file for in an assembly, none when no path in force reads it.</summary>
-    /// <param name="assemblyName">The name of the assembly the file's folder names.</param>
+    /// <param name="assemblyName">The name of the assembly the file's name starts with.</param>
     /// <param name="file">The file.</param>
     public IReadOnlyList<string> GetAnchorNames(string assemblyName, ProjectLocaleFile file)
     {

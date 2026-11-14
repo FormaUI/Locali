@@ -21,7 +21,7 @@ public static class ProjectLinterTestFactory
             new DuplicateAnchorFileChecker(),
             new TypeNamedFolderChecker(),
             new CultureCoverageChecker(),
-            new LocalePackFolderChecker(),
+            new LocalePackAssemblyChecker(),
             new LocaleSourceChecker(lintingConfiguration ?? new LintingConfiguration(Path.GetTempPath()), LocaleFormatTestFactory.Json),
         ];
 

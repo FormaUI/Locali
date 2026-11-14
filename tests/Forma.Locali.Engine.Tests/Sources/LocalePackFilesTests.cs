@@ -9,7 +9,7 @@ public sealed class LocalePackFilesTests
     private const string Widget = "namespace Contoso.Widgets; public sealed class Widget;";
 
     [Fact]
-    public void Should_resolve_a_folder_to_the_project_building_the_assembly_it_names()
+    public void Should_resolve_a_file_to_the_project_building_the_assembly_its_name_starts_with()
     {
         // Arrange
         using var directory = new TempDirectory();
@@ -21,16 +21,53 @@ public sealed class LocalePackFilesTests
         var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, target], IsWholeSolution: true))!;
 
         // Assert
-        var folder = Assert.Single(resolved.Folders);
+        var assembly = Assert.Single(resolved.Assemblies);
         Assert.Multiple(
-            () => Assert.Equal("Contoso.Widgets", folder.AssemblyName),
-            () => Assert.Same(target, folder.Target),
-            () => Assert.Equal("Contoso.Widgets.Bars.he.json", Assert.Single(folder.Files).Name),
+            () => Assert.Equal("Contoso.Widgets", assembly.AssemblyName),
+            () => Assert.Same(target, assembly.Target),
+            () => Assert.Equal("Contoso.Widgets.Bars.he.json", Assert.Single(assembly.Files).Name),
             () => Assert.True(resolved.IsEveryAssemblyKnown));
     }
 
     [Fact]
-    public void Should_mark_a_folder_naming_an_assembly_a_project_references()
+    public void Should_resolve_a_file_whose_culture_stands_before_the_assemblys_name()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("he", "Contoso.Widgets", "Bars.json"), LocalizationFileFakeData.Valid);
+        var pack = Pack(directory, file);
+        var target = Project(directory, CompilationTestFactory.Building("Contoso.Widgets", Widget));
+
+        // Act
+        var assembly = Assert.Single(LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, target], IsWholeSolution: true))!.Assemblies);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Same(target, assembly.Target),
+            () => Assert.Equal("he", Assert.Single(assembly.Files).Culture.Name));
+    }
+
+    [Fact]
+    public void Should_resolve_a_file_to_the_longest_assembly_its_name_starts_with()
+    {
+        // Arrange — one assembly's name may start another's, and the runtime reads the file for both, the shorter as another assembly's namespace.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Contoso.Widgets.Bars", "he.json"), LocalizationFileFakeData.Valid);
+        var pack = Pack(directory, file);
+        var widgets = Project(directory, CompilationTestFactory.Building("Contoso.Widgets", Widget));
+        var bars = new LoadedProject(Path.Combine(directory.Root, "Bars", "Bars.csproj"), CompilationTestFactory.Building("Contoso.Widgets.Bars"), false, false);
+
+        // Act
+        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, widgets, bars], IsWholeSolution: true))!;
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(["Contoso.Widgets.Bars"], resolved.Assemblies.Select(assembly => assembly.AssemblyName)),
+            () => Assert.Equal(["Contoso.Widgets", "Contoso.Widgets.Bars"], resolved.FileNames[file].AssemblyNames));
+    }
+
+    [Fact]
+    public void Should_resolve_a_file_naming_an_assembly_a_project_references_to_no_project()
     {
         // Arrange — the assembly arrives from a package, so no project builds it and one references it.
         using var directory = new TempDirectory();
@@ -39,16 +76,16 @@ public sealed class LocalePackFilesTests
         var host = Project(directory, CompilationTestFactory.Building("Contoso.Host").AddReferences(CompilationTestFactory.Building("Contoso.Widgets", Widget).ToMetadataReference()));
 
         // Act
-        var folder = Assert.Single(LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, host], IsWholeSolution: true))!.Folders);
+        var assembly = Assert.Single(LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, host], IsWholeSolution: true))!.Assemblies);
 
         // Assert
         Assert.Multiple(
-            () => Assert.Null(folder.Target),
-            () => Assert.True(folder.IsReferenced));
+            () => Assert.Equal("Contoso.Widgets", assembly.AssemblyName),
+            () => Assert.Null(assembly.Target));
     }
 
     [Fact]
-    public void Should_leave_a_folder_naming_no_assembly_of_the_run_unresolved()
+    public void Should_name_no_assembly_for_a_file_whose_name_starts_with_none_of_the_run()
     {
         // Arrange
         using var directory = new TempDirectory();
@@ -57,13 +94,27 @@ public sealed class LocalePackFilesTests
         var target = Project(directory, CompilationTestFactory.Building("Contoso.Widgets", Widget));
 
         // Act
-        var folder = Assert.Single(LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, target], IsWholeSolution: true))!.Folders);
+        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, target], IsWholeSolution: true))!;
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal("Contoso.Widgetz", folder.AssemblyName),
-            () => Assert.Null(folder.Target),
-            () => Assert.False(folder.IsReferenced));
+            () => Assert.Empty(resolved.Assemblies),
+            () => Assert.Empty(resolved.FileNames[file].AssemblyNames));
+    }
+
+    [Fact]
+    public void Should_name_no_assembly_for_a_file_named_for_its_culture_alone()
+    {
+        // Arrange — a name of no part but the culture starts with no assembly's.
+        using var directory = new TempDirectory();
+        var file = directory.Write("he.json", LocalizationFileFakeData.Valid);
+        var pack = Pack(directory, file);
+
+        // Act
+        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack], IsWholeSolution: true))!;
+
+        // Assert
+        Assert.Empty(resolved.FileNames[file].AssemblyNames);
     }
 
     [Fact]
@@ -98,35 +149,21 @@ public sealed class LocalePackFilesTests
     }
 
     [Fact]
-    public void Should_keep_a_folder_whose_file_will_not_read()
+    public void Should_keep_the_assembly_a_file_that_will_not_read_names()
     {
-        // Arrange — an unreadable file is the file rules' business, and its folder still names an assembly.
+        // Arrange — an unreadable file is the file rules' business, and its name still names an assembly.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine("Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Unmarked);
         var pack = Pack(directory, file);
+        var target = Project(directory, CompilationTestFactory.Building("Contoso.Widgets", Widget));
 
         // Act
-        var folder = Assert.Single(LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack], IsWholeSolution: true))!.Folders);
+        var assembly = Assert.Single(LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack, target], IsWholeSolution: true))!.Assemblies);
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal("Contoso.Widgets", folder.AssemblyName),
-            () => Assert.Empty(folder.Files));
-    }
-
-    [Fact]
-    public void Should_skip_a_file_above_every_assemblys_folder()
-    {
-        // Arrange — the runtime reads a pack's files beneath a folder named for an assembly, so a file at the root belongs to none.
-        using var directory = new TempDirectory();
-        var file = directory.Write("he.json", LocalizationFileFakeData.Valid);
-        var pack = Pack(directory, file);
-
-        // Act
-        var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack], IsWholeSolution: true))!;
-
-        // Assert
-        Assert.Empty(resolved.Folders);
+            () => Assert.Equal("Contoso.Widgets", assembly.AssemblyName),
+            () => Assert.Empty(assembly.Files));
     }
 
     [Fact]
@@ -141,7 +178,7 @@ public sealed class LocalePackFilesTests
         var resolved = LocalePackFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, pack, [file], new LoadedProjects([pack], IsWholeSolution: true))!;
 
         // Assert
-        Assert.Empty(resolved.Folders);
+        Assert.Empty(resolved.FileNames);
     }
 
     [Fact]

@@ -251,7 +251,7 @@ public sealed class UnreachableLocalizationCheckerTests
     [Fact]
     public void Should_report_a_pack_section_naming_no_type()
     {
-        // Arrange — a pack's file is read for the assembly its folder names, so its sections are held to that assembly's types.
+        // Arrange — a pack's file is read for the assembly its name starts with, so its sections are held to that assembly's types.
         using var directory = new TempDirectory();
         var target = new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Widgets.Bars; public sealed class Widget;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>());
         var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.WithSections(("Widget", "Today", "היום"), ("Gadget", "Today", "היום")));
@@ -265,6 +265,23 @@ public sealed class UnreachableLocalizationCheckerTests
             () => Assert.Equal(LintingCodes.UnreachableLocalization, diagnostic.Code),
             () => Assert.Equal(packFile, diagnostic.Path),
             () => Assert.Contains("'Gadget'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Should_leave_a_pack_file_naming_a_longer_assembly_to_that_assembly()
+    {
+        // Arrange — the runtime reads the file for both assemblies its name starts with, the shorter as another assembly's namespace.
+        using var directory = new TempDirectory();
+        var target = new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Widgets; public sealed class Widget;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>());
+        var bars = new LoadedProject(Path.Combine(directory.Root, "Bars", "Contoso.Widgets.Bars.csproj"), CompilationTestFactory.Building("Contoso.Widgets.Bars", "namespace Contoso.Widgets.Bars; public sealed class Gadget;"), false, false);
+        var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets.Bars", "he.json"), LocalizationFileFakeData.WithSection("Gadget", "Today", "היום"));
+        var pack = LocalePackTestFactory.Resolve(directory, [target, bars], packFile);
+
+        // Act
+        var diagnostics = ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), target, [], packs: [pack]);
+
+        // Assert
+        Assert.Empty(diagnostics);
     }
 
     [Fact]

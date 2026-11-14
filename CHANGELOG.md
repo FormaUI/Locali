@@ -13,6 +13,9 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   file, so LOC0101 reports one without `$localization`. An application, an executable or an assembly its build
   marks, reads its files for every assembly their names start with, and LOC0112 leaves such a file to that
   assembly.
+- A locale pack's file is read for the longest assembly name its name starts with, the culture before the name or
+  after it, rather than for its first folder. LOC0024 reports a pack file whose name starts with no assembly the
+  solution builds or references, at the file.
 
 ## `1.0.0-preview.12`
 
