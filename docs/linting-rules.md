@@ -109,8 +109,9 @@ read the project's files through it, as the runtime does.
 **Reports.** The root namespace the runtime counts a type's name from, `rootNamespace` in the
 project's `.locale.json` or the assembly's name where none is declared, when no type of the
 project is under it. A declared one is reported at the config file; an undeclared one at the
-project, and only where the project embeds locale files or a locale pack places a file for it
-under the root and nowhere else.
+project, and only where the project embeds a locale file of its own, any but an application's
+file whose longest assembly name is another's, or a locale pack places a file for it under the
+root and nowhere else.
 
 **Why it matters.** A project's `RootNamespace` and its config's `rootNamespace` drift apart when
 one is renamed without the other, or when a project whose root namespace is not its assembly's

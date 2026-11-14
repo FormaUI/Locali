@@ -124,6 +124,11 @@ public sealed class ProjectLocalization
         return [.. _assemblyNames.Where(assemblyName => fileName.Parts.AsSpan().StartsWith(assemblyName.Split('.')))];
     }
 
+    /// <summary>Whether a file is an application's for another assembly: the longest assembly name its name starts with is not the project's, so it is laid out from that assembly's root namespace.</summary>
+    /// <param name="file">The file, one of <see cref="Files"/>.</param>
+    public bool IsForAnotherAssembly(ProjectLocaleFile file)
+        => IsApplication && GetNamedAssemblies(file).MaxBy(assemblyName => assemblyName.Length) is { } assemblyName && assemblyName != AssemblyName;
+
     /// <summary>Every embedded file with the anchors the runtime places it at.</summary>
     public IReadOnlyList<PlacedLocaleFile> GetPlacedFiles()
         => [.. EmbeddedFiles.Select(file => new PlacedLocaleFile(file.Path, file.Culture.Name, GetAnchorNames(file)))];

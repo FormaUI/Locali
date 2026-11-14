@@ -89,6 +89,39 @@ public sealed class ProjectLocalizationTests
         Assert.Empty(named);
     }
 
+    [Fact]
+    public void Should_take_an_applications_file_whose_longest_assembly_name_is_anothers_for_another_assemblys()
+    {
+        // Arrange — the application Scratch.App reads the file for both assemblies its name starts with, and the longer, Scratch.App.Core, lays it out.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Scratch.App.Core", "he.json"), LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Unreferenced("namespace Scratch.App;").WithAssemblyName("Scratch.App");
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.App.csproj"), compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)), false, false);
+        var localization = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file], builtAssemblyNames: ["Scratch.App.Core"])!;
+
+        // Act
+        var isForAnotherAssembly = localization.IsForAnotherAssembly(Assert.Single(localization.Files));
+
+        // Assert
+        Assert.True(isForAnotherAssembly);
+    }
+
+    [Fact]
+    public void Should_take_an_applications_file_named_for_itself_for_its_own()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Scratch", "he.json"), LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Unreferenced("namespace Scratch;");
+        var localization = Resolve(directory, compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)), file);
+
+        // Act
+        var isForAnotherAssembly = localization.IsForAnotherAssembly(Assert.Single(localization.Files));
+
+        // Assert
+        Assert.False(isForAnotherAssembly);
+    }
+
     private static ProjectLocalization Resolve(TempDirectory directory, Compilation compilation, params string[] files)
         => ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false), files)!;
 }

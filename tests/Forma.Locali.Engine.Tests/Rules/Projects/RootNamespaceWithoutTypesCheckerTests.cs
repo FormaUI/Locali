@@ -3,6 +3,8 @@ namespace Forma.Locali.Tests.Rules.Projects;
 using Forma.Locali.Projects;
 using Forma.Locali.Rules.Projects;
 
+using Microsoft.CodeAnalysis;
+
 public sealed class RootNamespaceWithoutTypesCheckerTests
 {
     private const string Widget = """
@@ -167,6 +169,43 @@ public sealed class RootNamespaceWithoutTypesCheckerTests
 
         // Assert
         Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_leave_an_applications_assembly_name_alone_where_its_files_are_for_other_assemblies_alone()
+    {
+        // Arrange — the application's files word another assembly's strings, laid out from that assembly's root namespace rather than its own.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Forma.Framework.Localization", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostics = CheckApplication(directory, file, "Scratch..locales.Forma.Framework.Localization.he.json");
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_an_applications_assembly_name_no_type_is_under_where_a_file_is_its_own()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Bars", ".locales", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+
+        // Act
+        var diagnostic = Assert.Single(CheckApplication(directory, file, "Scratch.Bars..locales.he.json"));
+
+        // Assert
+        Assert.Contains("'Scratch', the assembly's name", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    private static IReadOnlyList<LintingDiagnostic> CheckApplication(TempDirectory directory, string file, string resourceName)
+    {
+        var compilation = CompilationTestFactory.Referenced(Widget);
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = resourceName };
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)), false, false, EmbeddedResourceNames: resourceNames);
+
+        return ProjectLinterTestFactory.Check(new RootNamespaceWithoutTypesChecker(), project, [file]);
     }
 
     private static IReadOnlyList<LintingDiagnostic> Check(TempDirectory directory, string source, string? rootNamespace, string? config, params string[] files)
