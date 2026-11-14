@@ -53,6 +53,28 @@ public sealed class ProjectLocaleSource : LocaleSource
         return GetAnchorNames(assemblyName, file.Name, file.Culture.Name);
     }
 
+    /// <summary>Where an assembly's names begin among the source's, as the runtime takes them: the folder its config sits in, and the folder the config names beneath it, or the assembly's name where it embeds no config.</summary>
+    /// <param name="assemblyName">The name of the assembly the project builds.</param>
+    /// <exception cref="LocaleConfigException">The source holds more than one config file for the assembly.</exception>
+    public string GetRootDir(string assemblyName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(assemblyName);
+
+        if (GetConfig(assemblyName) is not var (folder, config))
+        {
+            return GetDefaultRootDir(assemblyName);
+        }
+
+        if (config.RootDir is not { } rootDir)
+        {
+            return folder;
+        }
+
+        var written = rootDir.Replace(Path.AltDirectorySeparatorChar, FolderSeparator);
+
+        return folder.Length == 0 ? written : $"{folder}{FolderSeparator}{written}";
+    }
+
     /// <inheritdoc />
     protected override char FolderSeparator
         => '.';

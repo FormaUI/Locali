@@ -184,7 +184,7 @@ public sealed class LocaleSourceCheckerTests
         var configuration = new LintingConfiguration(directory.Root);
 
         // Act
-        var diagnostics = ProjectLinterTestFactory.Check(new LocaleSourceChecker(configuration), project, [file]);
+        var diagnostics = ProjectLinterTestFactory.Check(new LocaleSourceChecker(configuration, LocaleFormatTestFactory.Json), project, [file]);
 
         // Assert
         Assert.Multiple(
@@ -209,11 +209,11 @@ public sealed class LocaleSourceCheckerTests
     }
 
     [Fact]
-    public void Should_take_a_file_embedded_as_the_hosts_for_the_hosts()
+    public void Should_take_a_file_an_application_embeds_for_another_assembly_for_an_embedded_one()
     {
-        // Arrange — an application embeds a host's file under the prefix the build reserves for one, and the runtime reads it as the host's.
+        // Arrange — the build embeds an application's files for other assemblies under its root namespace, as it does every locale file.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": { "**": ["embedded", "pack"] } }""");
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["host"] } }""");
         var file = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.Valid);
         var project = HostingProject(directory, file);
 
@@ -221,33 +221,17 @@ public sealed class LocaleSourceCheckerTests
         var diagnostic = Assert.Single(Check(project, file));
 
         // Assert
-        Assert.Contains("laid in the host's folder", diagnostic.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Should_leave_a_file_embedded_as_the_hosts_alone_where_the_configuration_allows_hosts()
-    {
-        // Arrange
-        using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "localeSources": { "**": ["host"] } }""");
-        var file = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.Valid);
-        var project = HostingProject(directory, file);
-
-        // Act
-        var diagnostics = Check(project, file);
-
-        // Assert
-        Assert.Empty(diagnostics);
+        Assert.Contains("embedded in the assembly", diagnostic.Message, StringComparison.Ordinal);
     }
 
     private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, params string[] files)
-        => ProjectLinterTestFactory.Check(new LocaleSourceChecker(new LintingConfiguration(project.Path)), project, files);
+        => ProjectLinterTestFactory.Check(new LocaleSourceChecker(new LintingConfiguration(project.Path), LocaleFormatTestFactory.Json), project, files);
 
     private static IReadOnlyList<LintingDiagnostic> CheckPack(TempDirectory directory, LoadedProject target, string file)
     {
         var pack = LocalePackTestFactory.Resolve(directory, target, file);
 
-        return ProjectLinterTestFactory.Check(new LocaleSourceChecker(new LintingConfiguration(directory.Root)), pack.Project, [file], packs: [pack]);
+        return ProjectLinterTestFactory.Check(new LocaleSourceChecker(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json), pack.Project, [file], packs: [pack]);
     }
 
     private static LoadedProject Target(TempDirectory directory, string folder, string assemblyName)
@@ -262,13 +246,13 @@ public sealed class LocaleSourceCheckerTests
             EmbeddedResourceNames: Names(directory, [.. embedded]),
             SatelliteFiles: satellite?.Select(Path.GetFullPath).ToHashSet(StringComparer.OrdinalIgnoreCase));
 
-    private static LoadedProject HostingProject(TempDirectory directory, string hostFile)
+    private static LoadedProject HostingProject(TempDirectory directory, string embeddedFile)
         => new(
             Path.Combine(directory.Root, "Contoso.Host.csproj"),
             CompilationTestFactory.Building("Contoso.Host"),
             false,
             false,
-            EmbeddedResourceNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [Path.GetFullPath(hostFile)] = ".locales." + Path.GetRelativePath(Path.Combine(directory.Root, ".locales"), hostFile).Replace(Path.DirectorySeparatorChar, '.') });
+            EmbeddedResourceNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [Path.GetFullPath(embeddedFile)] = "Contoso.Host." + Path.GetRelativePath(directory.Root, embeddedFile).Replace(Path.DirectorySeparatorChar, '.') });
 
     private static Dictionary<string, string> Names(TempDirectory directory, params string[] files)
         => files.ToDictionary(

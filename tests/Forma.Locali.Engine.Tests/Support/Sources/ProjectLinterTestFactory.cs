@@ -22,7 +22,7 @@ public static class ProjectLinterTestFactory
             new TypeNamedFolderChecker(),
             new CultureCoverageChecker(),
             new LocalePackFolderChecker(),
-            new LocaleSourceChecker(lintingConfiguration ?? new LintingConfiguration(Path.GetTempPath())),
+            new LocaleSourceChecker(lintingConfiguration ?? new LintingConfiguration(Path.GetTempPath()), LocaleFormatTestFactory.Json),
         ];
 
     /// <summary>What one project rule reports over a project's files, resolved as the linter resolves them.</summary>
@@ -42,7 +42,7 @@ public static class ProjectLinterTestFactory
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
-        return new ProjectLinter([checker], LocaleFormatTestFactory.Json).Lint(project, localizationFiles, callsites ?? [], packs ?? []);
+        return new ProjectLinter([checker], LocaleFormatTestFactory.Json).Lint(project, localizationFiles, callsites ?? [], packs ?? [], []);
     }
 
     /// <summary>What one project rule reports over files already placed, read as the host's folder.</summary>
@@ -53,7 +53,7 @@ public static class ProjectLinterTestFactory
         ArgumentNullException.ThrowIfNull(checker);
         ArgumentNullException.ThrowIfNull(files);
 
-        var context = new ProjectContext(new LoadedProject("Scratch.csproj", null, false, false), [], null, [], files, []);
+        var context = new ProjectContext(new LoadedProject("Scratch.csproj", null, false, false), [], null, [], files);
         checker.Check(context);
 
         return context.Reported;

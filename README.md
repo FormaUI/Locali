@@ -55,9 +55,12 @@ src/Forma.Blazor/Strings/.locales/he.json                           { "@.Compone
 
 A folder is a namespace; a file is the folder's, named for the culture and sectioned by type, or
 a type's own, named for the type; a section starting with `@.` names a type from the assembly's
-root from anywhere. A host overrides any of them from the `.locales` folder at its root, a folder
-for each assembly laid out by the type's name, the file directly in its folder, which an
-application's build embeds and a project file may copy beside the application instead:
+root from anywhere. A folder and a dot separate a name alike, and the culture is the first part
+of the name, folders included, that is a culture written exactly as .NET names it, so
+`.locales/he/Components.Bars.json` stands for the same name as the second file. An application
+overrides any of them in a file whose name starts with the assembly's name, such as one in the
+`.locales` folder at its root, which its build embeds and a project file may copy beside the
+application instead:
 
 ```text
 .locales/Forma.Blazor/Components/Bars/he.json                       { "FormaToolbar": { "Bold": "עבה" } }
@@ -65,10 +68,10 @@ application's build embeds and a project file may copy beside the application in
 ```
 
 The rules that read a type's files, LOC0112 and LOC0207 among them, read a project's own
-embedded files, whatever folder they sit in; a host's folder translates other assemblies' types,
-so the file rules read it and the type-bound rules do not, whether its files are embedded or
-copied, and LOC0117 reads its embedded files and its copied ones as two sources, as the runtime
-does. A locale pack, a project declaring `IsLocalePack`, is a host's folder that ships as an
+embedded files, whatever folder they sit in. An application's file whose name starts with an
+assembly's name localizes that assembly's types, so LOC0112 leaves it to that assembly, and a
+host's file copied beside the application is read by the file rules alone, while LOC0117 reads
+the copied files as a source of their own, as the runtime does. A locale pack, a project declaring `IsLocalePack`, is a host's folder that ships as an
 assembly: its top-level folders name the assemblies it localizes, each laid out by the root
 namespace that assembly declares. The type-bound rules read a pack's folder for the project it
 names, so a pack's files are held to that project's types and callsites as its own files are,

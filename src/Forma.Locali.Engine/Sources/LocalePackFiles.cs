@@ -34,13 +34,8 @@ public static class LocalePackFiles
 
         foreach (var file in localizationFiles)
         {
-            if (LocalizationFileName.GetCulture(file) is not { } culture)
-            {
-                continue;
-            }
-
             var fullPath = Path.GetFullPath(file);
-            if (!resourceNames.TryGetValue(fullPath, out var name))
+            if (!resourceNames.TryGetValue(fullPath, out var name) || LocalizationFileName.Read(name, format.Extension) is not { Culture: var culture })
             {
                 continue;
             }

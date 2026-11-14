@@ -30,11 +30,17 @@ public sealed class UnreachableLocalizationChecker : IProjectRuleChecker
         // What the linting configuration leaves out is left to the caller to apply, so a run can still count and brief it.
         foreach (var file in localization.Files)
         {
+            // An application's file whose name starts with an assembly's is read for that assembly's types too, which the project's own do not show.
+            if (localization.IsApplication && localization.GetNamedAssemblies(file).Count > 0)
+            {
+                continue;
+            }
+
             var read = reachable.GetValueOrDefault(file.Path) ?? [];
             var unreachable = file.File.GetEntries()
-                .GroupBy(entry => entry.TypeName, StringComparer.Ordinal)
-                .Where(section => !section.Any(entry => read.Contains((entry.TypeName, entry.Key))))
-                .Select(section => section.Key)
+                .Select(entry => entry.TypeName)
+                .Distinct(StringComparer.Ordinal)
+                .Where(section => !read.Contains(section))
                 .ToList();
 
             if (unreachable.Count == 0)
@@ -66,25 +72,25 @@ public sealed class UnreachableLocalizationChecker : IProjectRuleChecker
         }
     }
 
-    // Every type's walk, in every culture the files carry, names each entry it read together with the file and section it came from.
-    private static Dictionary<string, HashSet<(string TypeName, string Key)>> GetReachable(ProjectLocalization localization)
+    // Every type's walk, in every culture the files carry, names each section it read, whether or not its entries win, together with the file it sits in.
+    private static Dictionary<string, HashSet<string>> GetReachable(ProjectLocalization localization)
     {
-        var reachable = new Dictionary<string, HashSet<(string TypeName, string Key)>>(StringComparer.Ordinal);
+        var reachable = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
 
         foreach (var typeName in localization.TypeNames)
         {
             foreach (var culture in localization.Cultures)
             {
-                foreach (var entry in localization.Read(typeName, culture))
+                foreach (var section in localization.GetSections(typeName, culture))
                 {
-                    if (localization.GetFile(entry.FileName) is { } file)
+                    if (localization.GetFile(section.FileName) is { } file)
                     {
-                        if (!reachable.TryGetValue(file.Path, out var entries))
+                        if (!reachable.TryGetValue(file.Path, out var sections))
                         {
-                            reachable[file.Path] = entries = [];
+                            reachable[file.Path] = sections = [with(StringComparer.Ordinal)];
                         }
 
-                        entries.Add((entry.TypeName, entry.Key));
+                        sections.Add(section.TypeName);
                     }
                 }
             }

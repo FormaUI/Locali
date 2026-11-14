@@ -32,21 +32,22 @@ public sealed class MSBuildProjectLoaderTests
         """;
 
     [Fact]
-    public async Task Should_read_a_file_embedded_under_the_hosts_prefix_as_the_hosts()
+    public async Task Should_leave_an_applications_file_named_for_an_assembly_to_that_assembly()
     {
-        // Arrange — an application's build embeds a host's file for another assembly under its path after .locales., and the project declares none of that assembly's types.
+        // Arrange — an executable is the application, which reads a file whose name starts with an assembly's for that assembly's types, here its own by its name.
         using var directory = new TempDirectory();
         var project = directory.Write("Contoso.Host.csproj", """
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup>
                 <TargetFramework>net10.0</TargetFramework>
+                <OutputType>Exe</OutputType>
               </PropertyGroup>
               <ItemGroup>
-                <EmbeddedResource Include=".locales\Contoso.Widgets\Bars\he.json" WithCulture="false" LogicalName=".locales.Contoso.Widgets.Bars.he.json" />
+                <EmbeddedResource Include=".locales\Contoso.Host\Bars\he.json" WithCulture="false" LogicalName="Contoso.Host..locales.Contoso.Host.Bars.he.json" />
               </ItemGroup>
             </Project>
             """);
-        directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+        directory.Write(Path.Combine(".locales", "Contoso.Host", "Bars", "he.json"), LocalizationFileFakeData.Valid);
 
         // Act
         var (exitCode, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", project);

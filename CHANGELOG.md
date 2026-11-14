@@ -3,6 +3,17 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.13`
+
+*Unreleased*
+
+- Locale files are read as `Forma.Framework.Localization` now reads them. A file's culture is the first part of its
+  name, folders included, that is a culture written exactly as .NET names it, so `.locales/es/Components.json` is a
+  Spanish file, and a JSON file in a `.locales` folder, or whose file name ends in a culture, is read as a locale
+  file, so LOC0101 reports one without `$localization`. An application, an executable or an assembly its build
+  marks, reads its files for every assembly their names start with, and LOC0112 leaves such a file to that
+  assembly.
+
 ## `1.0.0-preview.12`
 
 *November 14, 2026*

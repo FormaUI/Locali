@@ -86,26 +86,6 @@ public sealed class DuplicateAnchorFileCheckerTests
     }
 
     [Fact]
-    public void Should_report_a_pair_of_files_embedded_as_the_hosts_for_one_anchor()
-    {
-        // Arrange — the runtime reads a host's embedded files as one source, by the host folder's paths.
-        using var directory = new TempDirectory();
-        var direct = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
-        var nested = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", ".locales", "he.json"), LocalizationFileFakeData.Valid);
-        var project = Hosting(directory, new()
-        {
-            [Path.GetFullPath(direct)] = ".locales.Contoso.Widgets.Bars.he.json",
-            [Path.GetFullPath(nested)] = ".locales.Contoso.Widgets.Bars..locales.he.json",
-        });
-
-        // Act
-        var diagnostics = ProjectLinterTestFactory.Check(new DuplicateAnchorFileChecker(), project, [direct, nested]);
-
-        // Assert
-        Assert.Equal([LintingCodes.DuplicateAnchorFile, LintingCodes.DuplicateAnchorFile], diagnostics.Codes());
-    }
-
-    [Fact]
     public void Should_leave_an_embedded_hosts_file_and_a_copied_one_for_one_anchor_alone()
     {
         // Arrange — the runtime reads the two as different sources, the copied folder after the embedded files, rather than by the paths that place them.

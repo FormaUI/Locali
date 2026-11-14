@@ -1,39 +1,43 @@
 namespace Forma.Locali.Documents;
 
-using System.Globalization;
+using Forma.Framework.Localization.Files;
 
-/// <summary>Reads what a localization file's own name says about it.</summary>
+/// <summary>Reads a locale file's name as the runtime's default reading does, into the culture it is for and the parts of the name it stands for.</summary>
 public static class LocalizationFileName
 {
-    /// <summary>The culture the name carries, as the part after its last dot or as the whole name before the extension, or null when it carries none.</summary>
-    /// <param name="path">The file whose name is read.</param>
-    public static string? GetCulture(string path)
+    /// <summary>What the runtime's default reading takes from a name, or null where the name carries no culture.</summary>
+    /// <param name="name">The file's name from where its source's names begin, with folders written with <c>/</c>, <c>\</c> or <c>.</c>.</param>
+    /// <param name="extension">The extension the format's files carry.</param>
+    public static LocaleFileName? Read(string name, string extension)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        ArgumentException.ThrowIfNullOrEmpty(extension);
+
+        return LocaleFileNames.TryRead(name.Replace('\\', '/'), LocaleConfig.DefaultLocalesDir, extension, StringComparison.Ordinal, out var fileName)
+            ? fileName
+            : null;
+    }
+
+    /// <summary>What the runtime's default reading takes from a file's path from its project's folder, or null where the name carries no culture.</summary>
+    /// <param name="path">The file.</param>
+    /// <param name="projectPath">The project the file belongs to, or null where none sits above it.</param>
+    /// <param name="extension">The extension the format's files carry.</param>
+    /// <remarks>A file no project sits above is read from its first folder of locale files, or by its name alone where it sits in none.</remarks>
+    public static LocaleFileName? ReadInProject(string path, string? projectPath, string extension)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
 
-        var fileName = Path.GetFileNameWithoutExtension(path);
-        var suffix = Path.GetExtension(fileName);
+        var fullPath = Path.GetFullPath(path);
 
-        return (suffix.Length > 1 ? FindCulture(suffix[1..]) : null) ?? FindCulture(fileName);
-    }
-
-    private static string? FindCulture(string name)
-    {
-        if (name.Length == 0)
+        // A folder above the project is no part of any name the runtime reads, and may itself spell a culture.
+        if (projectPath is not null)
         {
-            return null;
+            return Read(Path.GetRelativePath(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, fullPath), extension);
         }
 
-        try
-        {
-            var culture = CultureInfo.GetCultureInfo(name, predefinedOnly: true).Name;
+        var segments = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var localesDirPosition = Array.IndexOf(segments, LocaleConfig.DefaultLocalesDir);
 
-            // 'root' names the invariant culture, which no file is named for; Windows resolves it without a name and ICU elsewhere as 'root'.
-            return culture is "" or "root" ? null : culture;
-        }
-        catch (CultureNotFoundException)
-        {
-            return null;
-        }
+        return Read(localesDirPosition < 0 ? segments[^1] : string.Join('/', segments[localesDirPosition..]), extension);
     }
 }

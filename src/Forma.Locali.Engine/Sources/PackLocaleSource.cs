@@ -56,10 +56,9 @@ public sealed class PackLocaleSource : LocaleSource
     protected override char FolderSeparator
         => '.';
 
-    // A pack is read as a host's folder is, so a file sits in a folder's own locales folder or directly in the folder.
     /// <inheritdoc />
-    protected override IReadOnlyList<LocalePath> DefaultPaths
-        => LocalePath.HostDefaults;
+    protected override bool NamesStartWithAssemblyName
+        => true;
 
     /// <inheritdoc />
     protected override IEnumerable<string> EnumerateNames()

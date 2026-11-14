@@ -19,17 +19,31 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
-    public async Task Should_report_a_file_named_for_a_culture_that_carries_no_marker()
+    public async Task Should_report_a_file_in_a_folder_of_locale_files_that_carries_no_marker()
     {
         // Arrange
         using var directory = new TempDirectory();
-        var file = directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Unmarked);
+        var file = directory.Write(Path.Combine(".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
 
         // Act
         var result = await LintingServiceTestFactory.Create(file).RunAsync(TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal([LintingCodes.MissingMarker], result.Diagnostics.Codes());
+    }
+
+    [Fact]
+    public async Task Should_ignore_a_file_in_a_culture_folder_outside_any_folder_of_locale_files_that_carries_no_marker()
+    {
+        // Arrange — the build embeds a file outside a folder of locale files only where it carries the marker.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("wwwroot", "i18n", "he", "strings.json"), LocalizationFileFakeData.Unmarked);
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(file).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(result.Diagnostics);
     }
 
     [Fact]
@@ -51,7 +65,7 @@ public sealed class LintingServiceTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write($"Nested/Deeper/{LocalizationFileFakeData.HebrewName}", LocalizationFileFakeData.Unmarked);
+        directory.Write($"Nested/Deeper/.locales/{LocalizationFileFakeData.HebrewName}", LocalizationFileFakeData.Unmarked);
 
         // Act
         var result = await LintingServiceTestFactory.Create(directory.Root).RunAsync(TestContext.Current.CancellationToken);
@@ -80,7 +94,7 @@ public sealed class LintingServiceTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        var file = directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Unreadable);
+        var file = directory.Write(Path.Combine(".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unreadable);
 
         // Act
         var result = await LintingServiceTestFactory.Create(file).RunAsync(TestContext.Current.CancellationToken);
@@ -211,8 +225,8 @@ public sealed class LintingServiceTests
         using var directory = new TempDirectory();
         directory.Write(".locali.json", """{ "excludeFiles": ["Fixtures/*"] }""");
         var nested = directory.Write(Path.Combine("Widgets", ".locali.json"), """{ "excludeFiles": ["*.he.json"] }""");
-        directory.Write(Path.Combine("Fixtures", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
-        var file = directory.Write(Path.Combine("Widgets", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
+        directory.Write(Path.Combine("Fixtures", ".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
+        var file = directory.Write(Path.Combine("Widgets", ".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
 
         // Act
         var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning).RunAsync(TestContext.Current.CancellationToken);

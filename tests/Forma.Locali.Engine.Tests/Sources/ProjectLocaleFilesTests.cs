@@ -43,17 +43,45 @@ public sealed class ProjectLocaleFilesTests
     [InlineData("my-folder")]
     [InlineData("My Folder")]
     [InlineData("2024")]
-    public void Should_skip_a_file_whose_folder_the_build_renames_when_the_projects_items_were_not_read(string folder)
+    public void Should_name_a_file_as_the_build_does_when_the_projects_items_were_not_read(string folder)
     {
-        // Arrange — the SDK embeds such a folder under an identifier only the build knows, so the name cannot be told without the project's items.
+        // Arrange — the build embeds a locale file under the root namespace and its path, every folder as written.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine(folder, ".locales", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var resolved = Assert.Single(Resolve(directory, Compile("namespace Scratch;"), file).Files);
+
+        // Assert
+        Assert.Equal($"Scratch.{folder}..locales.he.json", resolved.Name);
+    }
+
+    [Fact]
+    public void Should_skip_a_file_in_a_hidden_folder_when_the_projects_items_were_not_read()
+    {
+        // Arrange — the build takes no locale file from a folder whose name starts with a dot, but for a folder of locale files.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".config", "he.json"), LocalizationFileFakeData.Valid);
 
         // Act
         var resolved = Resolve(directory, Compile("namespace Scratch;"), file);
 
         // Assert
         Assert.Empty(resolved.Files);
+    }
+
+    [Fact]
+    public void Should_read_a_files_culture_from_a_culture_folder()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "es", "Components.json"), LocalizationFileFakeData.ForCulture("es", "Today", "Hoy"));
+
+        // Act
+        var resolved = Assert.Single(Resolve(directory, Compile("namespace Scratch;"), file).Files);
+
+        // Assert
+        Assert.Equal(CultureInfo.GetCultureInfo("es"), resolved.Culture);
     }
 
     [Fact]
@@ -132,19 +160,62 @@ public sealed class ProjectLocaleFilesTests
     }
 
     [Fact]
-    public void Should_skip_a_file_the_project_embeds_as_the_hosts()
+    public void Should_read_a_file_an_application_embeds_for_another_assembly_as_its_own_too()
     {
-        // Arrange — an application embeds a host's file for another assembly under the prefix the build reserves for one.
+        // Arrange — the build embeds every locale file alike, and the assembly's own source reads each.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine(".locales", "Forma.Blazor", "he.json"), LocalizationFileFakeData.Valid);
-        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = ".locales.Forma.Blazor.he.json" };
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Scratch..locales.Forma.Blazor.he.json" };
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedResourceNames: resourceNames);
 
         // Act
         var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!;
 
         // Assert
-        Assert.Empty(resolved.Files);
+        Assert.Single(resolved.Files);
+    }
+
+    [Theory]
+    [InlineData(OutputKind.ConsoleApplication)]
+    [InlineData(OutputKind.WindowsApplication)]
+    public void Should_take_a_project_building_an_executable_for_an_application(OutputKind outputKind)
+    {
+        // Arrange — an executable runs as the entry assembly, which the runtime reads as the application.
+        using var directory = new TempDirectory();
+        var compilation = Compile("namespace Scratch;");
+
+        // Act
+        var resolved = Resolve(directory, compilation.WithOptions(compilation.Options.WithOutputKind(outputKind)));
+
+        // Assert
+        Assert.True(resolved.IsApplication);
+    }
+
+    [Fact]
+    public void Should_take_a_library_its_build_marks_for_an_application()
+    {
+        // Arrange — where no entry assembly runs, as on Android, the runtime reads the assembly the build marked.
+        using var directory = new TempDirectory();
+        var compilation = CompilationTestFactory.Referenced("[assembly: Forma.Framework.Localization.LocaleApplicationAttribute]");
+
+        // Act
+        var resolved = Resolve(directory, compilation);
+
+        // Assert
+        Assert.True(resolved.IsApplication);
+    }
+
+    [Fact]
+    public void Should_take_a_library_no_build_marks_for_no_application()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+
+        // Act
+        var resolved = Resolve(directory, CompilationTestFactory.Referenced("namespace Scratch;"));
+
+        // Assert
+        Assert.False(resolved.IsApplication);
     }
 
     [Fact]

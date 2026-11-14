@@ -3,6 +3,7 @@ namespace Forma.Locali.Linting;
 using System.Text;
 
 using Forma.Framework.Localization.Files;
+using Forma.Locali.Cli;
 using Forma.Locali.Configuration;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
@@ -41,22 +42,25 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema, ILocaleFormat l
             return LintConfig(filePath, content);
         }
 
-        var culture = LocalizationFileName.GetCulture(filePath);
+        var extension = _localeFormat.RuntimeFormat.Extension;
+        var fileName = LocalizationFileName.ReadInProject(filePath, LintingTargetResolver.ProjectOf(filePath), extension);
+
+        // Without the marker, a file claims to be a locale file by sitting in a folder of locale files, or by a file name ending in a culture.
+        var isNamedAsLocaleFile = fileName is { IsInLocalesDir: true } || LocalizationFileName.Read(Path.GetFileName(filePath), extension) is not null;
 
         if (!_localeFormat.TryRead(filePath, content, out var document, out var error))
         {
-            // An unreadable file is only this linter's business when it claims to be a localization file.
-            return HasMarker(content) || culture is not null
+            return HasMarker(content) || isNamedAsLocaleFile
                 ? [Unreadable(filePath, error ?? "the file is not readable JSON")]
                 : [];
         }
 
-        if (!document!.Entries.Any(static entry => entry.IsTopLevel && entry.Name == LocalizationSchema.Marker) && culture is null)
+        if (!document!.Entries.Any(static entry => entry.IsTopLevel && entry.Name == LocalizationSchema.Marker) && !isNamedAsLocaleFile)
         {
             return [];
         }
 
-        return _schema.Lint(document, culture);
+        return _schema.Lint(document, fileName?.Culture);
     }
 
     // The runtime refuses a config file it cannot read and passes over a key it does not know; both are reported here.

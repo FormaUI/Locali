@@ -2,9 +2,12 @@ namespace Forma.Locali.Sources;
 
 using System.Globalization;
 
+using Forma.Framework.Localization;
 using Forma.Framework.Localization.Files;
 using Forma.Locali.Documents;
 using Forma.Locali.Projects;
+
+using Microsoft.CodeAnalysis;
 
 /// <summary>Resolves a project's locale files against the types the runtime finds them by.</summary>
 public static class ProjectLocaleFiles
@@ -14,7 +17,13 @@ public static class ProjectLocaleFiles
     /// <param name="project">The project the files belong to.</param>
     /// <param name="localizationFiles">The locale files this project owns, which the target attributed.</param>
     /// <param name="packs">Every locale pack of the run, none unless given.</param>
-    public static ProjectLocalization? Resolve(ILocaleFileFormat format, LoadedProject project, IReadOnlyCollection<string> localizationFiles, IReadOnlyList<LocalePack>? packs = null)
+    /// <param name="builtAssemblyNames">The name of every assembly a project of the run builds, none unless given.</param>
+    public static ProjectLocalization? Resolve(
+        ILocaleFileFormat format,
+        LoadedProject project,
+        IReadOnlyCollection<string> localizationFiles,
+        IReadOnlyList<LocalePack>? packs = null,
+        IReadOnlyCollection<string>? builtAssemblyNames = null)
     {
         ArgumentNullException.ThrowIfNull(format);
         ArgumentNullException.ThrowIfNull(project);
@@ -28,24 +37,19 @@ public static class ProjectLocaleFiles
 
         var projectDirectory = Path.GetDirectoryName(Path.GetFullPath(project.Path))!;
 
-        // The SDK embeds under RootNamespace, which a project may declare apart from its assembly name.
+        // The build embeds under RootNamespace, which a project may declare apart from its assembly name.
         var root = project.RootNamespace ?? compilation.AssemblyName!;
         var files = new List<ProjectLocaleFile>();
 
         foreach (var file in localizationFiles)
         {
-            if (LocalizationFileName.GetCulture(file) is not { } culture)
-            {
-                continue;
-            }
-
             var fullPath = Path.GetFullPath(file);
 
-            // A file the project does not embed, or embeds under the host's prefix, is the host's, and translates other assemblies' types.
+            // A file the project does not embed is the host's, and localizes other assemblies' types from the folder beside the application.
             string name;
             if (project.EmbeddedResourceNames is { } resourceNames)
             {
-                if (!resourceNames.TryGetValue(fullPath, out var resourceName) || HostLocaleFiles.IsHostResourceName(resourceName))
+                if (!resourceNames.TryGetValue(fullPath, out var resourceName))
                 {
                     continue;
                 }
@@ -61,13 +65,19 @@ public static class ProjectLocaleFiles
                 continue;
             }
 
-            // A file that will not read is the file rules' business, and the runtime reads nothing from it.
-            if (Read(format, fullPath, culture) is not { } read)
+            // The runtime reads a file's culture from the name it is embedded under.
+            if (LocalizationFileName.Read(name, format.Extension) is not { } fileName)
             {
                 continue;
             }
 
-            files.Add(new ProjectLocaleFile(fullPath, CultureInfo.GetCultureInfo(culture), name, read));
+            // A file that will not read is the file rules' business, and the runtime reads nothing from it.
+            if (Read(format, fullPath, fileName.Culture) is not { } read)
+            {
+                continue;
+            }
+
+            files.Add(new ProjectLocaleFile(fullPath, CultureInfo.GetCultureInfo(fileName.Culture), name, read));
         }
 
         var source = new ProjectLocaleSource(files, GetConfigPaths(project), format);
@@ -82,7 +92,14 @@ public static class ProjectLocaleFiles
             }
         }
 
-        return new ProjectLocalization(compilation.AssemblyName!, ResourceTypeNames.GetAll(compilation), files, source, packLocalizations);
+        return new ProjectLocalization(
+            compilation.AssemblyName!,
+            ResourceTypeNames.GetAll(compilation),
+            files,
+            source,
+            packLocalizations,
+            IsApplication(compilation),
+            [.. compilation.ReferencedAssemblyNames.Select(identity => identity.Name), .. builtAssemblyNames ?? []]);
     }
 
     // The runtime reports a pack's file under the pack assembly's name, which its project file also spells where it did not compile.
@@ -105,28 +122,24 @@ public static class ProjectLocaleFiles
         return configPaths;
     }
 
-    // The SDK embeds a file as {RootNamespace}.{RelativeFolderPath}.{FileName}, and the runtime reads a satellite's file back under the same name.
-    // The SDK rewrites a folder it cannot embed as written into an identifier, by rules only the build knows, so such a file is given no name.
+    // The runtime reads the assembly that runs as the application, or, where none runs, the one its build marked.
+    private static bool IsApplication(Compilation compilation)
+        => compilation.Options.OutputKind is OutputKind.ConsoleApplication or OutputKind.WindowsApplication or OutputKind.WindowsRuntimeApplication
+            || compilation.Assembly.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == typeof(LocaleApplicationAttribute).FullName);
+
+    // The build embeds every locale file in a folder of locale files or outside any folder whose name starts with a dot, as
+    // {RootNamespace}.{path} with every folder joined by a dot.
     private static string? GetDefaultResourceName(string root, string projectDirectory, string fullPath)
     {
-        var relative = Path.GetRelativePath(projectDirectory, fullPath);
-        var segments = relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var segments = Path.GetRelativePath(projectDirectory, fullPath).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var folders = segments[..^1];
 
-        return segments[..^1].All(IsEmbeddedAsWritten) ? string.Join('.', [root, .. segments]) : null;
-    }
-
-    // A folder is embedded as written when each part between its dots is empty or an identifier of letters, digits and underscores.
-    private static bool IsEmbeddedAsWritten(string folder)
-    {
-        foreach (var part in folder.Split('.'))
+        if (!folders.Contains(LocaleConfig.DefaultLocalesDir, StringComparer.Ordinal) && folders.Any(folder => folder.StartsWith('.', StringComparison.Ordinal)))
         {
-            if (part.Length > 0 && (char.IsDigit(part[0]) || !part.All(character => char.IsLetterOrDigit(character) || character == '_')))
-            {
-                return false;
-            }
+            return null;
         }
 
-        return true;
+        return string.Join('.', [root, .. segments]);
     }
 
     /// <summary>The file as the runtime reads it, or null when it cannot be opened or will not read, which is the file rules' business.</summary>

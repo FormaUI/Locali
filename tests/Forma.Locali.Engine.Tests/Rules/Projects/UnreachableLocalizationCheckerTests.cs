@@ -3,6 +3,8 @@ namespace Forma.Locali.Tests.Rules.Projects;
 using Forma.Locali.Projects;
 using Forma.Locali.Rules.Projects;
 
+using Microsoft.CodeAnalysis;
+
 public sealed class UnreachableLocalizationCheckerTests
 {
     private const string Widget = """
@@ -88,14 +90,34 @@ public sealed class UnreachableLocalizationCheckerTests
     }
 
     [Fact]
-    public void Should_report_a_file_in_a_form_no_path_reads()
+    public void Should_read_a_file_named_for_its_type_outside_any_folder_of_locale_files()
     {
-        // Arrange — a file beside its type is no default form, so nothing places it.
+        // Arrange — the default reading takes a file wherever it sits, its folders and its name alike.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
 
         // Act
-        var diagnostic = Assert.Single(Lint(directory, Widget, file));
+        var diagnostics = Lint(directory, Widget, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_a_file_no_path_the_assemblys_config_names_reads()
+    {
+        // Arrange — the paths a config names replace the default reading.
+        using var directory = new TempDirectory();
+        var config = directory.Write(".locale.json", """{ "paths": ["$RootDir/strings-$Culture/$AnchorName$Extension"] }""");
+        var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string>
+        {
+            [Path.GetFullPath(config)] = "Scratch..locale.json",
+            [Path.GetFullPath(file)] = "Scratch.Components..locales.he.json",
+        };
+
+        // Act
+        var diagnostic = Assert.Single(Lint(directory, Widget, resourceNames, file));
 
         // Assert
         Assert.Contains("no locale path", diagnostic.Message, StringComparison.Ordinal);
@@ -262,15 +284,16 @@ public sealed class UnreachableLocalizationCheckerTests
     }
 
     [Fact]
-    public void Should_leave_a_file_embedded_as_the_hosts_alone()
+    public void Should_leave_an_applications_file_for_another_assembly_alone()
     {
-        // Arrange — an application embeds a host's file for another assembly, whose types the project does not declare.
+        // Arrange — an application's file whose name starts with an assembly's is read for that assembly's types, which the project does not declare.
         using var directory = new TempDirectory();
-        var file = directory.Write(Path.Combine(".locales", "Forma.Blazor", "Components", "Bars", "he.json"), LocalizationFileFakeData.Valid);
-        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = ".locales.Forma.Blazor.Components.Bars.he.json" };
+        var file = directory.Write(Path.Combine(".locales", "Forma.Framework.Localization", "Components", "he.json"), LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Referenced(Widget);
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)), false, false);
 
         // Act
-        var diagnostics = Lint(directory, Widget, resourceNames, file);
+        var diagnostics = ProjectLinterTestFactory.Check(new UnreachableLocalizationChecker(), project, [file]);
 
         // Assert
         Assert.Empty(diagnostics);

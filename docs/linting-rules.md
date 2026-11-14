@@ -40,9 +40,10 @@ commas are allowed, as in a locale file. Leaving a diagnostic out is never silen
 in `suppressedCount` and named in the console brief.
 
 `localeSources` pairs a glob with the places a locale file it matches may come from, any of
-`embedded`, a file the assembly embeds in itself; `satellite`, one the build moves into a
-satellite assembly; `pack`, one a locale pack carries; and `host`, one laid in the host's
-`.locales` folder, whether an application embeds it or it is copied beside the application. An
+`embedded`, a file the assembly embeds in itself, an application's for other assemblies
+included; `satellite`, one the build moves into a satellite assembly; `pack`, one a locale pack
+carries; and `host`, one in the `.locales` folder at the project's root that the project copies
+beside the application rather than embeds. An
 allow list cannot be merged, so the last line matching a file speaks for
 it: lines are written general first and specific after, and a line that allows nothing,
 `"**": []`, put first, makes every locale file one a later line has to claim. A file no line
@@ -150,7 +151,8 @@ the pack's items could not be read.
 
 **Reports.** A culture-named locale file that comes from a source the last `localeSources` line
 matching it does not name: embedded in the assembly, moved into a satellite assembly, carried
-by a locale pack, or laid in a host's `.locales` folder. A pack's file is held to the line over
+by a locale pack, or copied beside the application from the `.locales` folder at the project's
+root. A pack's file is held to the line over
 the project it localizes, so a pack folder for an assembly whose line allows embedding alone is
 reported file by file. It is reported at the file, naming the source it comes from and the
 sources the line allows.
@@ -188,12 +190,17 @@ folder above every configuration reads none, and then reports each it finds.
 
 ## Locale files (LOC0100–LOC0199)
 
-A locale file opens with `$localization`, then `$shared` where it carries one, then its
-translations and sections.
+A JSON file is read as a locale file when it carries `$localization`, or is named as one: it
+sits in a `.locales` folder with a name giving it a culture, or its file name ends in a culture.
+Its culture is read as the runtime reads it, from the project's folder down: the first part of
+its name, folders included, that is a culture written exactly as .NET names it. A locale file
+opens with `$localization`, then `$shared` where it carries one, then its translations and
+sections.
 
 ### LOC0100 — Not readable JSON
 
-**Reports.** A file that claims to carry translations but is not readable JSON.
+**Reports.** A file carrying `$localization`, or named as a locale file, that is not readable
+JSON.
 
 **Why it matters.** The runtime refuses the file, and every type it would have localized falls
 back to English.
@@ -203,12 +210,17 @@ as the runtime's own reader accepts them.
 
 ### LOC0101 — No metadata entry
 
-**Reports.** A file carrying no `$localization` entry.
+**Reports.** A file named as a locale file, in a `.locales` folder or with a file name ending in
+a culture, that carries no `$localization` entry.
 
-**Why it matters.** The entry is what marks a file as a locale file; without it the runtime
-refuses the file.
+**Why it matters.** The entry is what marks a file as a locale file; without it the build embeds
+the file in no assembly but a pack, and the runtime reads nothing from it there or beside the
+application.
 
 **What fixes it.** Open the file with `"$localization": "SchemaVersion: 1.0.0; Culture: he;"`.
+
+**Silent where.** The file sits outside every `.locales` folder and its file name ends in no
+culture, so without the entry it is no locale file.
 
 ### LOC0102 — The metadata entry is not first
 
@@ -263,7 +275,9 @@ newer minor schema defines is the one case the warning excuses on purpose.
 
 ### LOC0108 — The culture disagrees with the file's name
 
-**Reports.** A `Culture` other than the one the file's own name gives it.
+**Reports.** A `Culture` other than the one the file's name gives it: the first part of the
+name that is a culture, a folder, `.locales/he/Components.json`, or the end of the file's name,
+`Components.he.json`, read from the project's folder down.
 
 **Why it matters.** The runtime refuses the file: the name decides which culture the file is
 read for, and the entry has to agree.
@@ -322,11 +336,10 @@ folder for the project is read the same way, laid out by the project's root name
 pack's file is reported where it sits in the pack.
 
 **Silent where.** The run did not name the project's files; the file is a host's, one the
-project does not embed or embeds under the `.locales.` name the build gives a host's file, which
-translates other assemblies' types; the file is a locale pack's
-whose folder names no project of the run, which LOC0024 reports; or the project's items could
-not be read and the file sits under a folder the build renames to embed it, such as `my-folder`,
-so its name cannot be told.
+project does not embed; the project is an application, an executable or a library its build
+marks as one, and the file's name starts with the name of an assembly the application builds or
+references, which the runtime reads the file for as well; or the file is a locale pack's whose
+folder names no project of the run, which LOC0024 reports.
 
 ### LOC0113 — A key translated two ways across sections
 
@@ -373,18 +386,17 @@ type reached through its node gets unless a section of its own says otherwise.
 
 ### LOC0117 — Two files stand for one anchor
 
-**Reports.** Two files of one source standing for one anchor in one culture, through different
-paths or through a host's two forms of a file. Each file is reported, naming the other.
+**Reports.** Two files of one source standing for one anchor in one culture. Each file is
+reported, naming the other.
 
 **Why it matters.** The runtime reads both, in the order of the paths that place them, so where
 they share a key the later wins without a word, and a file meant to be moved rather than copied
 keeps answering from where it was left.
 
-**What fixes it.** Keep one. The rule reads a project's embedded files as one source; the
-host's `.locales` folder at the project's root as two, the files an application embeds from it
-and the files copied beside it; and each locale pack's folder for the project as another. In a
-host's folder and a pack's, a file may sit in a folder's own `.locales` or directly in the
-folder. It is a warning because both files load.
+**What fixes it.** Keep one. The rule reads a project's embedded files as one source; the files
+the project copies beside the application from the `.locales` folder at its root as another;
+and each locale pack's folder for the project as another. It is a warning because both files
+load.
 
 ### LOC0118 — A folder named for a type
 
