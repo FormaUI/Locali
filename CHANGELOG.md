@@ -12,6 +12,8 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   `.locales` alone, so a file in that folder is held to the culture its name gives it and to the sources
   `localeSources` allows. A file in the host's `.locales` folder at the project's root is read without `.locales`,
   as the host reads it.
+- Where a locale file's name carries no culture, LOC0122 names a part that names no type, namespace or assembly the
+  run knows before one that does, rather than the first part that is a culture in another case.
 
 ## `1.0.0-preview.15`
 

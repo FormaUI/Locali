@@ -50,21 +50,24 @@ public sealed class CultureInAnotherCaseChecker : IProjectRuleChecker
 
             var ownName = name.StartsWith(namesStart, StringComparison.Ordinal) ? name[namesStart.Length..] : name;
 
-            foreach (var part in GetParts(ownName, localesDir))
+            // A file of no culture is read for no reader whatever its parts name, and a part naming nothing is blamed before one naming
+            // something; a part read into a name misleads only where it names nothing.
+            var (part, culture) = GetParts(ownName, localesDir)
+                .Select(candidate => (Part: candidate, Culture: FindCulture(candidate)))
+                .Where(candidate => candidate.Culture is not null && !(hasCulture && localization.IsNameSegment(candidate.Part)))
+                .OrderBy(candidate => localization.IsNameSegment(candidate.Part))
+                .FirstOrDefault();
+
+            if (culture is null)
             {
-                // A file of no culture is read for no reader whatever its parts name, and a part read into a name misleads only where it names nothing.
-                if (FindCulture(part) is not { } culture || (hasCulture && localization.IsNameSegment(part)))
-                {
-                    continue;
-                }
-
-                var reading = hasCulture
-                    ? "which names no type, so the runtime reads it as part of the name the file stands for"
-                    : "so the runtime finds no culture in the file's name and reads nothing from it";
-
-                context.Report(Code, fullPath, $"'{part}' in the name this file is embedded under is the culture '{culture}' written in another case, {reading}.");
-                break;
+                continue;
             }
+
+            var reading = hasCulture
+                ? "which names no type, so the runtime reads it as part of the name the file stands for"
+                : "so the runtime finds no culture in the file's name and reads nothing from it";
+
+            context.Report(Code, fullPath, $"'{part}' in the name this file is embedded under is the culture '{culture}' written in another case, {reading}.");
         }
     }
 

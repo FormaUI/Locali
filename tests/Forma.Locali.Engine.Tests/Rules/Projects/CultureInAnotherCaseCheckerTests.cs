@@ -58,6 +58,34 @@ public sealed class CultureInAnotherCaseCheckerTests
     }
 
     [Fact]
+    public void Should_blame_a_part_naming_nothing_before_one_naming_a_namespace_where_the_name_carries_no_culture()
+    {
+        // Arrange — 'IT' is the Italian culture in another case and a namespace of the project here, so 'ES' is the culture misspelled.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("IT", ".locales", "ES.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostic = Assert.Single(Check(directory, "namespace Scratch.IT; public sealed class Widget;", file));
+
+        // Assert
+        Assert.StartsWith("'ES' in the name this file is embedded under is the culture 'es'", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_blame_a_part_naming_a_namespace_where_the_name_carries_no_culture_and_no_part_names_nothing()
+    {
+        // Arrange — the file is never read, and 'IT' is the one part that could be its culture.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("IT", ".locales", "Widget.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostic = Assert.Single(Check(directory, "namespace Scratch.IT; public sealed class Widget;", file));
+
+        // Assert
+        Assert.StartsWith("'IT' in the name this file is embedded under is the culture 'it'", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_leave_a_part_naming_a_type_alone()
     {
         // Arrange — 'Id' is the Indonesian culture in another case, and a type of the project here.

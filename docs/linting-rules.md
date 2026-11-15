@@ -501,7 +501,8 @@ assembly is no project of the run, so its types are out of reach.
 that is a culture written in another case than .NET names it, `ES` or `He` or `en-us`, where the
 runtime then misreads the file: the name carries no culture at all, or the part names no type,
 namespace or assembly the run knows. It is reported at the file, saying what the runtime makes of
-the name.
+the name, and where the name carries no culture it names a part naming nothing the run knows
+before one that names something.
 
 **Why it matters.** The runtime compares a culture exactly, so `.locales/ES/Components.json`
 carries no culture and is never read, and `Components.Es.he.json` stands for a type named `Es`
