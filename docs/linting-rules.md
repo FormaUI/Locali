@@ -213,7 +213,10 @@ files the name misreads are then an application's or a pack's, and LOC0024 repor
 ## Locale files (LOC0100–LOC0199)
 
 A JSON file is read as a locale file when it carries `$localization`, or is named as one: it
-sits in a `.locales` folder with a name giving it a culture, or its file name ends in a culture.
+sits in a folder of locale files with a name giving it a culture, or its file name ends in a
+culture. A folder of locale files is the one the project's `.locale.json` names as `localesDir`,
+`.locales` where it names none or no project sits above the file, and the host's `.locales`
+folder at the project's root.
 Its culture is read as the runtime reads it, from the project's folder down: the first part of
 its name, folders included, that is a culture written exactly as .NET names it. A locale file
 opens with `$localization`, then `$shared` where it carries one, then its entries and
@@ -232,8 +235,8 @@ as the runtime's own reader accepts them.
 
 ### LOC0101 — No metadata entry
 
-**Reports.** A file named as a locale file, in a `.locales` folder or with a file name ending in
-a culture, that carries no `$localization` entry.
+**Reports.** A file named as a locale file, in a folder of locale files or with a file name
+ending in a culture, that carries no `$localization` entry.
 
 **Why it matters.** The entry is what marks a file as a locale file; without it the build embeds
 the file in no assembly, a pack included, and the runtime reads nothing from it beside the
@@ -241,8 +244,8 @@ application.
 
 **What fixes it.** Open the file with `"$localization": "SchemaVersion: 1.0.0; Culture: he;"`.
 
-**Silent where.** The file sits outside every `.locales` folder and its file name ends in no
-culture, so without the entry it is no locale file.
+**Silent where.** The file sits outside every folder of locale files and its file name ends in
+no culture, so without the entry it is no locale file.
 
 ### LOC0102 — The metadata entry is not first
 

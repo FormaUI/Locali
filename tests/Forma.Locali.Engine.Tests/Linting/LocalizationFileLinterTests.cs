@@ -49,4 +49,36 @@ public sealed class LocalizationFileLinterTests
         // Assert
         Assert.Empty(diagnostics);
     }
+
+    [Fact]
+    public async Task Should_read_a_files_culture_without_the_folder_of_locale_files_its_project_names()
+    {
+        // Arrange — the file is named for fr, and its entry says he.
+        using var directory = new TempDirectory();
+        directory.Write("Contoso.Widgets.csproj", "<Project />");
+        directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var file = directory.Write(Path.Combine(".strings", "fr", "Widgets.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create(), LocaleFormatTestFactory.Json).LintAsync(file, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal([LintingCodes.CultureMismatch], diagnostics.Codes());
+    }
+
+    [Fact]
+    public async Task Should_report_a_file_without_a_marker_in_the_folder_of_locale_files_its_project_names()
+    {
+        // Arrange — the file's own name ends in no culture, so only its folder names it a locale file.
+        using var directory = new TempDirectory();
+        directory.Write("Contoso.Widgets.csproj", "<Project />");
+        directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var file = directory.Write(Path.Combine(".strings", "he", "Widgets.json"), LocalizationFileFakeData.Unmarked);
+
+        // Act
+        var diagnostics = await new LocalizationFileLinter(SchemaLinterTestFactory.Create(), LocaleFormatTestFactory.Json).LintAsync(file, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal([LintingCodes.MissingMarker], diagnostics.Codes());
+    }
 }

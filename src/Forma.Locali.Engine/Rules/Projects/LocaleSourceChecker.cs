@@ -27,10 +27,13 @@ public sealed class LocaleSourceChecker(ILintingConfiguration lintingConfigurati
         var project = context.Project;
         var hostFolder = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(project.Path))!, LocaleConfig.DefaultLocalesDir) + Path.DirectorySeparatorChar;
 
+        // A pack's build reads no config, and embeds its files from .locales.
+        var localesDir = project.IsLocalePack ? LocaleConfig.DefaultLocalesDir : RuntimeConfigFile.ReadLocalesDir(project.Path);
+
         foreach (var file in context.LocalizationFiles)
         {
             var fullPath = Path.GetFullPath(file);
-            if (LocalizationFileName.ReadInProject(fullPath, project.Path, _localeFormat.RuntimeFormat.Extension) is null)
+            if (LocalizationFileName.ReadInProject(fullPath, project.Path, _localeFormat.RuntimeFormat.Extension, localesDir) is null)
             {
                 continue;
             }

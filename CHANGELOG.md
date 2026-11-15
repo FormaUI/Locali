@@ -3,6 +3,16 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.16`
+
+*Unreleased*
+
+- LOC0025, LOC0101 and LOC0108 read a file in a project without the folder of locale files its `.locale.json`
+  names as `localesDir`, as the build embeds it and `Forma.Framework.Localization` reads it, rather than without
+  `.locales` alone, so a file in that folder is held to the culture its name gives it and to the sources
+  `localeSources` allows. A file in the host's `.locales` folder at the project's root is read without `.locales`,
+  as the host reads it.
+
 ## `1.0.0-preview.15`
 
 *November 15, 2026*

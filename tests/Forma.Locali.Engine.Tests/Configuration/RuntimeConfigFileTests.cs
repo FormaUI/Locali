@@ -104,4 +104,42 @@ public sealed class RuntimeConfigFileTests
             () => Assert.Null(file),
             () => Assert.Contains("not a JSON object", error, StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void Should_read_the_folder_of_locale_files_the_config_beside_the_project_names()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(".locale.json", """{ "localesDir": ".i18n/strings" }""");
+        var project = directory.Write("Contoso.Widgets.csproj", "<Project />");
+
+        // Act
+        var localesDir = RuntimeConfigFile.ReadLocalesDir(project);
+
+        // Assert
+        Assert.Equal(".i18n/strings", localesDir);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("""{ "rootNamespace": "Contoso.Widgets" }""")]
+    [InlineData("""{ "localesDir": "../strings" }""")]
+    [InlineData("not json")]
+    public void Should_take_locales_where_the_config_beside_the_project_names_no_folder_it_reads(string? config)
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        if (config is not null)
+        {
+            directory.Write(".locale.json", config);
+        }
+
+        var project = directory.Write("Contoso.Widgets.csproj", "<Project />");
+
+        // Act
+        var localesDir = RuntimeConfigFile.ReadLocalesDir(project);
+
+        // Assert
+        Assert.Equal(".locales", localesDir);
+    }
 }

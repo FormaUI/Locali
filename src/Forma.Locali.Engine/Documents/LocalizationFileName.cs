@@ -24,17 +24,26 @@ public static class LocalizationFileName
     /// <param name="path">The file.</param>
     /// <param name="projectPath">The project the file belongs to, or null where none sits above it.</param>
     /// <param name="extension">The extension the format's files carry.</param>
-    /// <remarks>A file no project sits above is read from its first folder of locale files, or by its name alone where it sits in none.</remarks>
-    public static LocaleFileName? ReadInProject(string path, string? projectPath, string extension)
+    /// <param name="localesDir">The folder of locale files the project's names are read without, written with <c>/</c>.</param>
+    /// <remarks>
+    /// A file in the <c>.locales</c> folder beside the project that the project's folder of locale files reads no culture from
+    /// is read as the host reads its own folder, without <c>.locales</c>. A file no project sits above is read from its first
+    /// <c>.locales</c> folder, or by its name alone where it sits in none.
+    /// </remarks>
+    public static LocaleFileName? ReadInProject(string path, string? projectPath, string extension, string localesDir)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
+        ArgumentException.ThrowIfNullOrEmpty(localesDir);
 
         var fullPath = Path.GetFullPath(path);
 
         // A folder above the project is no part of any name the runtime reads, and may itself spell a culture.
         if (projectPath is not null)
         {
-            return Read(Path.GetRelativePath(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, fullPath), extension, LocaleConfig.DefaultLocalesDir);
+            var name = Path.GetRelativePath(Path.GetDirectoryName(Path.GetFullPath(projectPath))!, fullPath);
+            var isInHostFolder = name.StartsWith(LocaleConfig.DefaultLocalesDir + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+
+            return Read(name, extension, localesDir) ?? (isInHostFolder ? Read(name, extension, LocaleConfig.DefaultLocalesDir) : null);
         }
 
         var segments = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

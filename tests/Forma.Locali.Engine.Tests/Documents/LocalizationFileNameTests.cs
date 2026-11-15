@@ -59,7 +59,7 @@ public sealed class LocalizationFileNameTests
         var path = Path.Combine(Path.GetTempPath(), "es", "Scratch", "Components", "Strings.json");
 
         // Act
-        var fileName = LocalizationFileName.ReadInProject(path, projectPath, ".json");
+        var fileName = LocalizationFileName.ReadInProject(path, projectPath, ".json", ".locales");
 
         // Assert
         Assert.Null(fileName);
@@ -72,7 +72,7 @@ public sealed class LocalizationFileNameTests
         var path = Path.Combine(Path.GetTempPath(), "es", "Strings.he.json");
 
         // Act
-        var fileName = LocalizationFileName.ReadInProject(path, projectPath: null, ".json");
+        var fileName = LocalizationFileName.ReadInProject(path, projectPath: null, ".json", ".locales");
 
         // Assert
         Assert.Equal("he", fileName?.Culture);
@@ -85,11 +85,69 @@ public sealed class LocalizationFileNameTests
         var path = Path.Combine(Path.GetTempPath(), "my", "Widgets", ".locales", "es", "Components.json");
 
         // Act
-        var fileName = LocalizationFileName.ReadInProject(path, projectPath: null, ".json");
+        var fileName = LocalizationFileName.ReadInProject(path, projectPath: null, ".json", ".locales");
 
         // Assert
         Assert.Multiple(
             () => Assert.Equal("es", fileName?.Culture),
             () => Assert.True(fileName?.IsInLocalesDir));
+    }
+
+    [Fact]
+    public void Should_read_a_files_name_in_its_project_without_the_folder_of_locale_files_the_project_names()
+    {
+        // Arrange
+        var projectPath = Path.Combine(Path.GetTempPath(), "Scratch", "Scratch.csproj");
+        var path = Path.Combine(Path.GetTempPath(), "Scratch", ".strings", "he", "Widgets.json");
+
+        // Act
+        var fileName = LocalizationFileName.ReadInProject(path, projectPath, ".json", ".strings");
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("he", fileName?.Culture),
+            () => Assert.True(fileName?.IsInLocalesDir));
+    }
+
+    [Fact]
+    public void Should_read_a_name_with_the_folder_of_locale_files_the_project_names_before_locales()
+    {
+        // Arrange — read without .locales, i18n would be part of the name rather than its folder of locale files.
+        var projectPath = Path.Combine(Path.GetTempPath(), "Scratch", "Scratch.csproj");
+        var path = Path.Combine(Path.GetTempPath(), "Scratch", "i18n", "he", "Widgets.json");
+
+        // Act
+        var fileName = LocalizationFileName.ReadInProject(path, projectPath, ".json", "i18n");
+
+        // Assert
+        Assert.True(fileName?.IsInLocalesDir);
+    }
+
+    [Fact]
+    public void Should_read_a_file_in_the_hosts_folder_beside_the_project_without_locales_whatever_folder_the_project_names()
+    {
+        // Arrange
+        var projectPath = Path.Combine(Path.GetTempPath(), "Scratch", "Scratch.csproj");
+        var path = Path.Combine(Path.GetTempPath(), "Scratch", ".locales", "Contoso.Widgets", "he.json");
+
+        // Act
+        var fileName = LocalizationFileName.ReadInProject(path, projectPath, ".json", ".strings");
+
+        // Assert
+        Assert.Equal("he", fileName?.Culture);
+    }
+
+    [Fact]
+    public void Should_read_no_culture_from_a_locales_folder_beneath_the_project_that_its_project_does_not_name()
+    {
+        // Arrange — the build embeds nothing from a folder starting with a dot that the project does not name, and no host reads it.
+        var projectPath = Path.Combine(Path.GetTempPath(), "Scratch", "Scratch.csproj");
+        var path = Path.Combine(Path.GetTempPath(), "Scratch", "Components", ".locales", "he.json");
+
+        // Act
+        var fileName = LocalizationFileName.ReadInProject(path, projectPath, ".json", ".strings");
+
+        // Assert
+        Assert.Null(fileName);
     }
 }

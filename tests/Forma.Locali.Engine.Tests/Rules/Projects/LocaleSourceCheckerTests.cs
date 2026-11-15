@@ -240,6 +240,57 @@ public sealed class LocaleSourceCheckerTests
         Assert.Contains("embedded in the assembly", diagnostic.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Should_judge_a_file_in_the_folder_of_locale_files_the_projects_config_names()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["pack", "host"] } }""");
+        directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var file = directory.Write(Path.Combine("Bars", ".strings", "he.json"), LocalizationFileFakeData.Valid);
+        var project = Project(directory, embedded: [file]);
+
+        // Act
+        var diagnostic = Assert.Single(Check(project, file));
+
+        // Assert
+        Assert.Contains("embedded in the assembly", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_judge_a_hosts_file_whatever_folder_the_projects_config_names()
+    {
+        // Arrange — the host reads its own folder without .locales.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["embedded", "pack"] } }""");
+        directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var file = directory.Write(Path.Combine(".locales", "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
+        var project = Project(directory, embedded: []);
+
+        // Act
+        var diagnostic = Assert.Single(Check(project, file));
+
+        // Assert
+        Assert.Contains("laid in the host's folder", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_read_a_packs_files_without_locales_whatever_its_config_names()
+    {
+        // Arrange — a pack's build reads no config, and the runtime reads every pack's names without .locales.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["embedded"] } }""");
+        directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var file = directory.Write(Path.Combine("Contoso.Widgets", "Bars", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var pack = new LoadedProject(Path.Combine(directory.Root, "Contoso.Locales.Hebrew.csproj"), CompilationTestFactory.Building("Contoso.Locales.Hebrew"), false, false, EmbeddedResourceNames: Names(directory, file), IsLocalePack: true);
+
+        // Act
+        var diagnostic = Assert.Single(Check(pack, file));
+
+        // Assert
+        Assert.Contains("carried by a locale pack", diagnostic.Message, StringComparison.Ordinal);
+    }
+
     private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, params string[] files)
         => ProjectLinterTestFactory.Check(new LocaleSourceChecker(new LintingConfiguration(project.Path), LocaleFormatTestFactory.Json), project, files);
 

@@ -78,6 +78,31 @@ public sealed class RuntimeConfigFile
         return true;
     }
 
+    /// <summary>The folder of locale files a project's build embeds from, which the <c>.locale.json</c> beside its project file names as <c>localesDir</c>, or <c>.locales</c> where it names none.</summary>
+    /// <param name="projectPath">The project file.</param>
+    /// <remarks>A config file that will not read is LOC0022's, and the folder is then taken to be <c>.locales</c>.</remarks>
+    public static string ReadLocalesDir(string projectPath)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(projectPath);
+
+        var configPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(projectPath))!, LocaleConfig.FileName);
+        if (!File.Exists(configPath))
+        {
+            return LocaleConfig.DefaultLocalesDir;
+        }
+
+        try
+        {
+            using var stream = File.OpenRead(configPath);
+
+            return LocaleConfig.Read(stream, configPath).LocalesDir ?? LocaleConfig.DefaultLocalesDir;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or LocaleConfigException)
+        {
+            return LocaleConfig.DefaultLocalesDir;
+        }
+    }
+
     /// <summary>Builds a diagnostic pointing at a byte offset in this file.</summary>
     /// <param name="offset">The byte offset the diagnostic is about.</param>
     /// <param name="code">The rule the diagnostic is reported under.</param>
