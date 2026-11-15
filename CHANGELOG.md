@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.14`
 
-*Unreleased*
+*November 15, 2026*
 
 - A project's locale files are read without the folder of locale files its `.locale.json` names as `localesDir`, as
   `Forma.Framework.Localization` reads them, rather than without `.locales` alone. Where `localesDir` names another
