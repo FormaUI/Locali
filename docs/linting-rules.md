@@ -236,7 +236,7 @@ as the runtime's own reader accepts them.
 a culture, that carries no `$localization` entry.
 
 **Why it matters.** The entry is what marks a file as a locale file; without it the build embeds
-the file in no assembly but a pack, and the runtime reads nothing from it there or beside the
+the file in no assembly, a pack included, and the runtime reads nothing from it beside the
 application.
 
 **What fixes it.** Open the file with `"$localization": "SchemaVersion: 1.0.0; Culture: he;"`.
