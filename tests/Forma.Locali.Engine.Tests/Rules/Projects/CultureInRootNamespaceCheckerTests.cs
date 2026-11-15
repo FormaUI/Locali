@@ -40,6 +40,22 @@ public sealed class CultureInRootNamespaceCheckerTests
     }
 
     [Fact]
+    public void Should_read_a_name_without_the_folder_of_locale_files_its_config_names()
+    {
+        // Arrange — with '.strings' left out of the name, the runtime reads 'my' as the file's culture.
+        using var directory = new TempDirectory();
+        var config = directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var file = directory.Write(Path.Combine("Components", ".strings", "he.json"), LocalizationFileFakeData.Valid);
+        var project = Project(directory, "Contoso.my.Widgets", rootNamespace: null, config, file);
+
+        // Act
+        var diagnostics = Check(project, config, file);
+
+        // Assert
+        Assert.Equal([LintingCodes.CultureInRootNamespace], diagnostics.Codes());
+    }
+
+    [Fact]
     public void Should_leave_a_project_embedding_no_locale_file_alone()
     {
         // Arrange — with no file embedded under the name, the runtime has nothing to misread.

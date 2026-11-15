@@ -86,6 +86,21 @@ public sealed class CultureInAnotherCaseCheckerTests
     }
 
     [Fact]
+    public void Should_read_a_name_without_the_folder_of_locale_files_its_config_names()
+    {
+        // Arrange — with '.strings' left out, the runtime reads 'he' as the file's culture and 'Is' into a name, a namespace's here.
+        using var directory = new TempDirectory();
+        var config = directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var file = directory.Write(Path.Combine("Is", ".strings", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var diagnostics = Check(directory, "namespace Scratch.Is; public sealed class Widget;", config, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_read_the_name_a_file_is_embedded_under_rather_than_its_path()
     {
         // Arrange — the project embeds the file under a name of its own, which carries the culture as .NET names it.

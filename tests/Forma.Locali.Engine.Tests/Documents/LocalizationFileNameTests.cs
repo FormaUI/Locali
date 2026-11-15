@@ -17,7 +17,7 @@ public sealed class LocalizationFileNameTests
     public void Should_read_the_culture_out_of_a_files_name(string name, string? expected)
     {
         // Act
-        var fileName = LocalizationFileName.Read(name, ".json");
+        var fileName = LocalizationFileName.Read(name, ".json", ".locales");
 
         // Assert
         Assert.Equal(expected, fileName?.Culture);
@@ -32,7 +32,7 @@ public sealed class LocalizationFileNameTests
     public void Should_read_folders_and_dots_alike_into_the_name_a_file_stands_for(string name, string expected)
     {
         // Act
-        var fileName = LocalizationFileName.Read(name, ".json");
+        var fileName = LocalizationFileName.Read(name, ".json", ".locales");
 
         // Assert
         Assert.Equal(expected, string.Join('.', fileName!.Parts));
@@ -42,8 +42,8 @@ public sealed class LocalizationFileNameTests
     public void Should_tell_a_file_in_a_folder_of_locale_files_from_one_outside_any()
     {
         // Act
-        var inside = LocalizationFileName.Read("Components/.locales/he.json", ".json");
-        var outside = LocalizationFileName.Read("Components/he.json", ".json");
+        var inside = LocalizationFileName.Read("Components/.locales/he.json", ".json", ".locales");
+        var outside = LocalizationFileName.Read("Components/he.json", ".json", ".locales");
 
         // Assert
         Assert.Multiple(

@@ -39,6 +39,8 @@ public static class ProjectLocaleFiles
 
         // The build embeds under RootNamespace, which a project may declare apart from its assembly name.
         var root = project.RootNamespace ?? compilation.AssemblyName!;
+        var configPaths = GetConfigPaths(project);
+        var localesDir = ReadLocalesDir(new ProjectLocaleSource([], configPaths, format), compilation.AssemblyName!);
         var files = new List<ProjectLocaleFile>();
 
         foreach (var file in localizationFiles)
@@ -56,7 +58,7 @@ public static class ProjectLocaleFiles
 
                 name = resourceName;
             }
-            else if (GetDefaultResourceName(root, projectDirectory, fullPath) is { } defaultName)
+            else if (GetDefaultResourceName(root, projectDirectory, fullPath, localesDir) is { } defaultName)
             {
                 name = defaultName;
             }
@@ -65,8 +67,8 @@ public static class ProjectLocaleFiles
                 continue;
             }
 
-            // The runtime reads a file's culture from the name it is embedded under.
-            if (LocalizationFileName.Read(name, format.Extension) is not { } fileName)
+            // The runtime reads a file's culture from the name it is embedded under, without the assembly's folder of locale files.
+            if (LocalizationFileName.Read(name, format.Extension, localesDir) is not { } fileName)
             {
                 continue;
             }
@@ -80,7 +82,7 @@ public static class ProjectLocaleFiles
             files.Add(new ProjectLocaleFile(fullPath, CultureInfo.GetCultureInfo(fileName.Culture), name, read));
         }
 
-        var source = new ProjectLocaleSource(files, GetConfigPaths(project), format);
+        var source = new ProjectLocaleSource(files, configPaths, format);
 
         // A pack is read whole for the project, as the runtime reads it, laid out by the root namespace the project's own config declares.
         List<PackLocalization> packLocalizations = [];
@@ -98,6 +100,7 @@ public static class ProjectLocaleFiles
             ResourceTypeNames.GetAll(compilation),
             files,
             source,
+            localesDir,
             packLocalizations,
             IsApplication(compilation),
             [.. compilation.ReferencedAssemblyNames.Select(identity => identity.Name)],
@@ -109,13 +112,24 @@ public static class ProjectLocaleFiles
     private static string GetPackName(LocalePack pack)
         => pack.Project.Compilation?.AssemblyName is { Length: > 0 } assemblyName ? assemblyName : Path.GetFileNameWithoutExtension(pack.Project.Path);
 
-    /// <summary>The full path of each config file the project embeds, keyed by the name the build embeds it under, which the runtime reads the assembly's settings from.</summary>
+    /// <summary>The full path of each config file the project embeds, keyed by the name the build embeds it under, which the runtime reads the assembly's settings from; where its items were not read, the one at its root, which the build embeds whenever it is there.</summary>
     /// <param name="project">The project.</param>
     internal static Dictionary<string, string> GetConfigPaths(LoadedProject project)
     {
         var configPaths = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        foreach (var (path, name) in project.EmbeddedResourceNames ?? new Dictionary<string, string>())
+        if (project.EmbeddedResourceNames is null)
+        {
+            var rootConfig = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(project.Path))!, LocaleConfig.FileName);
+            if ((project.RootNamespace ?? project.Compilation?.AssemblyName) is { Length: > 0 } root && File.Exists(rootConfig))
+            {
+                configPaths[$"{root}.{LocaleConfig.FileName}"] = rootConfig;
+            }
+
+            return configPaths;
+        }
+
+        foreach (var (path, name) in project.EmbeddedResourceNames)
         {
             if (Path.GetFileName(path).Equals(LocaleConfig.FileName, StringComparison.OrdinalIgnoreCase))
             {
@@ -131,14 +145,27 @@ public static class ProjectLocaleFiles
         => compilation.Options.OutputKind is OutputKind.ConsoleApplication or OutputKind.WindowsApplication or OutputKind.WindowsRuntimeApplication
             || compilation.Assembly.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == typeof(LocaleApplicationAttribute).FullName);
 
-    // The build embeds every locale file in a folder of locale files or outside any folder whose name starts with a dot, as
-    // {RootNamespace}.{path} with every folder joined by a dot.
-    private static string? GetDefaultResourceName(string root, string projectDirectory, string fullPath)
+    // A config the runtime cannot place is reported by the rules, which find it refused wherever they read the assembly's names.
+    private static string ReadLocalesDir(ProjectLocaleSource configs, string assemblyName)
+    {
+        try
+        {
+            return configs.GetLocalesDir(assemblyName);
+        }
+        catch (LocaleConfigException)
+        {
+            return LocaleConfig.DefaultLocalesDir;
+        }
+    }
+
+    // The build embeds every locale file in its folder of locale files, whose folders it names in order, or outside any folder
+    // whose name starts with a dot, as {RootNamespace}.{path} with every folder joined by a dot.
+    private static string? GetDefaultResourceName(string root, string projectDirectory, string fullPath, string localesDir)
     {
         var segments = Path.GetRelativePath(projectDirectory, fullPath).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var folders = segments[..^1];
 
-        if (!folders.Contains(LocaleConfig.DefaultLocalesDir, StringComparer.Ordinal) && folders.Any(folder => folder.StartsWith('.', StringComparison.Ordinal)))
+        if (folders.AsSpan().IndexOf(localesDir.Split('/')) < 0 && folders.Any(folder => folder.StartsWith('.', StringComparison.Ordinal)))
         {
             return null;
         }

@@ -46,7 +46,7 @@ public sealed class LocalizationFileLinter(ISchemaLinter schema, ILocaleFormat l
         var fileName = LocalizationFileName.ReadInProject(filePath, LintingTargetResolver.ProjectOf(filePath), extension);
 
         // Without the marker, a file claims to be a locale file by sitting in a folder of locale files, or by a file name ending in a culture.
-        var isNamedAsLocaleFile = fileName is { IsInLocalesDir: true } || LocalizationFileName.Read(Path.GetFileName(filePath), extension) is not null;
+        var isNamedAsLocaleFile = fileName is { IsInLocalesDir: true } || LocalizationFileName.Read(Path.GetFileName(filePath), extension, LocaleConfig.DefaultLocalesDir) is not null;
 
         if (!_localeFormat.TryRead(filePath, content, out var document, out var error))
         {

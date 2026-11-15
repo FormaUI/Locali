@@ -100,6 +100,80 @@ public sealed class ProjectLocaleFilesTests
         Assert.Equal("Contoso.Widgets..locales.he.json", resolved.Name);
     }
 
+    [Fact]
+    public void Should_read_the_files_in_the_folder_of_locale_files_its_config_names()
+    {
+        // Arrange — the runtime reads each name without the folder the assembly's config names.
+        using var directory = new TempDirectory();
+        var config = directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var rootFile = directory.Write(Path.Combine(".strings", "he.json"), LocalizationFileFakeData.Valid);
+        var uploadsFile = directory.Write(Path.Combine("Uploads", ".strings", "he.json"), LocalizationFileFakeData.Valid);
+        var resourceNames = new Dictionary<string, string>
+        {
+            [Path.GetFullPath(config)] = "Contoso.Library..locale.json",
+            [Path.GetFullPath(rootFile)] = "Contoso.Library..strings.he.json",
+            [Path.GetFullPath(uploadsFile)] = "Contoso.Library.Uploads..strings.he.json",
+        };
+        var project = new LoadedProject(Path.Combine(directory.Root, "Contoso.Library.csproj"), CompilationTestFactory.Building("Contoso.Library"), false, false, EmbeddedResourceNames: resourceNames);
+
+        // Act
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [config, rootFile, uploadsFile])!;
+
+        // Assert
+        Assert.Equal(
+            [("Contoso.Library..strings.he.json", "he"), ("Contoso.Library.Uploads..strings.he.json", "he")],
+            resolved.Files.Select(file => (file.Name, file.Culture.Name)));
+    }
+
+    [Fact]
+    public void Should_name_a_file_in_the_folder_of_locale_files_its_config_names_when_the_projects_items_were_not_read()
+    {
+        // Arrange — the build takes the files beneath the folders the config names, in order, though one starts with a dot.
+        using var directory = new TempDirectory();
+        directory.Write(".locale.json", """{ "localesDir": ".i18n/strings" }""");
+        var file = directory.Write(Path.Combine("Uploads", ".i18n", "strings", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var resolved = Assert.Single(Resolve(directory, Compile("namespace Scratch;"), file).Files);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("Scratch.Uploads..i18n.strings.he.json", resolved.Name),
+            () => Assert.Equal(CultureInfo.GetCultureInfo("he"), resolved.Culture));
+    }
+
+    [Fact]
+    public void Should_read_the_root_config_under_the_root_namespace_when_the_projects_items_were_not_read()
+    {
+        // Arrange — the build embeds the config under the root namespace, which a project may declare apart from its assembly
+        // name, so the assembly's names begin there and the file at the root stands for the assembly's root.
+        using var directory = new TempDirectory();
+        directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var file = directory.Write(Path.Combine(".strings", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, "Contoso.Components");
+
+        // Act
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!;
+
+        // Assert
+        Assert.Single(resolved.Read("Scratch.Widget", CultureInfo.GetCultureInfo("he")));
+    }
+
+    [Fact]
+    public void Should_skip_a_locales_folder_its_config_names_another_for_when_the_projects_items_were_not_read()
+    {
+        // Arrange — once the config names another folder of locale files, the build takes none from .locales.
+        using var directory = new TempDirectory();
+        directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var file = directory.Write(Path.Combine(".locales", "he.json"), LocalizationFileFakeData.Valid);
+
+        // Act
+        var resolved = Resolve(directory, Compile("namespace Scratch;"), file);
+
+        // Assert
+        Assert.Empty(resolved.Files);
+    }
+
     [Theory]
     [InlineData("es-419.json")]
     [InlineData("ResourceFormatter.es-419.json")]

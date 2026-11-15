@@ -29,6 +29,7 @@ public sealed class CultureInAnotherCaseChecker : IProjectRuleChecker
 
         // The root namespace's own parts are LOC0027's.
         var namesStart = localization.Source.GetRootDir(localization.AssemblyName) + ".";
+        var localesDir = localization.LocalesDir;
 
         foreach (var file in context.LocalizationFiles)
         {
@@ -38,7 +39,7 @@ public sealed class CultureInAnotherCaseChecker : IProjectRuleChecker
                 continue;
             }
 
-            var hasCulture = LocalizationFileName.Read(name, Path.GetExtension(name)) is not null;
+            var hasCulture = LocalizationFileName.Read(name, Path.GetExtension(name), localesDir) is not null;
             var readFile = localization.EmbeddedFiles.FirstOrDefault(embedded => embedded.Path == fullPath);
 
             // A part read into a name may name a type of an assembly whose types are out of reach.
@@ -49,7 +50,7 @@ public sealed class CultureInAnotherCaseChecker : IProjectRuleChecker
 
             var ownName = name.StartsWith(namesStart, StringComparison.Ordinal) ? name[namesStart.Length..] : name;
 
-            foreach (var part in GetParts(ownName))
+            foreach (var part in GetParts(ownName, localesDir))
             {
                 // A file of no culture is read for no reader whatever its parts name, and a part read into a name misleads only where it names nothing.
                 if (FindCulture(part) is not { } culture || (hasCulture && localization.IsNameSegment(part)))
@@ -67,11 +68,15 @@ public sealed class CultureInAnotherCaseChecker : IProjectRuleChecker
         }
     }
 
-    // The parts of the name between its dots, the extension and folders of locale files left out.
-    private static IEnumerable<string> GetParts(string name)
-        => Path.GetFileNameWithoutExtension(name)
+    // The parts of the name between its dots, the extension and the folders of the folder of locale files left out.
+    private static IEnumerable<string> GetParts(string name, string localesDir)
+    {
+        var localesParts = localesDir.Split('.', '/');
+
+        return Path.GetFileNameWithoutExtension(name)
             .Split('.')
-            .Where(part => part.Length > 0 && part != LocaleConfig.DefaultLocalesDir.TrimStart('.'));
+            .Where(part => part.Length > 0 && !localesParts.Contains(part, StringComparer.Ordinal));
+    }
 
     // A culture in another case is one .NET finds whatever the case, under a name that differs from the part in case alone.
     private static string? FindCulture(string part)

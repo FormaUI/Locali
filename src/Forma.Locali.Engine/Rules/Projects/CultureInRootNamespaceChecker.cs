@@ -20,7 +20,8 @@ public sealed class CultureInRootNamespaceChecker : IProjectRuleChecker
         var project = context.Project;
         if (project.IsLocalePack
             || project.EmbeddedResourceNames is not { } resourceNames
-            || project.Compilation is not { AssemblyName: { Length: > 0 } assemblyName })
+            || project.Compilation is not { AssemblyName: { Length: > 0 } assemblyName }
+            || context.Localization is not { } localization)
         {
             return;
         }
@@ -36,7 +37,7 @@ public sealed class CultureInRootNamespaceChecker : IProjectRuleChecker
             .Select(Path.GetFullPath)
             .Where(path => resourceNames.TryGetValue(path, out var name)
                 && name.StartsWith(rootNamespace + ".", StringComparison.Ordinal)
-                && LocalizationFileName.Read(name, Path.GetExtension(name))?.Culture == culture)
+                && LocalizationFileName.Read(name, Path.GetExtension(name), localization.LocalesDir)?.Culture == culture)
             .Order(StringComparer.Ordinal)
             .FirstOrDefault();
 
