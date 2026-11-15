@@ -300,9 +300,16 @@ dotnet format Forma.Locali.slnx --verify-no-changes
 `tests/Forma.Locali.Engine.Tests` tests the engine, and `tests/Forma.Locali.Tests` tests the
 tool: its command line, its reporters, and the project loads only a run of the built tool can
 show. `build.ps1` runs the build, both test projects and the format check, the fast gate, and `-Clean` removes
-every `bin`, `obj` and `artifacts` folder first so they start from nothing. `build.ps1 -Full` runs the
-full gate: the fast gate, then it packs the tool and verifies the package, as [Versioning](#versioning)
-sets out.
+every `bin`, `obj` and `artifacts` folder and `.sandbox/tmp` first so they start from nothing.
+`build.ps1 -Full` runs the full gate: the fast gate, then it packs the tool and verifies the package, as
+[Versioning](#versioning) sets out.
+
+Work that belongs to a person rather than to the repository, such as a benchmark, an experiment or a scratch file,
+goes under `.sandbox/`, which git ignores whole. A run's temporary folders live in `.sandbox/tmp/`: the tests write
+their files there, and `-Full` installs the package there, each under build files of its own that MSBuild and the
+compiler read before the repository's, so a project there loads as it would outside the repository.
+`Forma.Locali.code-workspace` keeps the editor from watching `.sandbox/tmp/`, so it loads none of those projects
+while a run is still using or removing them.
 
 `SourceLinterTestFactory.Lint` compiles a class body against the real `IStringLocale` and
 returns what the callsite rules report, so a rule is tested against a bound compilation rather
@@ -325,7 +332,7 @@ it versions, branches, commits, releases and packages its work, and leaves Local
 - **Its fast gate** is `./build.ps1`, which `ci.yml` runs on every push but `main`'s and on every
   pull request, with a lint of the sibling Forma's `dev`. **Its full gate** is `./build.ps1 -Full`,
   which packs the tool, checks the package against its inventory, installs it from a local feed
-  outside the checkout and runs it over a sample project; `full.yml` runs it on every push to
+  into a consumer of its own and runs it over a sample project; `full.yml` runs it on every push to
   `candidate`, with the fast gate on Windows and the lint of Forma, and keeps the verified package
   as the artifact `packages`.
 - **Its package** is `formaui-net.Locali` on nuget.org, a .NET tool for `net11.0` whose command is

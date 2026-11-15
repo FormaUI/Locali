@@ -12,5 +12,9 @@
             "path": "../formaui-net/src/Framework/Forma.Framework.Localization.Json"
         }
     ],
-    "settings": {}
+    "settings": {
+        "files.watcherExclude": {
+            "**/.sandbox/tmp/**": true
+        }
+    }
 }

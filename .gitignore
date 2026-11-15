@@ -1,9 +1,7 @@
 ###############################################################################
 #  PROJECT-SPECIFIC                                                           #
 ###############################################################################
-sandbox/
-scratch/
-spikes/
+.sandbox/
 **/Forma.UI.Blazor.Showcase/Sandbox/Assets/
 **/Forma.UI.Blazor.Showcase/Sandbox/Upload/
 appsettings.*.json

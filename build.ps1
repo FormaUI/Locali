@@ -4,12 +4,13 @@ Runs the fast gate: builds the solution, runs its tests, and checks its formatti
 which also packs the tool and verifies the package as a consumer receives it.
 
 .PARAMETER Clean
-Removes every build output first, so the build starts from nothing.
+Removes every build output first, and the temporary folders runs left in .sandbox/tmp, so the build starts from
+nothing.
 
 .PARAMETER Full
 Packs the tool into artifacts/packages, checks the package against src/Forma.Locali/package-files.txt and its symbol
-package against the .pdb files listed there, installs it from a local feed into a folder outside the checkout, and runs
-it over a sample project, clean and with a diagnostic.
+package against the .pdb files listed there, installs it from a local feed into a folder of its own under .sandbox/tmp,
+and runs it over a sample project, clean and with a diagnostic.
 
 .EXAMPLE
 ./build.ps1 -Clean
@@ -30,13 +31,17 @@ $root = $PSScriptRoot
 $solution = Join-Path $root 'Forma.Locali.slnx'
 $tests = @('tests/Forma.Locali.Engine.Tests', 'tests/Forma.Locali.Tests') | ForEach-Object { Join-Path $root $_ }
 $artifacts = Join-Path $root 'artifacts'
+$temporaryFolder = Join-Path $root '.sandbox/tmp'
 
 if ($Clean) {
-    # Every bin and obj under the projects goes, and the packed artifacts with them, which dotnet clean alone leaves behind.
+    # Every bin and obj under the projects goes, with what dotnet clean alone leaves behind: the packed artifacts and the
+    # folders runs left in .sandbox/tmp.
     Write-Host 'Cleaning'
     Get-ChildItem (Join-Path $root 'src'), (Join-Path $root 'tests') -Directory -Recurse -Include 'bin', 'obj' | Remove-Item -Recurse -Force
-    if (Test-Path $artifacts) {
-        Remove-Item $artifacts -Recurse -Force
+    foreach ($folder in $artifacts, $temporaryFolder) {
+        if (Test-Path $folder) {
+            Remove-Item $folder -Recurse -Force
+        }
     }
 }
 
@@ -110,15 +115,18 @@ if (@($symbols | Where-Object { $_ -cnotin $listedSymbols }).Count -gt 0 -or @($
     throw "The symbol package holds $($symbols -join ', '), where $inventory lists $($listedSymbols -join ', ')."
 }
 
-# A folder outside the checkout, with a feed of the packages just packed, and a package cache and a CLI home of its own,
-# whose local-tool cache records where each installed tool lives, so the tool run is the one packed and nothing of the
-# checkout's or the machine's reaches it.
-Write-Host 'Installing the package outside the checkout and running it'
-$consumer = Join-Path ([System.IO.Path]::GetTempPath()) "locali-package-$([guid]::NewGuid().ToString('N'))"
+# A folder under .sandbox/tmp with build files MSBuild and the compiler read before the checkout's, a feed of the packages
+# just packed, and a package cache and a CLI home of its own, whose local-tool cache records where each installed tool
+# lives, so the tool run is the one packed and nothing of the checkout's or the machine's reaches it.
+Write-Host 'Installing the package into a consumer of its own and running it'
+$consumer = Join-Path $temporaryFolder "locali-package-$([guid]::NewGuid().ToString('N'))"
 $sample = Join-Path $consumer 'Sample'
 $previousPackages = $env:NUGET_PACKAGES
 $previousCliHome = $env:DOTNET_CLI_HOME
 New-Item -ItemType Directory -Path $sample | Out-Null
+Set-Content -Path (Join-Path $consumer 'Directory.Build.props') -Value '<Project />'
+Set-Content -Path (Join-Path $consumer 'Directory.Build.targets') -Value '<Project />'
+Set-Content -Path (Join-Path $consumer '.editorconfig') -Value 'root = true'
 
 try {
     $env:NUGET_PACKAGES = Join-Path $consumer 'packages'
