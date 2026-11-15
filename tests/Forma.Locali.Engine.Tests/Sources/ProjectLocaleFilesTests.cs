@@ -371,6 +371,23 @@ public sealed class ProjectLocaleFilesTests
     }
 
     [Fact]
+    public void Should_read_a_pack_without_locales_whatever_folder_the_projects_config_names()
+    {
+        // Arrange — the runtime reads every pack's names without .locales, whatever the project it localizes names for its own.
+        using var directory = new TempDirectory();
+        var config = directory.Write(Path.Combine("Widgets", ".locale.json"), """{ "localesDir": ".strings" }""");
+        var target = Target(directory, Compile("namespace Contoso.Widgets.Bars; public sealed class Widget;"), new Dictionary<string, string> { [Path.GetFullPath(config)] = "Contoso.Widgets..locale.json" });
+        var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", ".locales", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
+        var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
+
+        // Act
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, target, [config], [pack])!;
+
+        // Assert
+        Assert.Single(resolved.Read("Contoso.Widgets.Bars.Widget", CultureInfo.GetCultureInfo("he")));
+    }
+
+    [Fact]
     public void Should_read_the_projects_own_files_before_a_packs()
     {
         // Arrange — the runtime reads an assembly's embedded files first, then each pack, so a pack's entry overrides the assembly's own.

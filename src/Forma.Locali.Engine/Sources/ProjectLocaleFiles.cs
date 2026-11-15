@@ -84,13 +84,14 @@ public static class ProjectLocaleFiles
 
         var source = new ProjectLocaleSource(files, configPaths, format);
 
-        // A pack is read whole for the project, as the runtime reads it, laid out by the root namespace the project's own config declares.
+        // A pack is read whole for the project, as the runtime reads it, laid out by the root namespace the project's own config
+        // declares and read without .locales, as the runtime reads every pack.
         List<PackLocalization> packLocalizations = [];
         foreach (var pack in packs ?? [])
         {
             foreach (var assembly in pack.Assemblies.Where(assembly => assembly.Target == project))
             {
-                var packSource = new AssemblyNamedLocaleSource($"{GetPackName(pack)}/", pack.Files.Select(file => (file.Name, file)), source.GetRootNamespace, format);
+                var packSource = new AssemblyNamedLocaleSource($"{GetPackName(pack)}/", pack.Files.Select(file => (file.Name, file)), source.GetRootNamespace, LocaleConfig.DefaultLocalesDir, format);
                 packLocalizations.Add(new PackLocalization(pack, assembly, packSource));
             }
         }

@@ -1,5 +1,7 @@
 namespace Forma.Locali.Tests.Sources;
 
+using System.Globalization;
+
 using Forma.Locali.Projects;
 
 using Microsoft.CodeAnalysis;
@@ -120,6 +122,55 @@ public sealed class ProjectLocalizationTests
 
         // Assert
         Assert.False(isForAnotherAssembly);
+    }
+
+    [Fact]
+    public void Should_take_an_applications_file_beneath_the_folder_of_locale_files_its_config_names_for_another_assemblys()
+    {
+        // Arrange — after where the application's names begin, '.strings' is left out, so the name starts with Forma.Blazor.
+        using var directory = new TempDirectory();
+        var localization = ApplicationWithStrings(directory);
+
+        // Act
+        var isForAnotherAssembly = localization.IsForAnotherAssembly(Assert.Single(localization.Files));
+
+        // Assert
+        Assert.True(isForAnotherAssembly);
+    }
+
+    [Fact]
+    public void Should_read_an_applications_file_for_another_assembly_without_the_folder_of_locale_files_its_config_names()
+    {
+        // Arrange — the file reads for Forma.Blazor as Components.Bars, where its section completes FormaToolbar.
+        using var directory = new TempDirectory();
+        var localization = ApplicationWithStrings(directory);
+
+        // Act
+        var sections = localization.GetApplicationSections(CultureInfo.GetCultureInfo("es"));
+
+        // Assert
+        Assert.Equal(["Forma.Blazor"], sections.Select(read => read.AssemblyName).Distinct());
+    }
+
+    // An application Contoso.App whose config names '.strings', holding a file for Forma.Blazor, which a project of the run builds.
+    private static ProjectLocalization ApplicationWithStrings(TempDirectory directory)
+    {
+        var config = directory.Write(".locale.json", """{ "localesDir": ".strings" }""");
+        var file = directory.Write(Path.Combine(".strings", "es", "Forma.Blazor", "Components", "Bars.json"), LocalizationFileFakeData.WithSection("es", "FormaToolbar", "Bold", "Negrita"));
+        var compilation = CompilationTestFactory.Building("Contoso.App");
+        var project = new LoadedProject(
+            Path.Combine(directory.Root, "Contoso.App.csproj"),
+            compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)),
+            false,
+            false,
+            EmbeddedResourceNames: new Dictionary<string, string>
+            {
+                [Path.GetFullPath(config)] = "Contoso.App..locale.json",
+                [Path.GetFullPath(file)] = "Contoso.App..strings.es.Forma.Blazor.Components.Bars.json",
+            });
+        var formaBlazor = new BuiltAssembly("Forma.Blazor", ["Forma.Blazor.Components.Bars.FormaToolbar"], "Forma.Blazor");
+
+        return ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [config, file], builtAssemblies: [formaBlazor])!;
     }
 
     private static ProjectLocalization Resolve(TempDirectory directory, Compilation compilation, params string[] files)

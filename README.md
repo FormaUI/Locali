@@ -58,13 +58,13 @@ src/Forma.Blazor/Strings/.locales/he.json                           { "@.Compone
 A folder is a namespace; a file is the folder's, named for the culture and sectioned by type, or
 a type's own, named for the type; a section starting with `@.` names a type from the assembly's
 root from anywhere. A folder and a dot separate a name alike, the folder of locale files is left
-out wherever it sits, `.locales`, or for an assembly's own types the one its `.locale.json` names
-as `localesDir`, and the culture is the first part of the name, folders included, that is a
-culture written exactly as .NET names it, so the second and the third file stand for one name. A
-source reads one entry per key: a type's own over a shared one, and of two files giving one key
-different texts, the file whose name sorts last, which LOC0120 reports. An application overrides
-any of them in a file whose name starts with the assembly's name, the culture before it or after
-it, which its build embeds as it does every locale file:
+out wherever it sits, `.locales` or, for every file a project embeds but a locale pack's, the
+folder its `.locale.json` names as `localesDir`, and the culture is the first part of the name,
+folders included, that is a culture written exactly as .NET names it, so the second and the
+third file stand for one name. A source reads one entry per key: a type's own over a shared one,
+and of two files giving one key different texts, the file whose name sorts last, which LOC0120
+reports. An application overrides any of them in a file whose name starts with the assembly's
+name, the culture before it or after it, which its build embeds as it does every locale file:
 
 ```text
 .locales/Forma.Blazor/Components/Bars/he.json                       { "FormaToolbar": { "Bold": "עבה" } }

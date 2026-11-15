@@ -52,7 +52,7 @@ public static class LocalePackFiles
         var assemblies = new Dictionary<string, List<ProjectLocaleFile>>(StringComparer.Ordinal);
         var fileNames = new Dictionary<string, PackFileName>(StringComparer.OrdinalIgnoreCase);
 
-        // A pack declares no config, so the runtime reads its names without .locales alone.
+        // The runtime reads every pack's names without .locales, whatever its project's config names.
         foreach (var file in localizationFiles)
         {
             var fullPath = Path.GetFullPath(file);

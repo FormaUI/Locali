@@ -21,7 +21,7 @@ public sealed class ProjectLocalization
     /// <param name="typeNames">The name of every type the project declares.</param>
     /// <param name="embeddedFiles">The locale files the project embeds.</param>
     /// <param name="source">The embedded files as the runtime's walk reads them.</param>
-    /// <param name="localesDir">The folder of locale files the assembly's own names are read without.</param>
+    /// <param name="localesDir">The folder of locale files the assembly's names are read without, its files for other assemblies' included.</param>
     /// <param name="packs">Every locale pack's files naming the project's assembly, with the pack read as the runtime reads it for the project.</param>
     /// <param name="isApplication">Whether the project builds an application, whose files the runtime also reads for every assembly their names start with.</param>
     /// <param name="referencedAssemblyNames">The name of every assembly the project references.</param>
@@ -107,7 +107,7 @@ public sealed class ProjectLocalization
     /// <summary>The embedded files as the runtime's walk reads them.</summary>
     public ProjectLocaleSource Source { get; }
 
-    /// <summary>The folder of locale files the assembly's own names are read without: the one its config names, or <c>.locales</c>.</summary>
+    /// <summary>The folder of locale files the assembly's names are read without, its own files' and its files for other assemblies' alike: the one its config names, or <c>.locales</c>.</summary>
     public string LocalesDir { get; }
 
     /// <summary>The format the files are written in, whose extension ends every name the runtime reads.</summary>
@@ -264,8 +264,8 @@ public sealed class ProjectLocalization
         ];
     }
 
-    // An application reads its files for other assemblies from where its own names begin, by the default reading whatever paths
-    // or folder of locale files it states for its own types.
+    // An application reads its files for other assemblies from where its own names begin, by the default reading without its own
+    // folder of locale files, whatever paths it states for its own types.
     private LocaleFileName? ReadAssemblyNamed(ProjectLocaleFile file)
     {
         if (_sources[file.Path] != Source)
@@ -276,7 +276,7 @@ public sealed class ProjectLocalization
         var namesStart = Source.GetRootDir(AssemblyName) + ".";
 
         return file.Name.StartsWith(namesStart, StringComparison.Ordinal)
-            ? LocalizationFileName.Read(file.Name[namesStart.Length..], Format.Extension, LocaleConfig.DefaultLocalesDir)
+            ? LocalizationFileName.Read(file.Name[namesStart.Length..], Format.Extension, LocalesDir)
             : null;
     }
 
@@ -292,6 +292,7 @@ public sealed class ProjectLocalization
             namesStart,
             files,
             assemblyName => assemblyName == AssemblyName ? Source.GetRootNamespace(AssemblyName) : _builtAssemblies.GetValueOrDefault(assemblyName)?.RootNamespace,
+            LocalesDir,
             format);
     }
 
