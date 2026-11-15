@@ -13,6 +13,9 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   names the runtime reads them by: a folder starting with a dot used to leave every file unread, and any other was
   read into the name. A project whose items were not read is taken to embed the files in that folder and the
   `.locale.json` at its root, as the build does.
+- LOC0027 and LOC0122 read a name a file is embedded under only where it ends in the format's extension, as the
+  runtime does, so a file a project embeds under a name of its own is not read for a culture it holds, and a name
+  with no extension no longer ends the run with an error.
 
 ## `1.0.0-preview.13`
 

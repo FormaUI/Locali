@@ -64,6 +64,7 @@ public sealed class ProjectLocalization
         EmbeddedFiles = embeddedFiles;
         Source = source;
         LocalesDir = localesDir;
+        Format = format;
         Packs = packs;
         Files = [.. embeddedFiles, .. packs.SelectMany(pack => pack.Files)];
         Cultures = [.. Files.Select(file => file.Culture).DistinctBy(culture => culture.Name)];
@@ -108,6 +109,9 @@ public sealed class ProjectLocalization
 
     /// <summary>The folder of locale files the assembly's own names are read without: the one its config names, or <c>.locales</c>.</summary>
     public string LocalesDir { get; }
+
+    /// <summary>The format the files are written in, whose extension ends every name the runtime reads.</summary>
+    public ILocaleFileFormat Format { get; }
 
     /// <summary>The file the walk's entries report under a name, from the embedded files or any pack's, or null when none answers to it.</summary>
     /// <param name="name">The name, as the walk's entries report it.</param>
@@ -272,7 +276,7 @@ public sealed class ProjectLocalization
         var namesStart = Source.GetRootDir(AssemblyName) + ".";
 
         return file.Name.StartsWith(namesStart, StringComparison.Ordinal)
-            ? LocalizationFileName.Read(file.Name[namesStart.Length..], Path.GetExtension(file.Name), LocaleConfig.DefaultLocalesDir)
+            ? LocalizationFileName.Read(file.Name[namesStart.Length..], Format.Extension, LocaleConfig.DefaultLocalesDir)
             : null;
     }
 

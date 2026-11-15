@@ -133,6 +133,21 @@ public sealed class CultureInAnotherCaseCheckerTests
     }
 
     [Fact]
+    public void Should_leave_a_file_embedded_under_a_name_without_an_extension_alone()
+    {
+        // Arrange — a project may embed a file under a name of its own, which the runtime reads no culture from.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "ES", "Components.json"), LocalizationFileFakeData.Valid);
+        var project = Project(directory, Widget, new Dictionary<string, string> { [Path.GetFullPath(file)] = "Strings" });
+
+        // Act
+        var diagnostics = ProjectLinterTestFactory.Check(new CultureInAnotherCaseChecker(), project, [file]);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_leave_a_file_the_project_does_not_embed_alone()
     {
         // Arrange — the runtime reads no file the project leaves unembedded from its assembly.

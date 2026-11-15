@@ -37,7 +37,7 @@ public sealed class CultureInRootNamespaceChecker : IProjectRuleChecker
             .Select(Path.GetFullPath)
             .Where(path => resourceNames.TryGetValue(path, out var name)
                 && name.StartsWith(rootNamespace + ".", StringComparison.Ordinal)
-                && LocalizationFileName.Read(name, Path.GetExtension(name), localization.LocalesDir)?.Culture == culture)
+                && LocalizationFileName.Read(name, localization.Format.Extension, localization.LocalesDir)?.Culture == culture)
             .Order(StringComparer.Ordinal)
             .FirstOrDefault();
 

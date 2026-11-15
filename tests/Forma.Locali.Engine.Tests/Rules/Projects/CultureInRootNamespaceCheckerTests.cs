@@ -56,6 +56,26 @@ public sealed class CultureInRootNamespaceCheckerTests
     }
 
     [Fact]
+    public void Should_leave_a_file_embedded_under_a_name_without_the_formats_extension_alone()
+    {
+        // Arrange — the runtime reads no name that does not end in the format's extension, whatever culture it holds.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var project = new LoadedProject(
+            Path.Combine(directory.Root, "Contoso.my.Widgets.csproj"),
+            CompilationTestFactory.Building("Contoso.my.Widgets"),
+            false,
+            false,
+            EmbeddedResourceNames: new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.my.Widgets.Strings" });
+
+        // Act
+        var diagnostics = Check(project, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_leave_a_project_embedding_no_locale_file_alone()
     {
         // Arrange — with no file embedded under the name, the runtime has nothing to misread.

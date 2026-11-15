@@ -39,7 +39,7 @@ public sealed class CultureInAnotherCaseChecker : IProjectRuleChecker
                 continue;
             }
 
-            var hasCulture = LocalizationFileName.Read(name, Path.GetExtension(name), localesDir) is not null;
+            var hasCulture = LocalizationFileName.Read(name, localization.Format.Extension, localesDir) is not null;
             var readFile = localization.EmbeddedFiles.FirstOrDefault(embedded => embedded.Path == fullPath);
 
             // A part read into a name may name a type of an assembly whose types are out of reach.
