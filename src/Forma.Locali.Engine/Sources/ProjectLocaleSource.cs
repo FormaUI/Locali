@@ -42,38 +42,6 @@ public sealed class ProjectLocaleSource : LocaleSource
         return _files.GetValueOrDefault(name);
     }
 
-    /// <summary>Where an assembly's names begin among the source's, as the runtime takes them: the folder its config sits in, and the folder the config names beneath it, or the assembly's name where it embeds no config.</summary>
-    /// <param name="assemblyName">The name of the assembly the project builds.</param>
-    /// <exception cref="LocaleConfigException">The source holds more than one config file for the assembly.</exception>
-    public string GetRootDir(string assemblyName)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(assemblyName);
-
-        if (GetConfig(assemblyName) is not var (folder, config))
-        {
-            return GetDefaultRootDir(assemblyName);
-        }
-
-        if (config.RootDir is not { } rootDir)
-        {
-            return folder;
-        }
-
-        var written = rootDir.Replace(Path.AltDirectorySeparatorChar, FolderSeparator);
-
-        return folder.Length == 0 ? written : $"{folder}{FolderSeparator}{written}";
-    }
-
-    /// <summary>The folder of locale files an assembly's names are read without, as the runtime takes it: the one its config names, or <c>.locales</c> where it names none or embeds no config.</summary>
-    /// <param name="assemblyName">The name of the assembly the project builds.</param>
-    /// <exception cref="LocaleConfigException">The source holds more than one config file for the assembly.</exception>
-    public string GetLocalesDir(string assemblyName)
-    {
-        ArgumentException.ThrowIfNullOrEmpty(assemblyName);
-
-        return GetConfig(assemblyName) is (_, { LocalesDir: { } localesDir }) ? localesDir : LocaleConfig.DefaultLocalesDir;
-    }
-
     /// <inheritdoc />
     protected override char FolderSeparator
         => '.';
