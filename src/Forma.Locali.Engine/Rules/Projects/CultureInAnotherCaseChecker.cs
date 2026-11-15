@@ -59,10 +59,10 @@ public sealed class CultureInAnotherCaseChecker : IProjectRuleChecker
                 }
 
                 var reading = hasCulture
-                    ? "names no type, so the runtime reads it as part of the name the file stands for"
+                    ? "which names no type, so the runtime reads it as part of the name the file stands for"
                     : "so the runtime finds no culture in the file's name and reads nothing from it";
 
-                context.Report(Code, fullPath, $"'{part}' in the name this file is embedded under is the culture '{culture}' written in another case, which {reading}.");
+                context.Report(Code, fullPath, $"'{part}' in the name this file is embedded under is the culture '{culture}' written in another case, {reading}.");
                 break;
             }
         }

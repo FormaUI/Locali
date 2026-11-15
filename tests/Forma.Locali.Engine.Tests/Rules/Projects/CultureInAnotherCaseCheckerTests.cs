@@ -26,7 +26,7 @@ public sealed class CultureInAnotherCaseCheckerTests
             () => Assert.Equal(LintingCodes.CultureInAnotherCase, diagnostic.Code),
             () => Assert.Equal(file, diagnostic.Path),
             () => Assert.Contains("'ES' in the name this file is embedded under is the culture 'es'", diagnostic.Message, StringComparison.Ordinal),
-            () => Assert.Contains("finds no culture", diagnostic.Message, StringComparison.Ordinal));
+            () => Assert.EndsWith("written in another case, so the runtime finds no culture in the file's name and reads nothing from it.", diagnostic.Message, StringComparison.Ordinal));
     }
 
     [Fact]
