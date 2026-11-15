@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.15`
 
-*Unreleased*
+*November 15, 2026*
 
 - An application's files for other assemblies are read without the folder of locale files its own `.locale.json`
   names as `localesDir`, as `Forma.Framework.Localization` reads them, rather than without `.locales`, so LOC0112,
