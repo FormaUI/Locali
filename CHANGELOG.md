@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.17`
 
-*Unreleased*
+*November 16, 2026*
 
 - LOC0123 reports, as a warning, a part of the name a locale file is embedded under that is a culture other than the
   file's own and names no type, namespace or assembly the run knows, as `he` is in `.locales/es/he.json`, which the
