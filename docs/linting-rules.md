@@ -702,9 +702,10 @@ carrying `[LocaleSource]` on the instance its code runs on, or is a call through
 to a method without exactly one type argument; the property `[LocaleSource]` names, as a type of
 instance reads it, returns anything but `typeof` of a type or the instance's `GetType()`,
 returns more than once, or its getter is read neither in source nor in compiled code, which
-leaves that type of instance unread; a type derived from the lookup's own overrides the member
-holding the lookup, so its instances never run it; a parent culture answers, since `es-419`
-reads `es` for what it does not declare; or the run did not name the project's files.
+leaves that type of instance unread and LOC0214 reports; a type derived from the lookup's own
+overrides the member holding the lookup, so its instances never run it; a parent culture
+answers, since `es-419` reads `es` for what it does not declare; or the run did not name the
+project's files.
 
 ### LOC0208 — A lookup writes its key as an expression
 
@@ -775,3 +776,25 @@ L[key])`; or the result is stored, formatted later or passed through a method, w
 cannot follow. Without a bound compilation, only the lookup written as the unnamed or
 `format`-named first argument is certain. A call through `[LocaleKey]` is never read as format
 text, since what its method returns is its own.
+
+### LOC0214 — A lookup's type through `[LocaleSource]` could not be read
+
+**Reports.** A lookup through a member carrying `[LocaleSource]` on the instance its code runs
+on, where the property the attribute names, as a type of instance reads it, has a getter that
+returns no `typeof` of a type or `GetType()` of the instance that could be read, once per lookup
+and property, naming the types of instance it was left unread for:
+`protected override Type LocaleSourceType => _source;`. A getter is read in source, in another
+project of the run's source, or in the compiled code of the assembly the build runs, where it
+returns one of the two in one straight run.
+
+**Why it matters.** LOC0207 holds the key to the type the getter names; where no reading tells
+the type, the key goes unchecked, and leaving that silent would let a run read as complete when
+part of it was never looked at.
+
+**What fixes it.** Return the type as `typeof(X)`, or the instance's own as `GetType()`, from the
+getter; or, where the type is chosen at run time, accept the key unchecked.
+
+**Silent where.** The project is localized in no culture, by its own files or a pack, so no key
+of it could be checked; the lookup goes through the generic `IStringLocale<T>`, through a member
+carrying no `[LocaleSource]`, or through another instance than the one its code runs on, which
+LOC0207 leaves alone.

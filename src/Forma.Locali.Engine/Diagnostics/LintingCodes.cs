@@ -55,6 +55,7 @@ public static class LintingCodes
             InterpolatedKey,
             ReservedShapedLookup,
             ReformattedLookup,
+            UnreadLocaleSource,
         ];
 
     /// <summary>The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define.</summary>
@@ -332,4 +333,10 @@ public static class LintingCodes
         "LOC0213",
         LintingSeverity.Error,
         "A lookup supplies string.Format's format text, which reads its own '{0}' rather than the runtime's holes, and throws once a text names one.");
+
+    /// <summary>A lookup goes through a member carrying [LocaleSource] whose named property's getter tells no type that could be read.</summary>
+    public static LintingCode UnreadLocaleSource { get; } = new(
+        "LOC0214",
+        LintingSeverity.Warning,
+        "A lookup goes through a member carrying [LocaleSource] whose named property's getter tells no type that could be read, so its key went unchecked.");
 }

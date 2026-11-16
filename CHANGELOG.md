@@ -12,6 +12,8 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   deriving from it is held to its own files where it was left unchecked. A getter that returns `typeof` of a type or
   the instance's `GetType()` in one straight run is read, from the referenced assembly or, where the compiler reads
   a reference assembly, from the one the build puts in its place.
+- LOC0214 reports, as a warning, a lookup through a member carrying `[LocaleSource]` whose named property's getter
+  returns no type that could be read, in source or in compiled code, so its key went unchecked.
 
 ## `1.0.0-preview.18`
 

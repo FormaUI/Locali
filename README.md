@@ -190,7 +190,7 @@ getter in an assembly the project reads from another project of the run is read 
 project's source, once every project of the run is loaded, and one no project of the run builds,
 as a package's, in the compiled code of the assembly the build runs, read as data and never
 loaded: the referenced assembly or, where the compiler reads a reference assembly, the one the
-build puts in its place.
+build puts in its place. A getter none of these readings tells is reported by LOC0214.
 
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no
@@ -253,6 +253,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0211 | Error | A lookup writes its key as an interpolated string with holes |
 | LOC0212 | Error | A lookup writes a key shaped like a reserved entry |
 | LOC0213 | Error | A lookup supplies `string.Format`'s format text |
+| LOC0214 | Warning | A lookup's type through `[LocaleSource]` could not be read |
 
 ## Contributing
 

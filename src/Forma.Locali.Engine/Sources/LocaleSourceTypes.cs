@@ -29,7 +29,7 @@ public static class LocaleSourceTypes
         return [.. lookups.Select(lookup => lookup.UnreadProperties.Count == 0 ? lookup : ReadUnread(project, lookup, compilations, named))];
     }
 
-    /// <summary>The types a lookup through the receiver reads, one for each type of instance that reaches it, and the properties naming one that its compilation holds as metadata alone.</summary>
+    /// <summary>The types a lookup through the receiver reads, one for each type of instance that reaches it, and the properties naming one whose getter could not be read here: one the compilation holds as metadata alone, or one whose source returns no type that can be read.</summary>
     /// <param name="receiver">The receiver the lookup was made through.</param>
     internal static (IReadOnlyList<INamedTypeSymbol> Types, IReadOnlyList<LocaleSourceProperty> Unread) Resolve(IOperation receiver)
     {
@@ -52,16 +52,20 @@ public static class LocaleSourceTypes
             var property = MostDerived(instance, typeMember);
             if (property.GetMethod is not { } getter)
             {
+                unread.Add(new LocaleSourceProperty(instance, property));
                 continue;
             }
 
-            if (getter.ContainingAssembly is not ISourceAssemblySymbol { Compilation: var compilation } || getter.DeclaringSyntaxReferences.IsEmpty)
-            {
-                unread.Add(new LocaleSourceProperty(instance, property));
-            }
-            else if (Name(Read(getter, compilation), instance) is { } type)
+            // A getter the compilation holds as metadata, or whose source names no type that can be read, is left for the run to read.
+            if (getter.ContainingAssembly is ISourceAssemblySymbol { Compilation: var compilation }
+                && !getter.DeclaringSyntaxReferences.IsEmpty
+                && Name(Read(getter, compilation), instance) is { } type)
             {
                 types.Add(type);
+            }
+            else
+            {
+                unread.Add(new LocaleSourceProperty(instance, property));
             }
         }
 
