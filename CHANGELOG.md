@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.21`
 
-*Unreleased*
+*November 17, 2026*
 
 - Breaking: `[LocaleKey]` is no longer read. A call to `LocalizableText.For<TSource>` is a lookup of its key in
   `TSource`'s entries because it is the runtime's own, read alike whether the runtime is a package or a project of the
