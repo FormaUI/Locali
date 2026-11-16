@@ -14,6 +14,6 @@ public sealed record LocalizerLookup(
     /// <summary>The types whose entries the lookup reads, one for each type of instance it is read through, or none where nothing bound it.</summary>
     public IReadOnlyList<INamedTypeSymbol> ResourceTypes { get; init; } = [];
 
-    /// <summary>The properties naming a type the lookup reads whose getter its project holds as metadata alone, read in the source of the project of the run that builds them.</summary>
+    /// <summary>The properties naming a type the lookup reads whose getter has not told it: one its project holds as metadata alone until the run reads it, or one no reading tells.</summary>
     public IReadOnlyList<LocaleSourceProperty> UnreadProperties { get; init; } = [];
 }

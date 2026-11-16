@@ -3,6 +3,16 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.19`
+
+*Unreleased*
+
+- LOC0207 reads the property `[LocaleSource]` names in the compiled code of the assembly the build runs where no
+  project of the run builds it, as where an application takes `FormaComponentBase` from a package, so a component
+  deriving from it is held to its own files where it was left unchecked. A getter that returns `typeof` of a type or
+  the instance's `GetType()` in one straight run is read, from the referenced assembly or, where the compiler reads
+  a reference assembly, from the one the build puts in its place.
+
 ## `1.0.0-preview.18`
 
 *November 16, 2026*

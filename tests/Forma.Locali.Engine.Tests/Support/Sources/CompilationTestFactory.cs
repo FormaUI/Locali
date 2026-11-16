@@ -88,13 +88,36 @@ public static class CompilationTestFactory
         ArgumentNullException.ThrowIfNull(compilation);
 
         using var image = new MemoryStream();
-        var emitted = compilation.Emit(image, options: new EmitOptions(metadataOnly: true));
+        Emit(compilation, image, metadataOnly: true);
+
+        return MetadataReference.CreateFromImage(image.ToArray());
+    }
+
+    /// <summary>A reference to the assembly a compilation builds, written to a file as the build writes it, holding no member's body where it is a reference assembly.</summary>
+    /// <param name="compilation">The compilation building the assembly.</param>
+    /// <param name="path">The file to write the assembly to.</param>
+    /// <param name="metadataOnly">Whether the assembly is a reference assembly, holding its metadata alone.</param>
+    public static MetadataReference WrittenTo(Compilation compilation, string path, bool metadataOnly = false)
+    {
+        ArgumentNullException.ThrowIfNull(compilation);
+        ArgumentException.ThrowIfNullOrEmpty(path);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using (var file = File.Create(path))
+        {
+            Emit(compilation, file, metadataOnly);
+        }
+
+        return MetadataReference.CreateFromFile(path);
+    }
+
+    private static void Emit(Compilation compilation, Stream destination, bool metadataOnly)
+    {
+        var emitted = compilation.Emit(destination, options: new EmitOptions(metadataOnly: metadataOnly));
         if (!emitted.Success)
         {
             throw new InvalidOperationException($"'{compilation.AssemblyName}' does not compile: {string.Join(' ', emitted.Diagnostics)}");
         }
-
-        return MetadataReference.CreateFromImage(image.ToArray());
     }
 
     /// <summary>A Visual Basic compilation carrying everything the test run loaded, so the localizer contract binds.</summary>

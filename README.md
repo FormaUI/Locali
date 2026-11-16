@@ -187,7 +187,10 @@ overrides it, names the type in its getter's one return, `typeof(X)` naming `X` 
 the instance's own type. The instances are the lookup's own type, unless it is abstract, and
 every type of its project derived from it that keeps the member holding the lookup as it is. A
 getter in an assembly the project reads from another project of the run is read in that
-project's source, once every project of the run is loaded.
+project's source, once every project of the run is loaded, and one no project of the run builds,
+as a package's, in the compiled code of the assembly the build runs, read as data and never
+loaded: the referenced assembly or, where the compiler reads a reference assembly, the one the
+build puts in its place.
 
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no

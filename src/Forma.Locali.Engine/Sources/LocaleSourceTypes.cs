@@ -2,6 +2,8 @@ namespace Forma.Locali.Sources;
 
 using System.Runtime.CompilerServices;
 
+using Forma.Locali.Projects;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 
@@ -11,27 +13,20 @@ public static class LocaleSourceTypes
     // A table runs its factory outside its lock, so each entry is lazy and the trees of a project, walked at once, read it once.
     private static readonly ConditionalWeakTable<Compilation, Lazy<ILookup<INamedTypeSymbol, INamedTypeSymbol>>> DerivedByBase = [];
 
-    /// <summary>The lookups with the types their unread properties name, read from the source of the projects of the run that build them.</summary>
-    /// <param name="lookups">The lookups a project's callsites made.</param>
+    /// <summary>The lookups with the types their unread properties name, read in the source of the project of the run that builds each or, where none does, in the compiled code of the assembly the project runs; a property neither tells stays unread.</summary>
+    /// <param name="project">The project whose callsites made the lookups.</param>
+    /// <param name="lookups">The lookups the project's callsites made.</param>
     /// <param name="compilations">The compilation of every project of the run.</param>
-    public static IReadOnlyList<LocalizerLookup> ReadUnread(IReadOnlyList<LocalizerLookup> lookups, IReadOnlyList<Compilation> compilations)
+    public static IReadOnlyList<LocalizerLookup> ReadUnread(LoadedProject project, IReadOnlyList<LocalizerLookup> lookups, IReadOnlyList<Compilation> compilations)
     {
+        ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(lookups);
         ArgumentNullException.ThrowIfNull(compilations);
 
         // A project's lookups read the few properties its bases declare, so each is read once.
         var named = new Dictionary<IPropertySymbol, NamedType?>(SymbolEqualityComparer.Default);
 
-        return
-        [
-            .. lookups.Select(lookup => lookup.UnreadProperties.Count == 0 ? lookup : lookup with
-            {
-                ResourceTypes = Distinct(lookup.ResourceTypes.Concat(lookup.UnreadProperties
-                    .Select(unread => Name(GetOrRead(named, unread.Property, compilations), unread.Instance))
-                    .OfType<INamedTypeSymbol>())),
-                UnreadProperties = [],
-            }),
-        ];
+        return [.. lookups.Select(lookup => lookup.UnreadProperties.Count == 0 ? lookup : ReadUnread(project, lookup, compilations, named))];
     }
 
     /// <summary>The types a lookup through the receiver reads, one for each type of instance that reaches it, and the properties naming one that its compilation holds as metadata alone.</summary>
@@ -235,18 +230,35 @@ public static class LocaleSourceTypes
         return false;
     }
 
-    private static NamedType? GetOrRead(Dictionary<IPropertySymbol, NamedType?> named, IPropertySymbol property, IReadOnlyList<Compilation> compilations)
+    private static LocalizerLookup ReadUnread(LoadedProject project, LocalizerLookup lookup, IReadOnlyList<Compilation> compilations, Dictionary<IPropertySymbol, NamedType?> named)
     {
-        if (!named.TryGetValue(property, out var type))
+        var types = new List<INamedTypeSymbol>(lookup.ResourceTypes);
+        var unread = new List<LocaleSourceProperty>();
+        foreach (var property in lookup.UnreadProperties)
         {
-            named[property] = type = ReadFromRun(property, compilations);
+            if (!named.TryGetValue(property.Property, out var type))
+            {
+                // A project of the run building the getter's assembly is read in its source alone, whatever its last build left on disk.
+                named[property.Property] = type = FindInRun(property.Property, compilations) is ({ } getter, { } compilation)
+                    ? Read(getter, compilation)
+                    : ReadCompiled(project, property.Property);
+            }
+
+            if (Name(type, property.Instance) is { } read)
+            {
+                types.Add(read);
+            }
+            else
+            {
+                unread.Add(property);
+            }
         }
 
-        return type;
+        return lookup with { ResourceTypes = Distinct(types), UnreadProperties = unread };
     }
 
-    // A getter a project holds as metadata is read in the source of the project of the run that builds its assembly.
-    private static NamedType? ReadFromRun(IPropertySymbol property, IReadOnlyList<Compilation> compilations)
+    // A getter a project holds as metadata is found in the source of the project of the run that builds its assembly.
+    private static (IMethodSymbol Getter, Compilation Compilation)? FindInRun(IPropertySymbol property, IReadOnlyList<Compilation> compilations)
     {
         if (compilations.FirstOrDefault(compilation => compilation.AssemblyName == property.ContainingAssembly.Name) is not { } compilation
             || DocumentationCommentId.CreateDeclarationId(property.OriginalDefinition) is not { } id)
@@ -258,8 +270,39 @@ public static class LocaleSourceTypes
             .OfType<IPropertySymbol>()
             .FirstOrDefault(candidate => SymbolEqualityComparer.Default.Equals(candidate.ContainingAssembly, compilation.Assembly))
             ?.GetMethod is { } getter
-            ? Read(getter, compilation)
+            ? (getter, compilation)
             : null;
+    }
+
+    // A getter no project of the run builds is read in the assembly the project runs: the one it references or, where that is a
+    // reference assembly holding no code, the one the build puts in its place.
+    private static NamedType? ReadCompiled(LoadedProject project, IPropertySymbol property)
+    {
+        if (project.Compilation is not { } compilation
+            || property.GetMethod is not { } getter
+            || compilation.GetMetadataReference(property.ContainingAssembly) is not PortableExecutableReference { FilePath: { Length: > 0 } referencePath })
+        {
+            return null;
+        }
+
+        var runtimePath = project.RuntimeAssemblyPaths.GetValueOrDefault(Path.GetFullPath(referencePath));
+        var compiled = (runtimePath is not null ? CompiledGetters.Read(runtimePath, getter) : null) ?? CompiledGetters.Read(referencePath, getter);
+
+        return compiled switch
+        {
+            null => null,
+            { Name: { } name } => FindType(compilation, property.ContainingAssembly, name) is { } type ? new NamedType(type.OriginalDefinition) : null,
+            _ => new NamedType(null),
+        };
+    }
+
+    private static INamedTypeSymbol? FindType(Compilation compilation, IAssemblySymbol getterAssembly, CompiledGetters.TypeName name)
+    {
+        var assembly = name.AssemblyName is null
+            ? getterAssembly
+            : compilation.SourceModule.ReferencedAssemblySymbols.FirstOrDefault(referenced => referenced.Name == name.AssemblyName);
+
+        return assembly?.GetTypeByMetadataName(name.MetadataName) ?? compilation.GetTypeByMetadataName(name.MetadataName);
     }
 
     // The getter's one return names the type: typeof names it, and the instance's GetType names the instance's own.

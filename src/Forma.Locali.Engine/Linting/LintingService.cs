@@ -148,12 +148,13 @@ public sealed class LintingService(
         var builtAssemblies = BuiltAssemblies.ResolveAll(projects);
 
         // A property another project of the run builds is read in that project's source, so the type it names waits for every project as well.
+        // One no project of the run builds is read in the compiled code of the assembly the project runs.
         Compilation[] compilations = [.. projects.All.OrderBy(project => project.Path, StringComparer.Ordinal).Select(project => project.Compilation).OfType<Compilation>()];
 
         foreach (var (project, sources) in linted)
         {
             diagnostics.AddRange(sources.Diagnostics);
-            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), LocaleSourceTypes.ReadUnread(sources.Callsites, compilations), packs, builtAssemblies));
+            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), LocaleSourceTypes.ReadUnread(project, sources.Callsites, compilations), packs, builtAssemblies));
         }
 
         return diagnostics;

@@ -23,6 +23,9 @@ public sealed record LoadedProject(
     bool IsLocalePack = false,
     IReadOnlyDictionary<string, string>? SatelliteCultures = null)
 {
+    /// <summary>The assembly the build runs in place of each one the compiler reads where the two differ, keyed by the full path the compiler reads: a referenced project's own assembly for its reference assembly, or a package's runtime assembly for its compile-time one.</summary>
+    public IReadOnlyDictionary<string, string> RuntimeAssemblyPaths { get; init; } = new Dictionary<string, string>();
+
     /// <summary>The culture the name a satellite assembly holds a file under gives it where that is not the satellite's culture, so the runtime reads the file under no name, or null where the runtime reads it.</summary>
     /// <param name="fullPath">The file, as a full path.</param>
     public string? GetCultureOutsideSatellite(string fullPath)

@@ -682,8 +682,9 @@ each type of instance: `typeof(X)` names `X`, and `GetType()` the instance's own
 instances are the lookup's own type, unless it is abstract, and every type of its project
 derived from it that keeps the member holding the lookup as it is, each reading the property as
 it overrides it. A property another project of the run builds is read in that project's source,
-so `L["Details columns"]` in a component deriving from `FormaComponentBase` is held to the
-component's own files.
+and one no project of the run builds, as a package's, in the compiled code of the assembly the
+build runs, so `L["Details columns"]` in a component deriving from `FormaComponentBase` is held
+to the component's own files wherever Forma comes from.
 
 **Why it matters.** Falling back to the key is exactly what the runtime is defined to do, so the
 string renders in the source language and every other rule stays green; adding
@@ -698,12 +699,12 @@ genuinely missing cannot use it, and the warning is the honest answer there.
 **Silent where.** The type has no entries at all, since it is unlocalized rather than
 under-localized; the lookup is through the unbound `IStringLocale` other than through a member
 carrying `[LocaleSource]` on the instance its code runs on, or is a call through `[LocaleKey]`
-to a method without exactly one type argument; the property `[LocaleSource]` names, as a type
-of instance reads it, returns anything but `typeof` of a type or the instance's `GetType()`,
-returns more than once, or sits in an assembly no project of the run builds, which leaves that
-type of instance unread; a type derived from the lookup's own overrides the member holding
-the lookup, so its instances never run it; a parent culture answers, since `es-419` reads `es`
-for what it does not declare; or the run did not name the project's files.
+to a method without exactly one type argument; the property `[LocaleSource]` names, as a type of
+instance reads it, returns anything but `typeof` of a type or the instance's `GetType()`,
+returns more than once, or its getter is read neither in source nor in compiled code, which
+leaves that type of instance unread; a type derived from the lookup's own overrides the member
+holding the lookup, so its instances never run it; a parent culture answers, since `es-419`
+reads `es` for what it does not declare; or the run did not name the project's files.
 
 ### LOC0208 — A lookup writes its key as an expression
 

@@ -176,7 +176,8 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             resources,
             instance.GetPropertyValue("TargetPath"),
             instance.GetPropertyValue("TargetRefPath"),
-            references));
+            references,
+            GetRuntimeAssemblyPaths(instance)));
     }
 
     // A referenced project is evaluated only where the assembly it builds is missing, which is a tree that was never built,
@@ -263,7 +264,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         await lanes.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var result = Load(project, standIns, cancellationToken);
+            var result = Load(project, standIns, cancellationToken) with { RuntimeAssemblyPaths = project.RuntimeAssemblyPaths ?? new Dictionary<string, string>() };
             loaded.TryWrite(result);
 
             return result;
@@ -408,6 +409,39 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         return properties;
     }
 
+    // The compiler reads a referenced project's reference assembly and a package's compile-time assembly, where the build runs the
+    // project's own assembly and the package's runtime one.
+    private static Dictionary<string, string> GetRuntimeAssemblyPaths(ProjectInstance instance)
+    {
+        var runtimeByPackage = new Dictionary<(string Package, string FileName), string>();
+        foreach (var item in instance.GetItems("RuntimeCopyLocalItems"))
+        {
+            if (item.GetMetadataValue("NuGetPackageId") is { Length: > 0 } package)
+            {
+                runtimeByPackage.TryAdd((package, Path.GetFileName(item.EvaluatedInclude)), Path.GetFullPath(item.GetMetadataValue("FullPath")));
+            }
+        }
+
+        var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var reference in instance.GetItems("ReferencePath"))
+        {
+            var runtimePath = Path.GetFullPath(reference.GetMetadataValue("FullPath"));
+            var compiledPath = reference.GetMetadataValue("ReferenceAssembly") is { Length: > 0 } referenceAssembly ? Path.GetFullPath(referenceAssembly) : runtimePath;
+            if (reference.GetMetadataValue("NuGetPackageId") is { Length: > 0 } package
+                && runtimeByPackage.TryGetValue((package, Path.GetFileName(runtimePath)), out var packageRuntimePath))
+            {
+                runtimePath = packageRuntimePath;
+            }
+
+            if (!string.Equals(compiledPath, runtimePath, StringComparison.OrdinalIgnoreCase))
+            {
+                paths[compiledPath] = runtimePath;
+            }
+        }
+
+        return paths;
+    }
+
     // What the build handed back for a project, and the projects built first because their compilations stand in for assemblies it lacks.
     private sealed record BuiltProject(
         string Path,
@@ -418,7 +452,8 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         EmbeddedResources? Resources,
         string? TargetPath,
         string? TargetRefPath,
-        IReadOnlyList<BuiltProject> References);
+        IReadOnlyList<BuiltProject> References,
+        IReadOnlyDictionary<string, string>? RuntimeAssemblyPaths = null);
 
     // The collection every project of one load is evaluated in, what the load has evaluated so far, and where a built project goes.
     private sealed record LoadRun(ProjectCollection Collection, ChannelWriter<BuiltProject> Built)
