@@ -11,6 +11,13 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   them, rather than from the project holding the lookup, so a lookup reading a type of another project of the run is
   held to that project's files, a type sharing its full name with one of another assembly is held to its own, and a
   type no project of the run builds is left alone. An application's own files for that assembly still answer.
+- LOC0207 finds a lookup's type by following its locale back to where `Forma.Framework.Localization` decided it, through
+  locals, fields, properties, parameters at each call the run makes, constructors, lambdas, local functions, delegates,
+  lazy values and calls to the implementation the run registers, so a helper or a model given a locale by its callers,
+  and a component whose base reaches the registered factory through a context, are held to their types' files. A value
+  typed `IStringLocale<T>` is followed further where a type of the run derives from `T`, since the contract is
+  covariant. A locale from a factory the code builds itself, a service registered in a way the flow cannot read, and
+  alternatives the flow cannot pair with the lookup are left unchecked.
 
 ## `1.0.0-preview.19`
 

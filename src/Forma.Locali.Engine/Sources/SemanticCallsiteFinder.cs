@@ -2,6 +2,8 @@ namespace Forma.Locali.Sources;
 
 using System.Collections.Immutable;
 
+using Forma.Locali.Flow;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 
@@ -37,12 +39,12 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         {
             IPropertyReferenceOperation { Arguments.Length: > 0 } indexer
                 when LocalizerContract.Implements(indexer.Property.ContainingType, contract)
-                => new(indexer.Arguments, 0, Resources(indexer.Instance, generic), KeyedMethod: null),
+                => new(indexer.Arguments, 0, Resources(indexer, indexer.Instance, generic), KeyedMethod: null),
             IInvocationOperation { TargetMethod.Name: LocalizerContract.ResolveMethod } invocation
                 when LocalizerContract.Implements(invocation.TargetMethod.ContainingType, contract)
-                => new(invocation.Arguments, 0, Resources(invocation.Instance, generic), KeyedMethod: null),
+                => new(invocation.Arguments, 0, Resources(invocation, invocation.Instance, generic), KeyedMethod: null),
             IInvocationOperation invocation when LocalizerContract.KeyOrdinal(invocation.TargetMethod) is { } ordinal
-                => new(invocation.Arguments, ordinal, (LocalizerContract.ResourceOf(invocation.TargetMethod) is { } resource ? [resource] : [], []), invocation.TargetMethod),
+                => new(invocation.Arguments, ordinal, (LocalizerContract.ResourceOf(invocation.TargetMethod) is { } resource ? [new LocaleOrigin(resource, $"{invocation.TargetMethod.Name}<{resource.Name}>")] : [], null), invocation.TargetMethod),
             _ => null,
         };
 
@@ -66,7 +68,7 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 
             if (SemanticCallsiteReader.Read(operation, lookup.Arguments, lookup.KeyOrdinal) is { } site)
             {
-                var resolved = site with { ResourceTypes = lookup.Resources.Types, UnreadProperties = lookup.Resources.Unread };
+                var resolved = site with { Origins = lookup.Resources.Origins, Receiver = lookup.Resources.Receiver };
 
                 lookups.Add(lookup.KeyedMethod is { } method ? Keyed(resolved, method, lookup.KeyOrdinal) : resolved);
             }
@@ -136,18 +138,18 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
     private static bool IsVisualBasicCandidate(SyntaxNode node)
         => node is VisualBasic.InvocationExpressionSyntax;
 
-    // The indexer is declared on the unbound contract, so the type it localizes is on the receiver, or on the property a
-    // member carrying [LocaleSource] names.
-    private static (IReadOnlyList<INamedTypeSymbol> Types, IReadOnlyList<LocaleSourceProperty> Unread) Resources(IOperation? receiver, INamedTypeSymbol? generic)
-        => receiver is null ? ([], [])
-            : generic is not null && LocalizerContract.ResourceOf(receiver.Type, generic) is { } resource ? ([resource], [])
-            : LocaleSourceTypes.Resolve(receiver);
+    // The indexer is declared on the unbound contract, so the type it localizes is on a generic receiver, or found by following the
+    // receiver once every project of the run is loaded.
+    private static (IReadOnlyList<LocaleOrigin> Origins, SyntaxNode? Receiver) Resources(IOperation lookup, IOperation? receiver, INamedTypeSymbol? generic)
+        => receiver is null ? ([], null)
+            : generic is not null && LocalizerContract.ResourceOf(receiver.Type, generic) is { } resource ? ([new LocaleOrigin(resource, $"IStringLocale<{resource.Name}>")], lookup.Syntax)
+            : ([], lookup.Syntax);
 
     // A lookup as the compiler bound it: its arguments, the ordinal its key binds to, the types its key is read in,
     // and the method a call marked with a key binds to.
     private readonly record struct BoundLookup(
         ImmutableArray<IArgumentOperation> Arguments,
         int KeyOrdinal,
-        (IReadOnlyList<INamedTypeSymbol> Types, IReadOnlyList<LocaleSourceProperty> Unread) Resources,
+        (IReadOnlyList<LocaleOrigin> Origins, SyntaxNode? Receiver) Resources,
         IMethodSymbol? KeyedMethod);
 }

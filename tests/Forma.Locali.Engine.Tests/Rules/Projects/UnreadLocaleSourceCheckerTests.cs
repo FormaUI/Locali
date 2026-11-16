@@ -8,7 +8,7 @@ public sealed class UnreadLocaleSourceCheckerTests
     private static readonly string HebrewFile = Path.Combine(".locales", "Widget.he.json");
 
     [Fact]
-    public void Should_report_a_lookup_whose_named_property_returns_a_type_it_holds()
+    public void Should_report_a_lookup_whose_named_property_returns_a_type_from_an_array()
     {
         // Arrange
         using var directory = new TempDirectory();
@@ -16,9 +16,9 @@ public sealed class UnreadLocaleSourceCheckerTests
 
         // Act
         var diagnostic = Assert.Single(Check(directory, """
-            private readonly Type _source = typeof(Widget);
+            private readonly Type[] _sources = [typeof(Widget)];
 
-            protected override Type LocalizationSourceType => _source;
+            protected override Type LocalizationSourceType => _sources[0];
             """, file));
 
         // Assert
@@ -26,7 +26,7 @@ public sealed class UnreadLocaleSourceCheckerTests
             () => Assert.Equal(LintingCodes.UnreadLocaleSource, diagnostic.Code),
             () => Assert.Equal(LintingSeverity.Warning, diagnostic.Severity),
             () => Assert.Equal(
-                "'Widget.LocalizationSourceType' names the type 'Tomorrow' is read in for 'Widget', and its getter returns no typeof or GetType() that could be read, so no rule could check the key there.",
+                "'Widget.LocalizationSourceType for Widget' names the type 'Tomorrow' is read in, and its getter returns no typeof or GetType() that could be read, so no rule could check the key there.",
                 diagnostic.Message));
     }
 
@@ -66,9 +66,9 @@ public sealed class UnreadLocaleSourceCheckerTests
 
         // Act
         var diagnostics = Check(directory, """
-            private readonly Type _source = typeof(Widget);
+            private readonly Type[] _sources = [typeof(Widget)];
 
-            protected override Type LocalizationSourceType => _source;
+            protected override Type LocalizationSourceType => _sources[0];
             """);
 
         // Assert
@@ -104,6 +104,6 @@ public sealed class UnreadLocaleSourceCheckerTests
             .Lint(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)], TestContext.Current.CancellationToken)
             .Callsites;
 
-        return ProjectLinterTestFactory.Check(new UnreadLocaleSourceChecker(), project, localizationFiles, sites);
+        return ProjectLinterTestFactory.Check(new UnreadLocaleSourceChecker(), project, localizationFiles, new LocaleFlow([project], LocaleFlow.ReadLocaleSourceAttribute).Resolve(project, sites));
     }
 }

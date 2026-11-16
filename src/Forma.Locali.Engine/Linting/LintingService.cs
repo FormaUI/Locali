@@ -6,10 +6,10 @@ using Forma.Locali.Cli;
 using Forma.Locali.Configuration;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
+using Forma.Locali.Flow;
 using Forma.Locali.Projects;
 using Forma.Locali.Sources;
 
-using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Options;
 
 /// <summary>Lints the localization files and the source callsites the target names.</summary>
@@ -147,9 +147,8 @@ public sealed class LintingService(
         var packs = LocalePackFiles.ResolveAll(_localeFormat.RuntimeFormat, projects, target.LocalizationFilesOf);
         var builtAssemblies = BuiltAssemblies.ResolveAll(projects);
 
-        // A property another project of the run builds is read in that project's source, so the type it names waits for every project as well.
-        // One no project of the run builds is read in the compiled code of the assembly the project runs.
-        Compilation[] compilations = [.. projects.All.OrderBy(project => project.Path, StringComparer.Ordinal).Select(project => project.Compilation).OfType<Compilation>()];
+        // A lookup's locale is followed across the projects of the run, so its types wait for every project as well.
+        var flow = new LocaleFlow(projects.All, LocaleFlow.ReadLocaleSourceAttribute);
 
         // A type's entries are read from its own assembly's project, so every project's files are resolved before any rule reads them.
         var localizations = RunLocalizations.Resolve(_localeFormat.RuntimeFormat, projects.All, target.LocalizationFilesOf, packs, builtAssemblies);
@@ -157,7 +156,7 @@ public sealed class LintingService(
         foreach (var (project, sources) in linted)
         {
             diagnostics.AddRange(sources.Diagnostics);
-            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), LocaleSourceTypes.ReadUnread(project, sources.Callsites, compilations), packs, localizations));
+            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), flow.Resolve(project, sources.Callsites), packs, localizations));
         }
 
         return diagnostics;

@@ -345,14 +345,14 @@ public sealed class LocalizationCoverageCheckerTests
             () => Assert.Contains(diagnostics, diagnostic => diagnostic.Message.Contains("'Scratch.Gadget'", StringComparison.Ordinal)));
     }
 
-    // The project's callsites as the source linter finds them.
+    // The project's callsites as the source linter finds them, each followed to its types as a run does.
     private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, params string[] localizationFiles)
     {
         var sites = new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers())
             .Lint(project, [.. project.Compilation!.SyntaxTrees.Select(tree => tree.FilePath)], TestContext.Current.CancellationToken)
             .Callsites;
 
-        return ProjectLinterTestFactory.Check(new LocalizationCoverageChecker(), project, localizationFiles, sites);
+        return ProjectLinterTestFactory.Check(new LocalizationCoverageChecker(), project, localizationFiles, new LocaleFlow([project], LocaleFlow.ReadLocaleSourceAttribute).Resolve(project, sites));
     }
 
     private static ValueTask<IReadOnlyList<LintingDiagnostic>> LintAsync(

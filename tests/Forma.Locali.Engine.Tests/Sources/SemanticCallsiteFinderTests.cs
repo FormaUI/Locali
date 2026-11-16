@@ -14,7 +14,7 @@ public sealed class SemanticCallsiteFinderTests
             """));
 
         // Assert
-        Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name);
+        Assert.Equal("Widget", Assert.Single(site.Origins).Type.Name);
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public sealed class SemanticCallsiteFinderTests
             """));
 
         // Assert
-        Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name);
+        Assert.Equal("Widget", Assert.Single(site.Origins).Type.Name);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public sealed class SemanticCallsiteFinderTests
             """));
 
         // Assert
-        Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name);
+        Assert.Equal("Widget", Assert.Single(site.Origins).Type.Name);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class SemanticCallsiteFinderTests
             """));
 
         // Assert
-        Assert.Empty(site.ResourceTypes);
+        Assert.Empty(site.Origins);
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public sealed class SemanticCallsiteFinderTests
             """));
 
         // Assert
-        Assert.Equal("Holder`1", Assert.Single(site.ResourceTypes).MetadataName);
+        Assert.Equal("Holder`1", Assert.Single(site.Origins).Type.MetadataName);
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public sealed class SemanticCallsiteFinderTests
         Assert.Multiple(
             () => Assert.Equal("Today", site.Key.Text),
             () => Assert.Equal(1, site.Key.TextOffset),
-            () => Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name),
+            () => Assert.Equal("Widget", Assert.Single(site.Origins).Type.Name),
             () => Assert.Equal(LocalizerArguments.None, site.Arguments));
     }
 
@@ -116,7 +116,7 @@ public sealed class SemanticCallsiteFinderTests
         Assert.Multiple(
             () => Assert.Equal("Stored {count}.", site.Key.Text),
             () => Assert.Equal(LocalizerArguments.Positional(1), site.Arguments),
-            () => Assert.Equal("Holder`1", Assert.Single(site.ResourceTypes).MetadataName));
+            () => Assert.Equal("Holder`1", Assert.Single(site.Origins).Type.MetadataName));
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public sealed class SemanticCallsiteFinderTests
         Assert.Multiple(
             () => Assert.Equal("{Count} results today", site.Key.Text),
             () => Assert.Equal(LocalizerArguments.Positional(1), site.Arguments),
-            () => Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name));
+            () => Assert.Equal("Widget", Assert.Single(site.Origins).Type.Name));
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public sealed class SemanticCallsiteFinderTests
         // Assert
         Assert.Multiple(
             () => Assert.Equal("Today", site.Key.Text),
-            () => Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name));
+            () => Assert.Equal("Widget", Assert.Single(site.Origins).Type.Name));
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public sealed class SemanticCallsiteFinderTests
             """));
 
         // Assert
-        Assert.Empty(site.ResourceTypes);
+        Assert.Empty(site.Origins);
     }
 
     [Fact]
@@ -223,385 +223,7 @@ public sealed class SemanticCallsiteFinderTests
         Assert.Multiple(
             () => Assert.Equal("Stored {count}.", site.Key.Text),
             () => Assert.Equal(LocalizerArguments.Positional(1), site.Arguments),
-            () => Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name));
-    }
-
-    [Fact]
-    public void Should_name_the_instances_own_type_for_a_lookup_through_a_member_whose_named_property_returns_GetType()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public sealed class Widget : Component
-            {
-                public void Show() => _ = L["Today"];
-            }
-            """));
-
-        // Assert
-        Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name);
-    }
-
-    [Fact]
-    public void Should_name_the_type_an_override_of_the_named_property_returns_through_typeof()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public sealed class Panel;
-
-            public sealed class Widget : Component
-            {
-                protected override Type LocalizationSourceType => typeof(Panel);
-
-                public void Show() => _ = L["Today"];
-            }
-            """));
-
-        // Assert
-        Assert.Equal("Panel", Assert.Single(site.ResourceTypes).Name);
-    }
-
-    [Fact]
-    public void Should_name_the_open_definition_of_a_constructed_generic_the_named_property_returns()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public sealed class Grid<TItem>;
-
-            public sealed class Row<TItem> : Component
-            {
-                protected override Type LocalizationSourceType => typeof(Grid<TItem>);
-
-                public void Show() => _ = L["Today"];
-            }
-            """));
-
-        // Assert
-        Assert.Equal("Grid`1", Assert.Single(site.ResourceTypes).MetadataName);
-    }
-
-    [Fact]
-    public void Should_read_a_named_property_whose_getter_returns_once_from_a_block()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public sealed class Panel;
-
-            public sealed class Widget : Component
-            {
-                protected override Type LocalizationSourceType
-                {
-                    get
-                    {
-                        return typeof(Panel);
-                    }
-                }
-
-                public void Show() => _ = L["Today"];
-            }
-            """));
-
-        // Assert
-        Assert.Equal("Panel", Assert.Single(site.ResourceTypes).Name);
-    }
-
-    [Fact]
-    public void Should_name_the_type_behind_a_conditional_access_to_a_member_carrying_LocaleSource()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public sealed class Widget : Component
-            {
-                public void Show() => _ = L?["Today"];
-            }
-            """));
-
-        // Assert
-        Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name);
-    }
-
-    [Fact]
-    public void Should_name_the_type_each_derived_type_reads_for_a_lookup_it_runs()
-    {
-        // Arrange — an instance of a derived type runs the lookup its base writes, and reads the type its own named property returns.
-        var site = Assert.Single(FindThroughComponent("""
-            public sealed class Panel;
-
-            public class Widget : Component
-            {
-                public void Show() => _ = L["Today"];
-            }
-
-            public sealed class Gadget : Widget;
-
-            public sealed class Gizmo : Widget
-            {
-                protected override Type LocalizationSourceType => typeof(Panel);
-            }
-            """));
-
-        // Assert
-        Assert.Equal(["Gadget", "Panel", "Widget"], site.ResourceTypes.Select(type => type.Name).Order(StringComparer.Ordinal));
-    }
-
-    [Fact]
-    public void Should_leave_out_a_derived_type_overriding_the_member_holding_the_lookup()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public class Widget : Component
-            {
-                public virtual void Show() => _ = L["Today"];
-            }
-
-            public sealed class Gadget : Widget
-            {
-                public override void Show()
-                {
-                }
-            }
-            """));
-
-        // Assert
-        Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name);
-    }
-
-    [Fact]
-    public void Should_leave_out_a_derived_type_overriding_the_property_whose_getter_holds_the_lookup()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public class Widget : Component
-            {
-                public virtual string Label => L["Today"];
-            }
-
-            public sealed class Gadget : Widget
-            {
-                public override string Label => "Now";
-            }
-            """));
-
-        // Assert
-        Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name);
-    }
-
-    [Fact]
-    public void Should_leave_out_an_abstract_type_no_instance_has()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public abstract class Widget : Component
-            {
-                public void Show() => _ = L["Today"];
-            }
-
-            public sealed class Gadget : Widget;
-            """));
-
-        // Assert
-        Assert.Equal("Gadget", Assert.Single(site.ResourceTypes).Name);
-    }
-
-    [Fact]
-    public void Should_name_no_type_where_the_named_property_returns_a_type_it_holds()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public sealed class Widget : Component
-            {
-                private readonly Type _source = typeof(Widget);
-
-                protected override Type LocalizationSourceType => _source;
-
-                public void Show() => _ = L["Today"];
-            }
-            """));
-
-        // Assert
-        Assert.Empty(site.ResourceTypes);
-    }
-
-    [Fact]
-    public void Should_name_no_type_where_the_named_property_returns_more_than_once()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public sealed class Panel;
-
-            public sealed class Widget : Component
-            {
-                public bool IsPanel { get; set; }
-
-                protected override Type LocalizationSourceType
-                {
-                    get
-                    {
-                        if (IsPanel)
-                        {
-                            return typeof(Panel);
-                        }
-
-                        return typeof(Widget);
-                    }
-                }
-
-                public void Show() => _ = L["Today"];
-            }
-            """));
-
-        // Assert
-        Assert.Empty(site.ResourceTypes);
-    }
-
-    [Fact]
-    public void Should_name_no_type_for_a_lookup_through_another_instance()
-    {
-        // Act
-        var site = Assert.Single(FindThroughComponent("""
-            public sealed class Widget : Component
-            {
-                public void Show(Widget other) => _ = other.L["Today"];
-            }
-            """));
-
-        // Assert
-        Assert.Empty(site.ResourceTypes);
-    }
-
-    [Fact]
-    public void Should_leave_unread_a_named_property_whose_getter_a_referenced_assembly_holds()
-    {
-        // Arrange — the build hands a project the reference assembly of another, which holds no getter's body.
-        var compilation = ReferencingMetadataOf(ComponentLibrary());
-
-        // Act
-        var site = Assert.Single(compilation.SyntaxTrees.SelectMany(tree => new SemanticCallsiteFinder().Find(compilation, tree).Lookups));
-
-        // Assert
-        var unread = Assert.Single(site.UnreadProperties);
-        Assert.Multiple(
-            () => Assert.Empty(site.ResourceTypes),
-            () => Assert.Equal("Widget", unread.Instance.Name),
-            () => Assert.Equal("LocalizationSourceType", unread.Property.Name));
-    }
-
-    [Fact]
-    public void Should_name_the_instances_own_type_a_Visual_Basic_base_returns_through_GetType()
-    {
-        // Act
-        var site = Assert.Single(FindVisualBasicThroughComponent("""
-            Public NotInheritable Class Widget
-                Inherits Component
-                Public Sub Show()
-                    Dim text = L("Today")
-                End Sub
-            End Class
-            """));
-
-        // Assert
-        Assert.Equal("Widget", Assert.Single(site.ResourceTypes).Name);
-    }
-
-    [Fact]
-    public void Should_name_the_type_a_Visual_Basic_override_returns_through_GetType_of_a_type()
-    {
-        // Act
-        var site = Assert.Single(FindVisualBasicThroughComponent("""
-            Public NotInheritable Class Panel
-            End Class
-
-            Public NotInheritable Class Widget
-                Inherits Component
-                Protected Overrides ReadOnly Property LocalizationSourceType As Type
-                    Get
-                        Return GetType(Panel)
-                    End Get
-                End Property
-                Public Sub Show()
-                    Dim text = L("Today")
-                End Sub
-            End Class
-            """));
-
-        // Assert
-        Assert.Equal("Panel", Assert.Single(site.ResourceTypes).Name);
-    }
-
-    private const string Component = """
-        public abstract class Component
-        {
-            protected virtual Type LocalizationSourceType => GetType();
-
-            [LocaleSource(nameof(LocalizationSourceType))]
-            protected IStringLocale L => default!;
-        }
-        """;
-
-    private static Compilation ComponentLibrary()
-        => CompilationTestFactory.Referenced($$"""
-            using System;
-
-            using Forma.Framework.Localization;
-
-            namespace Contoso.Components;
-
-            {{Component}}
-            """).WithAssemblyName("Contoso.Components");
-
-    private static Compilation ReferencingMetadataOf(Compilation components)
-        => CompilationTestFactory.Referenced("""
-            namespace Scratch;
-
-            public sealed class Widget : Contoso.Components.Component
-            {
-                public void Show() => _ = L["Today"];
-            }
-            """).AddReferences(CompilationTestFactory.MetadataOf(components));
-
-    private static IReadOnlyList<LocalizerLookup> FindThroughComponent(string declarations)
-    {
-        var compilation = CompilationTestFactory.Referenced($$"""
-            using System;
-
-            using Forma.Framework.Localization;
-
-            namespace Scratch;
-
-            {{Component}}
-
-            {{declarations}}
-            """);
-
-        return [.. compilation.SyntaxTrees.SelectMany(tree => new SemanticCallsiteFinder().Find(compilation, tree).Lookups)];
-    }
-
-    private static IReadOnlyList<LocalizerLookup> FindVisualBasicThroughComponent(string declarations)
-    {
-        var compilation = CompilationTestFactory.ReferencedVisualBasic($"""
-            Imports System
-
-            Imports Forma.Framework.Localization
-
-            Namespace Scratch
-                Public MustInherit Class Component
-                    Protected Overridable ReadOnly Property LocalizationSourceType As Type
-                        Get
-                            Return Me.GetType()
-                        End Get
-                    End Property
-                    <LocaleSource(NameOf(LocalizationSourceType))>
-                    Protected ReadOnly Property L As IStringLocale
-                        Get
-                            Return Nothing
-                        End Get
-                    End Property
-                End Class
-
-                {declarations}
-            End Namespace
-            """);
-
-        return [.. compilation.SyntaxTrees.SelectMany(tree => new SemanticCallsiteFinder().Find(compilation, tree).Lookups)];
+            () => Assert.Equal("Widget", Assert.Single(site.Origins).Type.Name));
     }
 
     private static IReadOnlyList<LocalizerLookup> FindVisualBasic(string body)

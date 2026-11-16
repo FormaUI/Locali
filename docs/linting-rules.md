@@ -677,16 +677,19 @@ builds that assembly, an application's files named for its own assembly among th
 locale pack's files for it, with the files the lookup's own application writes for that assembly
 laid over them.
 
-A lookup's type is the one `IStringLocale<T>` or a `[LocaleKey]` method's one type argument
-names, or, for a lookup through a member carrying `[LocaleSource]` on the instance its code
-runs on, as `FormaComponentBase.L` does, the type the property the attribute names returns for
-each type of instance: `typeof(X)` names `X`, and `GetType()` the instance's own type. The
-instances are the lookup's own type, unless it is abstract, and every type of its project
-derived from it that keeps the member holding the lookup as it is, each reading the property as
-it overrides it. A property another project of the run builds is read in that project's source,
-and one no project of the run builds, as a package's, in the compiled code of the assembly the
-build runs, so `L["Details columns"]` in a component deriving from `FormaComponentBase` is held
-to the component's own files wherever Forma comes from.
+A lookup's type is found by following its receiver back to where the runtime decided it: a
+locale the registered factory creates for a type, a value typed `IStringLocale<T>`, followed
+further where a type of the run derives from `T`, since a locale for it may stand behind one for
+`T`, or a `[LocaleKey]` method's type argument, through locals, fields, properties, parameters
+at each call the run makes, constructors, lambdas, local functions, delegates, lazy values,
+virtual calls on each type the instance can be, `base.` calls to the member they name, and
+services to the one implementation the run's product code registers. A member carrying
+`[LocaleSource]` reads the type the member it names returns, as each type of instance overrides
+it: `typeof(X)` names `X`, and `GetType()` the instance's own type. The instances are the
+lookup's own type, unless it is abstract, and every type of its project derived from it that
+keeps the member holding the lookup as it is. So `L["Details columns"]` in a component deriving
+from `FormaComponentBase` is held to the component's own files wherever Forma comes from, and a
+helper reading a locale its callers pass is held to each caller's type.
 
 **Why it matters.** Falling back to the key is exactly what the runtime is defined to do, so the
 string renders in the source language and every other rule stays green; adding
@@ -700,15 +703,17 @@ genuinely missing cannot use it, and the warning is the honest answer there.
 
 **Silent where.** The type has no entries at all, since it is unlocalized rather than
 under-localized; no project of the run builds the type's assembly, so none of its entries can be
-read; the lookup is through the unbound `IStringLocale` other than through a member carrying
-`[LocaleSource]` on the instance its code runs on, or is a call through `[LocaleKey]` to a
-method without exactly one type argument; the property `[LocaleSource]` names, as a type of
-instance reads it, returns anything but `typeof` of a type or the instance's `GetType()`,
-returns more than once, or its getter is read neither in source nor in compiled code, which
-leaves that type of instance unread and LOC0214 reports; a type derived from the lookup's own
-overrides the member holding the lookup, so its instances never run it; a parent culture
-answers, since `es-419` reads `es` for what it does not declare; or the run did not name the
-project's files.
+read; the walk from the lookup reaches no type, as where a type is chosen at run time, a locale
+comes from a factory the code builds itself or a string-named one, a local is assigned more than
+once or by a deconstruction, a field is written where the walk cannot pair the write with the
+object read, or a service has no one implementation the walk can read, as where it is registered
+twice, as an instance, through a factory creating no one type, or declared outside the run's
+projects; the types the walk reaches are alternatives it cannot pair with the lookup, as both
+sides of a conditional, several returns, or a value a constructor or a later write may replace;
+the property `[LocaleSource]` names returns nothing the walk can read, which LOC0214 reports; a
+type derived from the lookup's own overrides the member holding the lookup, so its instances
+never run it; a parent culture answers, since `es-419` reads `es` for what it does not declare;
+or the run did not name the project's files.
 
 ### LOC0208 — A lookup writes its key as an expression
 

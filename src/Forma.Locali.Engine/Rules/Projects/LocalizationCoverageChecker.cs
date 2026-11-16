@@ -6,6 +6,8 @@ using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
+using Microsoft.CodeAnalysis;
+
 /// <summary>
 /// Checks that a key written in source is answered in every culture its type is already localized in. A new key
 /// added to a component whose entries exist otherwise passes every check while rendering in the source
@@ -35,7 +37,8 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
             // The runtime matches the key behind its escape, and so do the entries it read from the file.
             var key = LocalizationSchema.Unescape(site.Key.Text);
 
-            foreach (var resource in site.ResourceTypes)
+            // An origin reached through alternatives the flow could not pair with the lookup may not be the type it reads.
+            foreach (var resource in site.Origins.Where(origin => !origin.IsApproximate).Select(origin => origin.Type).Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default))
             {
                 // A type's entries are its own assembly's, and a type no project of the run builds has none the run can read.
                 if (context.GetOwnerLocalization(resource) is not { } owner)

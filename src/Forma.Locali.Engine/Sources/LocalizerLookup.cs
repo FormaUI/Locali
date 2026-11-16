@@ -1,5 +1,7 @@
 namespace Forma.Locali.Sources;
 
+using Forma.Locali.Flow;
+
 using Microsoft.CodeAnalysis;
 
 /// <summary>A localization lookup and the context it resolves in.</summary>
@@ -11,9 +13,12 @@ public sealed record LocalizerLookup(
     LocalizerArguments Arguments,
     bool IsFormatString)
 {
-    /// <summary>The types whose entries the lookup reads, one for each type of instance it is read through, or none where nothing bound it.</summary>
-    public IReadOnlyList<INamedTypeSymbol> ResourceTypes { get; init; } = [];
+    /// <summary>The types the lookup reads, each with where its path began; none where nothing named one.</summary>
+    public IReadOnlyList<LocaleOrigin> Origins { get; init; } = [];
 
-    /// <summary>The properties naming a type the lookup reads whose getter has not told it: one its project holds as metadata alone until the run reads it, or one no reading tells.</summary>
-    public IReadOnlyList<LocaleSourceProperty> UnreadProperties { get; init; } = [];
+    /// <summary>Where a path from the lookup to its type ended before reaching one.</summary>
+    public IReadOnlyList<LocaleGap> Gaps { get; init; } = [];
+
+    /// <summary>The lookup's node, whose receiver the flow follows to its type once every project of the run is loaded, or null once its types are settled.</summary>
+    public SyntaxNode? Receiver { get; init; }
 }

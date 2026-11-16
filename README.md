@@ -181,17 +181,23 @@ the entries of the method's one type argument, and its values are counted where 
 parameter follows the key, as a lookup's are. A key a method passes on from a `[LocaleKey]`
 parameter of its own is checked where that method is called.
 
-A lookup through the unbound `IStringLocale` names a type on the semantic path where it goes
-through a member carrying `[LocaleSource]` on the instance its code runs on, as
-`FormaComponentBase.L` does: the property the attribute names, as each type of instance
-overrides it, names the type in its getter's one return, `typeof(X)` naming `X` and `GetType()`
-the instance's own type. The instances are the lookup's own type, unless it is abstract, and
-every type of its project derived from it that keeps the member holding the lookup as it is. A
-getter in an assembly the project reads from another project of the run is read in that
-project's source, once every project of the run is loaded, and one no project of the run builds,
-as a package's, in the compiled code of the assembly the build runs, read as data and never
-loaded: the referenced assembly or, where the compiler reads a reference assembly, the one the
-build puts in its place. A getter none of these readings tells is reported by LOC0214.
+A lookup's type is found on the semantic path by following its receiver back to where the
+localization runtime decided it: a locale the factory the host registers creates for a type,
+reached through `GetStringLocaleFactory()` or an injected `IStringLocaleFactory`, a value typed
+`IStringLocale<T>`, followed further where a type of the run derives from `T`, since a locale
+for it may stand behind one for `T`, or a `[LocaleKey]` method's type argument. The walk goes
+back through locals assigned once, fields and properties as each object was given them,
+parameters through every call the run makes to their method, constructors, lambdas, local
+functions, delegates and lazy values, virtual calls on each type the instance can be, `base.`
+calls to the member they name, and services to the one implementation the run's product code
+registers, so `L["Details columns"]` in a component is held to the component's own files however
+its base reaches the factory. A member carrying `[LocaleSource]` reads the type the member it
+names returns, as each type of instance overrides it, in source or in the compiled code of the
+assembly the build runs. Where the walk cannot follow a value, such as a type chosen at run
+time, a factory the code builds itself, or a service registered in a way the walk cannot read,
+the path ends and the lookup is held to no type along it; alternatives the walk cannot pair with
+the lookup, such as both sides of a conditional, whether locales, objects holding them, or
+delegates returning them, are never held to it for certain.
 
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no
@@ -276,7 +282,8 @@ root namespace `Forma.Locali`, so a folder's namespace is the same in either pro
 | Engine | `Rules/Files/` | Rules over a locale file |
 | Engine | `Rules/Sources/` | Rules over a callsite |
 | Engine | `Rules/Projects/` | Rules over a project's locale files read whole |
-| Engine | `Sources/` | Finding callsites and the types they read, and resolving a project's locale files, the locale packs carrying files for it, and the assemblies of the run an application's files are read for, for the project rules |
+| Engine | `Flow/` | Following a lookup's locale back to where the runtime decided its type, across the projects of a run |
+| Engine | `Sources/` | Finding callsites, and resolving a project's locale files, the locale packs carrying files for it, and the assemblies of the run an application's files are read for, for the project rules |
 | Tool | `Cli/` | Argument parsing and exit codes |
 | Tool | `Projects/` | Binding Roslyn to the SDK's copy |
 | Tool | `Reporting/` | Console and JSON reporters |

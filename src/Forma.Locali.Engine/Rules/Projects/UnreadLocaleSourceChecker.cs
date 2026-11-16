@@ -1,9 +1,7 @@
 namespace Forma.Locali.Rules.Projects;
 
 using Forma.Locali.Diagnostics;
-using Forma.Locali.Sources;
-
-using Microsoft.CodeAnalysis;
+using Forma.Locali.Flow;
 
 /// <summary>Checks that the type a lookup through a member carrying <c>[LocaleSource]</c> reads could be told from the property that attribute names.</summary>
 public sealed class UnreadLocaleSourceChecker : IProjectRuleChecker
@@ -25,15 +23,12 @@ public sealed class UnreadLocaleSourceChecker : IProjectRuleChecker
 
         foreach (var site in context.Callsites)
         {
-            foreach (var unread in site.UnreadProperties.GroupBy(unread => unread.Property, SymbolEqualityComparer.Default))
+            foreach (var gap in site.Gaps.Where(gap => gap.Kind == LocaleGapKind.UnreadTypeMember).Distinct())
             {
-                var property = (IPropertySymbol)unread.Key!;
-                var instances = string.Join("', '", unread.Select(read => read.Instance.Name).Distinct(StringComparer.Ordinal));
-
                 context.Report(
                     Code,
                     site,
-                    $"'{property.ContainingType.Name}.{property.Name}' names the type '{site.Key.Text}' is read in for '{instances}', and its getter returns no typeof or GetType() that could be read, so no rule could check the key there.");
+                    $"'{gap.Detail}' names the type '{site.Key.Text}' is read in, and its getter returns no typeof or GetType() that could be read, so no rule could check the key there.");
             }
         }
     }

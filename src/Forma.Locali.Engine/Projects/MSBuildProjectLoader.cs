@@ -177,7 +177,8 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             instance.GetPropertyValue("TargetPath"),
             instance.GetPropertyValue("TargetRefPath"),
             references,
-            GetRuntimeAssemblyPaths(instance)));
+            GetRuntimeAssemblyPaths(instance),
+            instance.GetPropertyValue("IsTestProject").Equals("true", StringComparison.OrdinalIgnoreCase)));
     }
 
     // A referenced project is evaluated only where the assembly it builds is missing, which is a tree that was never built,
@@ -264,7 +265,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         await lanes.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var result = Load(project, standIns, cancellationToken) with { RuntimeAssemblyPaths = project.RuntimeAssemblyPaths ?? new Dictionary<string, string>() };
+            var result = Load(project, standIns, cancellationToken) with { RuntimeAssemblyPaths = project.RuntimeAssemblyPaths ?? new Dictionary<string, string>(), IsTestProject = project.IsTestProject };
             loaded.TryWrite(result);
 
             return result;
@@ -453,7 +454,8 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         string? TargetPath,
         string? TargetRefPath,
         IReadOnlyList<BuiltProject> References,
-        IReadOnlyDictionary<string, string>? RuntimeAssemblyPaths = null);
+        IReadOnlyDictionary<string, string>? RuntimeAssemblyPaths = null,
+        bool IsTestProject = false);
 
     // The collection every project of one load is evaluated in, what the load has evaluated so far, and where a built project goes.
     private sealed record LoadRun(ProjectCollection Collection, ChannelWriter<BuiltProject> Built)
