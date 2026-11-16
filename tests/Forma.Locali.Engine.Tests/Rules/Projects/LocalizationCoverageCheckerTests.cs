@@ -3,6 +3,8 @@ namespace Forma.Locali.Tests.Rules.Projects;
 using Forma.Locali.Projects;
 using Forma.Locali.Rules.Projects;
 
+using Microsoft.CodeAnalysis;
+
 public sealed class LocalizationCoverageCheckerTests
 {
     private static readonly string HebrewFile = Path.Combine("Widget", ".locales", "he.json");
@@ -276,6 +278,44 @@ public sealed class LocalizationCoverageCheckerTests
 
         // Assert
         Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_leave_a_key_an_applications_file_named_for_its_own_assembly_answers_alone()
+    {
+        // Arrange — the runtime reads an application's files for every assembly their names start with, its own among them.
+        using var directory = new TempDirectory();
+        var ownFile = directory.Write(HebrewFile, LocalizationFileFakeData.Valid);
+        var applicationFile = directory.Write(Path.Combine(".locales", "he", "Scratch.json"), LocalizationFileFakeData.WithSection("he", "Widget", "Tomorrow", "מחר"));
+        var compilation = CompilationTestFactory.Referenced("""
+            using Forma.Framework.Localization;
+
+            namespace Scratch;
+
+            public sealed class Widget
+            {
+                private IStringLocale<Widget> L { get; } = default!;
+
+                public void Show() => _ = L["Tomorrow"];
+            }
+            """);
+        var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)), false, false);
+
+        // Act
+        var diagnostics = Check(project, ownFile, applicationFile);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    // The project's callsites as the source linter finds them.
+    private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, params string[] localizationFiles)
+    {
+        var sites = new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers())
+            .Lint(project, [.. project.Compilation!.SyntaxTrees.Select(tree => tree.FilePath)], TestContext.Current.CancellationToken)
+            .Callsites;
+
+        return ProjectLinterTestFactory.Check(new LocalizationCoverageChecker(), project, localizationFiles, sites);
     }
 
     private static ValueTask<IReadOnlyList<LintingDiagnostic>> LintAsync(

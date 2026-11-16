@@ -3,6 +3,8 @@ namespace Forma.Locali.Tests.Rules.Projects;
 using Forma.Locali.Projects;
 using Forma.Locali.Rules.Projects;
 
+using Microsoft.CodeAnalysis;
+
 public sealed class CultureCoverageCheckerTests
 {
     private const string Widget = "namespace Contoso.Widgets; public sealed class Widget;";
@@ -117,6 +119,23 @@ public sealed class CultureCoverageCheckerTests
 
         // Act
         var diagnostics = ProjectLinterTestFactory.Check(new CultureCoverageChecker(), target, [], packs: [hePack, esPack]);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_leave_a_type_an_applications_file_named_for_its_own_assembly_answers_alone()
+    {
+        // Arrange — the runtime reads an application's files for every assembly their names start with, its own among them.
+        using var directory = new TempDirectory();
+        var heFile = directory.Write(Path.Combine("Widget", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var esFile = directory.Write(Path.Combine(".locales", "es", "Contoso.Widgets.json"), LocalizationFileFakeData.WithSection("es", "Widget", "Today", "Hoy"));
+        var compilation = CompilationTestFactory.Building("Contoso.Widgets", Widget);
+        var target = new LoadedProject(Path.Combine(directory.Root, "Contoso.Widgets.csproj"), compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)), false, false);
+
+        // Act
+        var diagnostics = ProjectLinterTestFactory.Check(new CultureCoverageChecker(), target, [heFile, esFile]);
 
         // Assert
         Assert.Empty(diagnostics);

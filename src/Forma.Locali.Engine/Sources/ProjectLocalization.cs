@@ -125,13 +125,15 @@ public sealed class ProjectLocalization
             ? namesRoot + "/"
             : string.Empty;
 
-    /// <summary>The file the walk's entries report under a name, from the embedded files or any pack's, or null when none answers to it.</summary>
+    /// <summary>The file the walk's entries report under a name, from the embedded files, any pack's or an application's reading of its files, or null when none answers to it.</summary>
     /// <param name="name">The name, as the walk's entries report it.</param>
     public ProjectLocaleFile? GetFile(string name)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
 
-        return Source.GetFile(name) ?? Packs.Select(pack => pack.Source.GetFile(name)).FirstOrDefault(file => file is not null);
+        return Source.GetFile(name)
+            ?? Packs.Select(pack => pack.Source.GetFile(name)).FirstOrDefault(file => file is not null)
+            ?? _applicationSource.Value?.GetFile(name);
     }
 
     /// <summary>The full name of every type or namespace the runtime reads a file for, none when no path in force reads it.</summary>
@@ -350,7 +352,7 @@ public sealed class ProjectLocalization
         }
     }
 
-    /// <summary>What the runtime reads for a type in one culture, anchor by anchor from the root down to the type, from the embedded files and then from each pack in turn.</summary>
+    /// <summary>What the runtime reads for a type in one culture, anchor by anchor from the root down to the type, from the embedded files, then from each pack in turn, then from an application's files named for its own assembly.</summary>
     /// <param name="typeName">The type's name, as the runtime resolves it.</param>
     /// <param name="culture">The culture.</param>
     public IReadOnlyList<LocaleSourceEntry> Read(string typeName, CultureInfo culture)
@@ -365,6 +367,7 @@ public sealed class ProjectLocalization
             [
                 .. Source.Read(AssemblyName, typeName, culture.Name),
                 .. Packs.SelectMany(pack => pack.Source.Read(AssemblyName, typeName, culture.Name)),
+                .. _applicationSource.Value?.Read(AssemblyName, typeName, culture.Name) ?? [],
             ];
         }
 

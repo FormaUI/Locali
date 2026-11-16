@@ -672,7 +672,8 @@ build gate.
 
 **Reports.** A key written at a callsite that a culture localizing its type leaves out, once
 per key per culture, at the first callsite writing it. The cultures localizing a type are read
-from the project's own files and from every locale pack's files for it alike.
+from the project's own files, an application's files named for its own assembly among them, and
+from every locale pack's files for it alike.
 
 **Why it matters.** Falling back to the key is exactly what the runtime is defined to do, so the
 string renders in the source language and every other rule stays green; adding
