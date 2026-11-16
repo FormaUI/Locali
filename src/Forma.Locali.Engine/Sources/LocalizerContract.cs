@@ -17,8 +17,11 @@ public static class LocalizerContract
     /// <summary>The name a lookup goes through when it is not an indexer.</summary>
     public const string ResolveMethod = "Resolve";
 
-    /// <summary>The metadata name of the attribute marking a parameter whose argument is a localization key.</summary>
-    public const string KeyAttributeMetadataName = "Forma.Framework.Localization.LocaleKeyAttribute";
+    /// <summary>The metadata name of the runtime's text carried as data, whose <c>For</c> names a key in a type's entries.</summary>
+    public const string LocalizableTextMetadataName = "Forma.Framework.Localization.LocalizableText";
+
+    /// <summary>The name of the method that makes text carried as data from a key and its type.</summary>
+    public const string LocalizableTextMethod = "For";
 
     /// <summary>The metadata name of Microsoft's string localizer, which Forma's adapter answers from a type's Forma entries.</summary>
     public const string StringLocalizerMetadataName = "Microsoft.Extensions.Localization.IStringLocalizer";
@@ -26,25 +29,16 @@ public static class LocalizerContract
     /// <summary>The metadata name of Microsoft's string localizer for a type.</summary>
     public const string StringLocalizerGenericMetadataName = "Microsoft.Extensions.Localization.IStringLocalizer`1";
 
-    private const string KeyAttributeName = "LocaleKeyAttribute";
-
-    /// <summary>Whether the parameter carries the attribute marking its argument as a localization key.</summary>
-    /// <param name="parameter">The parameter to judge.</param>
-    public static bool IsKey(IParameterSymbol parameter)
-    {
-        ArgumentNullException.ThrowIfNull(parameter);
-
-        return parameter.GetAttributes().Any(attribute =>
-            attribute.AttributeClass is { Name: KeyAttributeName } type && type.ToDisplayString() == KeyAttributeMetadataName);
-    }
-
-    /// <summary>The ordinal of the method's first parameter whose argument is a localization key, or null when none is.</summary>
+    /// <summary>The ordinal of the key a call to the runtime's <c>LocalizableText.For</c> passes, or null for any other method.</summary>
     /// <param name="method">The method a call binds to.</param>
     public static int? KeyOrdinal(IMethodSymbol method)
     {
         ArgumentNullException.ThrowIfNull(method);
 
-        return method.Parameters.FirstOrDefault(IsKey)?.Ordinal;
+        return method is { Name: LocalizableTextMethod, IsStatic: true, TypeArguments.Length: 1, Parameters: [{ Type.SpecialType: SpecialType.System_String }, ..] }
+            && method.ContainingType?.OriginalDefinition.ToDisplayString() == LocalizableTextMetadataName
+            ? 0
+            : null;
     }
 
     /// <summary>The type whose entries a call's key is read in, the method's one type argument, or null when it has not exactly one.</summary>

@@ -10,7 +10,7 @@ using Microsoft.CodeAnalysis.Operations;
 using CSharp = Microsoft.CodeAnalysis.CSharp.Syntax;
 using VisualBasic = Microsoft.CodeAnalysis.VisualBasic.Syntax;
 
-/// <summary>Finds callsites by binding the receiver to the localizer contract, and calls by binding a parameter marked as a localization key.</summary>
+/// <summary>Finds callsites by binding the receiver to the localizer contract, and text carried as data by binding a call to the runtime's <c>LocalizableText.For</c>.</summary>
 public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 {
     /// <inheritdoc />
@@ -78,8 +78,7 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
             }
             // Microsoft's localizer reads its key as its own contract defines, so only a literal one is read for an entry.
             else if (!lookup.UsesStringLocalizer
-                && !LocalizerContract.InsideLocalizer(model.GetEnclosingSymbol(node.SpanStart), contract)
-                && !SemanticCallsiteReader.ForwardsKey(lookup.Arguments, lookup.KeyOrdinal))
+                && !LocalizerContract.InsideLocalizer(model.GetEnclosingSymbol(node.SpanStart), contract))
             {
                 if (SemanticCallsiteReader.InterpolatedKey(lookup.Arguments, lookup.KeyOrdinal) is { } key)
                 {
@@ -95,8 +94,8 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         return new LocalizerLookups(lookups, unreadable, interpolated);
     }
 
-    // A method marked with a key passes its values on as a lookup does only where one params parameter follows the
-    // key, and what it returns is its own, so its values are counted there alone and its result is never format text.
+    // LocalizableText.For passes the values its params parameter gathers on as a lookup does, and what it returns is text carried as
+    // data, never format text.
     private static LocalizerLookup Keyed(LocalizerLookup site, IMethodSymbol method, int keyOrdinal)
         => site with
         {
@@ -105,7 +104,7 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         };
 
     // The compiler binds a whole member the moment any node in it is asked about, and a lookup is written as an
-    // element access, a call named Resolve or a call to a method marked with a key, so only nodes of those shapes are
+    // element access or a call named Resolve or For, so only nodes of those shapes are
     // asked and a member holding none is never bound at all.
     private static IEnumerable<SyntaxNode> Candidates(Compilation compilation, SyntaxTree tree)
     {
@@ -113,21 +112,17 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 
         return compilation.Language switch
         {
-            LanguageNames.CSharp => CSharpCandidates(nodes, LocaleKeyMethodNames.Get(compilation)),
+            LanguageNames.CSharp => nodes.Where(IsCSharpCandidate),
             LanguageNames.VisualBasic => nodes.Where(IsVisualBasicCandidate),
             _ => nodes,
         };
     }
 
-    private static IEnumerable<SyntaxNode> CSharpCandidates(IEnumerable<SyntaxNode> nodes, IReadOnlySet<string> keyed)
-        => nodes.Where(node => IsCSharpCandidate(node, keyed));
-
-    private static bool IsCSharpCandidate(SyntaxNode node, IReadOnlySet<string> keyed)
+    private static bool IsCSharpCandidate(SyntaxNode node)
         => node switch
         {
             CSharp.ElementAccessExpressionSyntax or CSharp.ElementBindingExpressionSyntax => true,
-            CSharp.InvocationExpressionSyntax invocation => Invoked(invocation.Expression) is { } name
-                && (name == LocalizerContract.ResolveMethod || keyed.Contains(name)),
+            CSharp.InvocationExpressionSyntax invocation => Invoked(invocation.Expression) is LocalizerContract.ResolveMethod or LocalizerContract.LocalizableTextMethod,
             _ => false,
         };
 
@@ -152,7 +147,7 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
             : ([], lookup.Syntax);
 
     // A lookup as the compiler bound it: its arguments, the ordinal its key binds to, the types its key is read in,
-    // and the method a call marked with a key binds to.
+    // and the LocalizableText.For a call binds to.
     private readonly record struct BoundLookup(
         ImmutableArray<IArgumentOperation> Arguments,
         int KeyOrdinal,

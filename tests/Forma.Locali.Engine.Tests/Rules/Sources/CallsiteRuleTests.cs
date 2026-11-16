@@ -196,32 +196,6 @@ public sealed class CallsiteRuleTests
         Assert.Contains(LintingCodes.HoleShapedText, diagnostics.Codes());
     }
 
-    [Fact]
-    public void Should_leave_a_call_whose_method_takes_no_values_after_its_key_uncounted()
-    {
-        // Act — the method may fill the key's holes from values of its own.
-        var diagnostics = SourceLinterTestFactory.Lint("""
-            private static string Count<TSource>([LocaleKey] string key, int count) => key;
-            public string Read() => Count<Widget>("{Count} of {Total} items", 3);
-            """);
-
-        // Assert
-        Assert.Empty(diagnostics);
-    }
-
-    [Fact]
-    public void Should_leave_a_call_marking_its_key_passed_to_string_format_alone()
-    {
-        // Act — what the method returns is its own, so the rule can't read it as a lookup's result.
-        var diagnostics = SourceLinterTestFactory.Lint("""
-            private static string Label<TSource>([LocaleKey] string key) => key;
-            public string Show() => string.Format(Label<Widget>("Stored items."), 1);
-            """);
-
-        // Assert
-        Assert.DoesNotContain(LintingCodes.ReformattedLookup, diagnostics.Codes());
-    }
-
     [Theory]
     [InlineData("Value: {0}")]
     [InlineData("Value: {0,5}")]

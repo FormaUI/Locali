@@ -104,13 +104,10 @@ public sealed class SemanticCallsiteFinderTests
     }
 
     [Fact]
-    public void Should_read_a_call_to_a_method_marking_its_key_as_a_lookup_in_its_type_argument()
+    public void Should_read_text_carried_as_data_in_the_open_definition_of_its_type_argument()
     {
         // Act
-        var site = Assert.Single(Find("""
-            private static string Label<TSource>([LocaleKey] string key, params object?[] values) => key;
-            public void Show() => _ = Label<Holder<int>>("Stored {count}.", 1);
-            """));
+        var site = Assert.Single(Find("""public LocalizableText Title { get; } = LocalizableText.For<Holder<int>>("Stored {count}.", 1);"""));
 
         // Assert
         Assert.Multiple(
@@ -133,89 +130,35 @@ public sealed class SemanticCallsiteFinderTests
     }
 
     [Fact]
-    public void Should_read_a_call_to_a_method_a_referenced_assembly_marks()
+    public void Should_leave_a_method_named_For_of_another_type_alone()
     {
-        // Arrange — a host's own method reaches the project that calls it as metadata.
-        var library = CompilationTestFactory.Referenced("""
-            using Forma.Framework.Localization;
-
-            namespace Contoso.Labels;
-
-            public static class Labels
-            {
-                public static string Label<TSource>([LocaleKey] string key) => key;
-            }
-            """).WithAssemblyName("Contoso.Labels");
-        using var image = new MemoryStream();
-        Assert.True(library.Emit(image, cancellationToken: TestContext.Current.CancellationToken).Success);
-
-        var compilation = CompilationTestFactory.Referenced("""
-            namespace Scratch;
-
-            public sealed class Widget
-            {
-                public void Show() => _ = Contoso.Labels.Labels.Label<Widget>("Today");
-            }
-            """).AddReferences(MetadataReference.CreateFromImage(image.ToArray()));
-
-        // Act
-        var site = Assert.Single(compilation.SyntaxTrees.SelectMany(tree => new SemanticCallsiteFinder().Find(compilation, tree).Lookups));
+        // Act — only the runtime's LocalizableText.For carries its key into a type's entries.
+        var sites = Find("""
+            private static string For<TSource>(string key) => key;
+            public void Show() => _ = For<Widget>("Today");
+            """);
 
         // Assert
-        Assert.Multiple(
-            () => Assert.Equal("Today", site.Key.Text),
-            () => Assert.Equal("Widget", Assert.Single(site.Origins).Type.Name));
-    }
-
-    [Fact]
-    public void Should_name_no_type_for_a_call_to_a_method_without_one_type_argument()
-    {
-        // Act
-        var site = Assert.Single(Find("""
-            private static string Label([LocaleKey] string key) => key;
-            public void Show() => _ = Label("Today");
-            """));
-
-        // Assert
-        Assert.Empty(site.Origins);
-    }
-
-    [Fact]
-    public void Should_leave_the_values_of_a_call_uncounted_where_no_params_parameter_follows_its_key()
-    {
-        // Act — the method may fill the key's holes from values of its own.
-        var site = Assert.Single(Find("""
-            private static string Count<TSource>([LocaleKey] string key) => key;
-            public void Show() => _ = Count<Widget>("{Count} items");
-            """));
-
-        // Assert
-        Assert.Equal(LocalizerArguments.Unknown, site.Arguments);
+        Assert.Empty(sites);
     }
 
     [Fact]
     public void Should_read_the_key_a_named_argument_writes_after_another()
     {
         // Act
-        var site = Assert.Single(Find("""
-            private static string Label<TSource>(int count, [LocaleKey] string key) => key;
-            public void Show() => _ = Label<Widget>(key: "Today", count: 1);
-            """));
+        var site = Assert.Single(Find("""public LocalizableText Title { get; } = LocalizableText.For<Widget>(arguments: [1], key: "Stored {count}.");"""));
 
         // Assert
-        Assert.Equal("Today", site.Key.Text);
+        Assert.Equal("Stored {count}.", site.Key.Text);
     }
 
     [Fact]
-    public void Should_read_a_Visual_Basic_call_to_a_method_marking_its_key()
+    public void Should_read_text_a_Visual_Basic_call_carries_as_data()
     {
         // Act
         var site = Assert.Single(FindVisualBasic("""
-            Private Shared Function Label(Of TSource)(<LocaleKey> key As String, ParamArray values As Object()) As String
-                Return key
-            End Function
             Public Sub Show()
-                Dim text = Label(Of Widget)("Stored {count}.", 1)
+                Dim text = LocalizableText.For(Of Widget)("Stored {count}.", 1)
             End Sub
             """));
 

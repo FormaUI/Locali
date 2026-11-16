@@ -45,14 +45,6 @@ internal static class SemanticCallsiteReader
     public static FileLinePositionSpan? UnreadableKey(ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
         => Key(arguments, keyOrdinal) is { } key ? Span(key) : null;
 
-    /// <summary>Whether a lookup's key is a parameter that is itself marked as a localization key, which its own callers write.</summary>
-    /// <param name="arguments">The arguments the lookup bound.</param>
-    /// <param name="keyOrdinal">The ordinal of the parameter the key binds to.</param>
-    public static bool ForwardsKey(ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
-        => Key(arguments, keyOrdinal)?.Value is { } value
-            && Unconverted(value) is IParameterReferenceOperation { Parameter: var parameter }
-            && LocalizerContract.IsKey(parameter);
-
     // The key binds to one parameter, wherever a named argument writes it.
     private static IArgumentOperation? Key(ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
         => arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == keyOrdinal);

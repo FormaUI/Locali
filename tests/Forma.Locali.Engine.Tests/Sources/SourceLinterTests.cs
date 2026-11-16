@@ -253,8 +253,7 @@ public sealed class SourceLinterTests
     {
         // Act
         var diagnostics = Lint("""
-            private static LocalizableText Label<TSource>([LocaleKey] string key) => LocalizableText.For<TSource>(key);
-            public void Show(object column) => _ = Label<Widget>(column.ToString()!);
+            public void Show(object column) => _ = LocalizableText.For<Widget>(column.ToString()!);
             """);
 
         // Assert
@@ -269,22 +268,6 @@ public sealed class SourceLinterTests
 
         // Assert
         Assert.Equal(LintingCodes.InterpolatedKey, Assert.Single(diagnostics).Code);
-    }
-
-    [Fact]
-    public void Should_leave_a_key_forwarded_from_a_parameter_marked_as_a_key_alone()
-    {
-        // Arrange — the key is written where the method is called, and checked there.
-        var compilation = Compile("""
-            public LocalizedText Show([LocaleKey] string key) => L[key];
-            public LocalizableText Carry([LocaleKey] string key) => LocalizableText.For<Widget>(key);
-            """);
-
-        // Act
-        var diagnostics = Reported(compilation);
-
-        // Assert
-        Assert.Empty(diagnostics);
     }
 
     [Fact]

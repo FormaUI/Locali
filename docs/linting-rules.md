@@ -653,17 +653,13 @@ a constant is folded by the compiler and checked like a literal on the semantic 
 inside a type that implements `IStringLocale` is left alone throughout, since such a type
 forwards the key its own caller wrote.
 
-A call to a method whose parameter carries `[LocaleKey]` is a lookup too, found on the semantic
-path alone: the argument for that parameter is the key, read in the entries of the method's
-one type argument, and the values are what one `params` parameter after the key gathers. A key
-passed on from a parameter that carries `[LocaleKey]` itself is left alone, since it is checked
-where its own method is called:
+A call to `LocalizableText.For<TSource>`, the runtime's text carried as data, is a lookup too,
+found on the semantic path alone: its first argument is the key, read in the entries of its type
+argument, and the values are what its `params` parameter gathers:
 
 ```csharp
 LocalizableText.For<SectionMenu>("{Count} results today", 12)     // right: one value for its one hole
 LocalizableText.For<SectionMenu>("{Count} results today", 12, 3)  // LOC0201: one hole, two values
-LocalizableText Title([LocaleKey] string key)
-    => LocalizableText.For<SectionMenu>(key);                     // right: Title's callers write the key
 ```
 
 Values pair to a key's distinct holes by position, in the order the holes first appear, and a
@@ -695,11 +691,10 @@ such hole and whose lookup supplies no such value.
 
 **What fixes it.** One value per distinct hole; a repeated hole counts once.
 
-**Silent where.** The values arrive as one collection, `object?[]` into
-`params ReadOnlySpan<object?>`, whose count only the run knows; an `int[]` in the same position
-cannot convert, arrives as one boxed value, and is counted. Also silent on the syntactic path,
-where no overload resolved, and for a call through `[LocaleKey]` whose method takes anything but
-one `params` parameter after its key, since the method may fill the holes itself.
+**Silent where.** The values arrive as one collection, `object?[]` into `params
+ReadOnlySpan<object?>`, whose count only the run knows; an `int[]` in the same position cannot
+convert, arrives as one boxed value, and is counted. Also silent on the syntactic path, where no
+overload resolved.
 
 ### LOC0202 — An expression naming no argument is given no value
 
@@ -759,19 +754,19 @@ laid over them.
 A lookup's type is found by following its receiver back to where the runtime decided it: a
 locale the registered factory creates for a type, a value typed `IStringLocale<T>`, followed
 further where a type of the run derives from `T`, since a locale for it may stand behind one for
-`T`, or a `[LocaleKey]` method's type argument, through locals, fields, properties, parameters
-at each call the run makes, or as the container passes them to a constructor no code calls,
-constructors, lambdas, local functions, delegates, lazy values, virtual calls on each type the
-instance can be, `base.` calls to the member they name, and services to the one implementation
-the run's product code registers. Where the walk reaches no type, a hint in the linting
-configuration may relate a member to the type member its locale is read for, read as each type
-of instance overrides it: `typeof(X)` names `X`, and `GetType()` the instance's own type. The
-instances are the lookup's own type, unless it is abstract, and every type of its project
-derived from it that keeps the member holding the lookup as it is. So `L["Details columns"]` in
-a component deriving from `FormaComponentBase` is held to the component's own files wherever
-Forma comes from, and a helper reading a locale its callers pass is held to each caller's type.
-The message names the path the type was reached through, and the hint where a hint alone
-supplied it.
+`T`, or `LocalizableText.For<TSource>`'s type argument, through locals, fields, properties,
+parameters at each call the run makes, or as the container passes them to a constructor no code
+calls, constructors, lambdas, local functions, delegates, lazy values, virtual calls on each
+type the instance can be, `base.` calls to the member they name, and services to the one
+implementation the run's product code registers. Where the walk reaches no type, a hint in the
+linting configuration may relate a member to the type member its locale is read for, read as
+each type of instance overrides it: `typeof(X)` names `X`, and `GetType()` the instance's own
+type. The instances are the lookup's own type, unless it is abstract, and every type of its
+project derived from it that keeps the member holding the lookup as it is. So `L["Details
+columns"]` in a component deriving from `FormaComponentBase` is held to the component's own
+files wherever Forma comes from, and a helper reading a locale its callers pass is held to each
+caller's type. The message names the path the type was reached through, and the hint where a
+hint alone supplied it.
 
 A lookup through Microsoft's `IStringLocalizer<T>` with a literal key is held to `T`'s entries
 where the run has Forma's adapter answer it: its product code calls
@@ -816,8 +811,8 @@ silent would let a run read as complete when part of it was never looked at.
 **What fixes it.** Write the key as a literal or a constant, which the compiler folds and every
 rule reads.
 
-**Silent where.** The key is a parameter that carries `[LocaleKey]` itself, which the method's
-own callers write and the rules read there.
+**Silent where.** The lookup sits inside a type that implements `IStringLocale`, which forwards
+the key its own caller wrote.
 
 ### LOC0209 — A key with holes and no words
 
@@ -873,8 +868,8 @@ the moment any culture is active.
 **Silent where.** The lookup is a value beside the format text, `string.Format("Found {0}.",
 L[key])`; or the result is stored, formatted later or passed through a method, which the rule
 cannot follow. Without a bound compilation, only the lookup written as the unnamed or
-`format`-named first argument is certain. A call through `[LocaleKey]` is never read as format
-text, since what its method returns is its own.
+`format`-named first argument is certain. A call to `LocalizableText.For` is never read as
+format text, since it returns text carried as data.
 
 ### LOC0214 — A lookup's type through a hinted member could not be read
 

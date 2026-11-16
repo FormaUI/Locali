@@ -180,15 +180,14 @@ runs.
 Callsites are found semantically where the compilation binds `IStringLocale`, and syntactically
 otherwise. The semantic path reads the operation tree the compiler binds, which has one shape
 for every language it compiles, and asks it only about the nodes a lookup can be written as, an
-element access, a call named `Resolve` or a call to a method marked with a key, so a member
-holding none is never bound; the syntactic path reads C# or Visual Basic syntax, cannot resolve
-overloads, and so leaves the rules that count values silent.
+element access or a call named `Resolve` or `For`, so a member holding none is never bound; the
+syntactic path reads C# or Visual Basic syntax, cannot resolve overloads, and so leaves the
+rules that count values silent.
 
-A call to a method whose parameter carries `[LocaleKey]`, as `LocalizableText.For<TSource>`'s
-key does, is a lookup on the semantic path: the argument for that parameter is its key, read in
-the entries of the method's one type argument, and its values are counted where one `params`
-parameter follows the key, as a lookup's are. A key a method passes on from a `[LocaleKey]`
-parameter of its own is checked where that method is called.
+A call to `LocalizableText.For<TSource>`, the runtime's text carried as data, is a lookup on the
+semantic path: its key is read in the entries of its type argument, and the values its `params`
+parameter gathers are counted as a lookup's are, whether the runtime is a package or a project
+of the run.
 
 A lookup through Microsoft's `IStringLocalizer`, written as `localizer["Checkout"]` with a
 literal key, is a lookup of Forma's where the run has Forma's adapter answer it: its product
@@ -203,8 +202,8 @@ A lookup's type is found on the semantic path by following its receiver back to 
 localization runtime decided it: a locale the factory the host registers creates for a type,
 reached through `GetStringLocaleFactory()` or an injected `IStringLocaleFactory`, a value typed
 `IStringLocale<T>`, followed further where a type of the run derives from `T`, since a locale
-for it may stand behind one for `T`, or a `[LocaleKey]` method's type argument. The walk goes
-back through locals assigned once, fields and properties as each object was given them,
+for it may stand behind one for `T`, or `LocalizableText.For<TSource>`'s type argument. The walk
+goes back through locals assigned once, fields and properties as each object was given them,
 parameters through every call the run makes to their method, or as the container passes them to
 a constructor no code calls, constructors, lambdas, local functions, delegates and lazy values,
 virtual calls on each type the instance can be, `base.` calls to the member they name, and

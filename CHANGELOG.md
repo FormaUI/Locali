@@ -3,6 +3,14 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.21`
+
+*Unreleased*
+
+- Breaking: `[LocaleKey]` is no longer read. A call to `LocalizableText.For<TSource>` is a lookup of its key in
+  `TSource`'s entries because it is the runtime's own, read alike whether the runtime is a package or a project of the
+  run, and a method of another type named `For` is not.
+
 ## `1.0.0-preview.20`
 
 *November 17, 2026*
