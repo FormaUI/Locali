@@ -7,6 +7,12 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 *Unreleased*
 
+- LOC0123 reports, as a warning, a part of the name a locale file is embedded under that is a culture other than the
+  file's own and names no type, namespace or assembly the run knows, as `he` is in `.locales/es/he.json`, which the
+  runtime reads as Spanish entries for a namespace `he`.
+- A part of a locale file's name repeating its culture is read as that culture again, as
+  `Forma.Framework.Localization` reads it, rather than as part of the name, so `.locales/es/es.json` is the root's
+  file and `.locales/es/Components.Widget.es.json` stands for `Components.Widget`.
 - A project's files are read by the names the build now embeds them under, as `Forma.Framework.Localization` reads
   them: the root namespace, a `/` and the file's path, such as `Contoso.App/Uploads/.locales/he.json`, and
   `Contoso.App/.locale.json` for its `.locale.json`, which went unread under these names, so LOC0023 reported the

@@ -218,9 +218,9 @@ culture. A folder of locale files is the one the project's `.locale.json` names 
 `.locales` where it names none or no project sits above the file, and the host's `.locales`
 folder at the project's root.
 Its culture is read as the runtime reads it, from the project's folder down: the first part of
-its name, folders included, that is a culture written exactly as .NET names it. A locale file
-opens with `$localization`, then `$shared` where it carries one, then its entries and
-sections.
+its name, folders included, that is a culture written exactly as .NET names it, and a part
+repeating it is that culture again rather than part of the name. A locale file opens with
+`$localization`, then `$shared` where it carries one, then its entries and sections.
 
 ### LOC0100 — Not readable JSON
 
@@ -517,6 +517,28 @@ part is in the root namespace, which LOC0027 reads; the file is an application's
 assembly whose types are out of reach; the project does not embed the file, or its items could
 not be read; the project did not compile, so its types cannot be told; or the project is a locale
 pack, whose files name other assemblies' types, which its own project does not show.
+
+### LOC0123 — A second culture in a file's name
+
+**Reports.** A part of the name a locale file is embedded under, a folder or a part between dots,
+that is a culture other than the one the name gives the file and names no type, namespace or
+assembly the run knows, as `he` is in `.locales/es/he.json` and `es` in
+`.locales/he/Components.Widget.es.json`. It is reported at the file, a pack's file in the project
+it localizes.
+
+**Why it matters.** The runtime reads the file for the first culture in its name and the second
+as part of the name it stands for, so `.locales/es/he.json` holds Spanish entries for a
+namespace `he`, which no type reads; LOC0112 reports that as well.
+
+**What fixes it.** Move the file into the folder of the culture it is written for. A part
+repeating the file's own culture is that culture again, so `.locales/es/es.json` is read as
+`.locales/es.json` is, and `.locales/es/Components.Widget.es.json` as
+`.locales/es/Components.Widget.json` is.
+
+**Silent where.** The part names a type, a namespace or an assembly the run knows, which the
+runtime reads as part of a name on purpose; the file is an application's read for an assembly
+whose types are out of reach; the project does not embed the file, or its items could not be
+read; or the project did not compile, so its types cannot be told.
 
 ## Callsites (LOC0200–LOC0299)
 

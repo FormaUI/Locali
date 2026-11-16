@@ -39,6 +39,7 @@ public static class LintingCodes
             EntryConflict,
             AmbiguousName,
             CultureInAnotherCase,
+            SecondCultureInName,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
@@ -234,6 +235,12 @@ public static class LintingCodes
         "LOC0122",
         LintingSeverity.Warning,
         "A part of a locale file's name is a culture written in another case than .NET names it, and names no type, so the runtime reads it as part of the name rather than as the file's culture.");
+
+    /// <summary>A part of a locale file's name is a culture other than the file's own, and names no type.</summary>
+    public static LintingCode SecondCultureInName { get; } = new(
+        "LOC0123",
+        LintingSeverity.Warning,
+        "A part of a locale file's name is a culture other than the one the name gives the file, and names no type, so the runtime reads it as part of the name the file stands for, which no type reads.");
 
     /// <summary>An expression names an argument the lookup never supplies.</summary>
     public static LintingCode UnsuppliedPluralArgument { get; } = new(
