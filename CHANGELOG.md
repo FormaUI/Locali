@@ -3,6 +3,17 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.17`
+
+*Unreleased*
+
+- A project's files are read by the names the build now embeds them under, as `Forma.Framework.Localization` reads
+  them: the root namespace, a `/` and the file's path, such as `Contoso.App/Uploads/.locales/he.json`, and
+  `Contoso.App/.locale.json` for its `.locale.json`, which went unread under these names, so LOC0023 reported the
+  root namespace it declares and LOC0112 the files laid out by it. An application's files for other assemblies are
+  read beneath its root and a `/` alone, a satellite's file whose name holds its culture keeps that name, and of two
+  files giving one entry different texts, the one LOC0120 sets aside is the one whose path sorts first.
+
 ## `1.0.0-preview.16`
 
 *November 15, 2026*

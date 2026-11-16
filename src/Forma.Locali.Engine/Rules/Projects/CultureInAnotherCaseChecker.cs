@@ -27,8 +27,6 @@ public sealed class CultureInAnotherCaseChecker : IProjectRuleChecker
             return;
         }
 
-        // The root namespace's own parts are LOC0027's.
-        var namesStart = localization.Source.GetRootDir(localization.AssemblyName) + ".";
         var localesDir = localization.LocalesDir;
 
         foreach (var file in context.LocalizationFiles)
@@ -48,7 +46,8 @@ public sealed class CultureInAnotherCaseChecker : IProjectRuleChecker
                 continue;
             }
 
-            var ownName = name.StartsWith(namesStart, StringComparison.Ordinal) ? name[namesStart.Length..] : name;
+            // The root namespace's own parts are LOC0027's.
+            var ownName = localization.GetOwnName(name);
 
             // A file of no culture is read for no reader whatever its parts name, and a part naming nothing is blamed before one naming
             // something; a part read into a name misleads only where it names nothing.
@@ -71,13 +70,13 @@ public sealed class CultureInAnotherCaseChecker : IProjectRuleChecker
         }
     }
 
-    // The parts of the name between its dots, the extension and the folders of the folder of locale files left out.
+    // The parts of the name between its folders and dots, the extension and the folders of the folder of locale files left out.
     private static IEnumerable<string> GetParts(string name, string localesDir)
     {
         var localesParts = localesDir.Split('.', '/');
 
-        return Path.GetFileNameWithoutExtension(name)
-            .Split('.')
+        return name[..^Path.GetExtension(name).Length]
+            .Split('.', '/')
             .Where(part => part.Length > 0 && !localesParts.Contains(part, StringComparer.Ordinal));
     }
 

@@ -63,8 +63,8 @@ public sealed class ProjectLocalizationTests
         var file = directory.Write(Path.Combine(".locales", "Forma.Framework.Localization", "he.json"), LocalizationFileFakeData.Valid);
         var resourceNames = new Dictionary<string, string>
         {
-            [Path.GetFullPath(config)] = "Scratch..locale.json",
-            [Path.GetFullPath(file)] = "Scratch..locales.Forma.Framework.Localization.he.json",
+            [Path.GetFullPath(config)] = "Scratch/.locale.json",
+            [Path.GetFullPath(file)] = "Scratch/.locales/Forma.Framework.Localization/he.json",
         };
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Referenced("namespace Scratch;"), false, false, EmbeddedResourceNames: resourceNames);
         var localization = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!;
@@ -83,6 +83,28 @@ public sealed class ProjectLocalizationTests
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var localization = Resolve(directory, CompilationTestFactory.Referenced("namespace Scratch.Components;"), file);
+
+        // Act
+        var named = localization.GetNamedAssemblies(Assert.Single(localization.Files));
+
+        // Assert
+        Assert.Empty(named);
+    }
+
+    [Fact]
+    public void Should_name_no_assembly_for_a_file_an_item_of_the_projects_own_names_with_dots()
+    {
+        // Arrange — the runtime reads an application's files for other assemblies beneath its root and a /, which the SDK's name, every folder made a dot, is not.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Forma.Framework.Localization", "he.json"), LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Referenced("namespace Scratch;");
+        var project = new LoadedProject(
+            Path.Combine(directory.Root, "Scratch.csproj"),
+            compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)),
+            false,
+            false,
+            EmbeddedResourceNames: new Dictionary<string, string> { [Path.GetFullPath(file)] = "Scratch..locales.Forma.Framework.Localization.he.json" });
+        var localization = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!;
 
         // Act
         var named = localization.GetNamedAssemblies(Assert.Single(localization.Files));
@@ -165,8 +187,8 @@ public sealed class ProjectLocalizationTests
             false,
             EmbeddedResourceNames: new Dictionary<string, string>
             {
-                [Path.GetFullPath(config)] = "Contoso.App..locale.json",
-                [Path.GetFullPath(file)] = "Contoso.App..strings.es.Forma.Blazor.Components.Bars.json",
+                [Path.GetFullPath(config)] = "Contoso.App/.locale.json",
+                [Path.GetFullPath(file)] = "Contoso.App/.strings/es/Forma.Blazor/Components/Bars.json",
             });
         var formaBlazor = new BuiltAssembly("Forma.Blazor", ["Forma.Blazor.Components.Bars.FormaToolbar"], "Forma.Blazor");
 

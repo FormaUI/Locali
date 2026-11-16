@@ -112,8 +112,8 @@ public sealed class UnreachableLocalizationCheckerTests
         var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var resourceNames = new Dictionary<string, string>
         {
-            [Path.GetFullPath(config)] = "Scratch..locale.json",
-            [Path.GetFullPath(file)] = "Scratch.Components..locales.he.json",
+            [Path.GetFullPath(config)] = "Scratch/.locale.json",
+            [Path.GetFullPath(file)] = "Scratch/Components/.locales/he.json",
         };
 
         // Act
@@ -132,8 +132,8 @@ public sealed class UnreachableLocalizationCheckerTests
         var file = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
         var resourceNames = new Dictionary<string, string>
         {
-            [Path.GetFullPath(config)] = "Scratch..locale.json",
-            [Path.GetFullPath(file)] = "Scratch.Components.Widget.he.json",
+            [Path.GetFullPath(config)] = "Scratch/.locale.json",
+            [Path.GetFullPath(file)] = "Scratch/Components/Widget.he.json",
         };
 
         // Act

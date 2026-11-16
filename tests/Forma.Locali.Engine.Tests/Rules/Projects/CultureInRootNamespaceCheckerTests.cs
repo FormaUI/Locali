@@ -56,6 +56,24 @@ public sealed class CultureInRootNamespaceCheckerTests
     }
 
     [Fact]
+    public void Should_report_a_root_namespace_a_name_an_item_of_the_projects_own_spells_with_dots_starts_with()
+    {
+        // Arrange — the runtime separates a name's parts by a folder and a dot alike, so it reads the SDK's name for the file for 'my' too.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var project = Project(directory, "Contoso.my.Widgets", rootNamespace: null, file) with
+        {
+            EmbeddedResourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.my.Widgets.Components..locales.he.json" },
+        };
+
+        // Act
+        var diagnostics = Check(project, file);
+
+        // Assert
+        Assert.Equal([LintingCodes.CultureInRootNamespace], diagnostics.Codes());
+    }
+
+    [Fact]
     public void Should_leave_a_file_embedded_under_a_name_without_the_formats_extension_alone()
     {
         // Arrange — the runtime reads no name that does not end in the format's extension, whatever culture it holds.
@@ -149,7 +167,7 @@ public sealed class CultureInRootNamespaceCheckerTests
         Assert.Empty(diagnostics);
     }
 
-    // The build embeds each file under the root namespace and its path, every folder joined by a dot.
+    // The build embeds each file under the root namespace and its path, every folder joined by a /.
     private static LoadedProject Project(TempDirectory directory, string assemblyName, string? rootNamespace, params string[] files)
         => new(
             Path.Combine(directory.Root, $"{assemblyName}.csproj"),
@@ -157,7 +175,7 @@ public sealed class CultureInRootNamespaceCheckerTests
             false,
             false,
             rootNamespace,
-            files.ToDictionary(Path.GetFullPath, file => $"{rootNamespace ?? assemblyName}.{Path.GetRelativePath(directory.Root, file).Replace(Path.DirectorySeparatorChar, '.')}", StringComparer.OrdinalIgnoreCase));
+            files.ToDictionary(Path.GetFullPath, file => $"{rootNamespace ?? assemblyName}/{Path.GetRelativePath(directory.Root, file).Replace(Path.DirectorySeparatorChar, '/')}", StringComparer.OrdinalIgnoreCase));
 
     private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, params string[] files)
         => ProjectLinterTestFactory.Check(new CultureInRootNamespaceChecker(), project, files);

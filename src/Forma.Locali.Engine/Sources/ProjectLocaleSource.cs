@@ -43,10 +43,6 @@ public sealed class ProjectLocaleSource : LocaleSource
     }
 
     /// <inheritdoc />
-    protected override char FolderSeparator
-        => '.';
-
-    /// <inheritdoc />
     protected override IEnumerable<string> EnumerateNames()
         => _files.Keys.Concat(_configPaths.Keys);
 

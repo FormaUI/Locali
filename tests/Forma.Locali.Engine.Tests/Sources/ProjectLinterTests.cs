@@ -14,9 +14,9 @@ public sealed class ProjectLinterTests
         var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var resourceNames = new Dictionary<string, string>
         {
-            [Path.GetFullPath(first)] = "Scratch..locale.json",
-            [Path.GetFullPath(second)] = "Scratch.Pages..locale.json",
-            [Path.GetFullPath(file)] = "Scratch.Components..locales.he.json",
+            [Path.GetFullPath(first)] = "Scratch/.locale.json",
+            [Path.GetFullPath(second)] = "Scratch/Pages/.locale.json",
+            [Path.GetFullPath(file)] = "Scratch/Components/.locales/he.json",
         };
         var projectPath = Path.Combine(directory.Root, "Scratch.csproj");
         var project = new LoadedProject(projectPath, CompilationTestFactory.Unreferenced("namespace Scratch.Components; public sealed class Widget;"), false, false, EmbeddedResourceNames: resourceNames);

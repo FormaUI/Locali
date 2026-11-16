@@ -113,6 +113,28 @@ public sealed class CultureInAnotherCaseCheckerTests
         Assert.Empty(diagnostics);
     }
 
+    [Theory]
+    [InlineData("Scratch.ES/.locales/Widget.json")]
+    [InlineData("Scratch.ES..locales.Widget.json")]
+    public void Should_leave_a_part_of_where_the_assemblys_names_begin_alone(string name)
+    {
+        // Arrange — the runtime counts the file's name from the assembly's, whose 'ES' is no part of the name the file stands for.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Widget.json"), LocalizationFileFakeData.Valid);
+        var project = new LoadedProject(
+            Path.Combine(directory.Root, "Scratch.ES.csproj"),
+            CompilationTestFactory.Building("Scratch.ES", "namespace Scratch.ES; public sealed class Widget;"),
+            false,
+            false,
+            EmbeddedResourceNames: new Dictionary<string, string> { [Path.GetFullPath(file)] = name });
+
+        // Act
+        var diagnostics = ProjectLinterTestFactory.Check(new CultureInAnotherCaseChecker(), project, [file]);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
     [Fact]
     public void Should_read_a_name_without_the_folder_of_locale_files_its_config_names()
     {
@@ -195,7 +217,7 @@ public sealed class CultureInAnotherCaseCheckerTests
     private static LoadedProject Project(TempDirectory directory, string source, IReadOnlyDictionary<string, string> resourceNames)
         => new(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(source), false, false, EmbeddedResourceNames: resourceNames);
 
-    // The build embeds each file under the root namespace and its path, every folder joined by a dot.
+    // The build embeds each file under the root namespace and its path, every folder joined by a /.
     private static Dictionary<string, string> Names(TempDirectory directory, string[] files)
-        => files.ToDictionary(Path.GetFullPath, file => "Scratch." + Path.GetRelativePath(directory.Root, file).Replace(Path.DirectorySeparatorChar, '.'), StringComparer.OrdinalIgnoreCase);
+        => files.ToDictionary(Path.GetFullPath, file => "Scratch/" + Path.GetRelativePath(directory.Root, file).Replace(Path.DirectorySeparatorChar, '/'), StringComparer.OrdinalIgnoreCase);
 }

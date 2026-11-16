@@ -124,7 +124,7 @@ public static class ProjectLocaleFiles
             var rootConfig = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(project.Path))!, LocaleConfig.FileName);
             if ((project.RootNamespace ?? project.Compilation?.AssemblyName) is { Length: > 0 } root && File.Exists(rootConfig))
             {
-                configPaths[$"{root}.{LocaleConfig.FileName}"] = rootConfig;
+                configPaths[$"{root}/{LocaleConfig.FileName}"] = rootConfig;
             }
 
             return configPaths;
@@ -160,7 +160,7 @@ public static class ProjectLocaleFiles
     }
 
     // The build embeds every locale file in its folder of locale files, whose folders it names in order, or outside any folder
-    // whose name starts with a dot, as {RootNamespace}.{path} with every folder joined by a dot.
+    // whose name starts with a dot, as {RootNamespace}/{path} with every folder joined by a /.
     private static string? GetDefaultResourceName(string root, string projectDirectory, string fullPath, string localesDir)
     {
         var segments = Path.GetRelativePath(projectDirectory, fullPath).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
@@ -171,7 +171,7 @@ public static class ProjectLocaleFiles
             return null;
         }
 
-        return string.Join('.', [root, .. segments]);
+        return string.Join('/', [root, .. segments]);
     }
 
     /// <summary>The file as the runtime reads it, or null when it cannot be opened or will not read, which is the file rules' business.</summary>

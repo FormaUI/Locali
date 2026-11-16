@@ -25,7 +25,7 @@ public sealed class LocalePackFilesTests
         Assert.Multiple(
             () => Assert.Equal("Contoso.Widgets", assembly.AssemblyName),
             () => Assert.Same(target, assembly.Target),
-            () => Assert.Equal("Contoso.Widgets.Bars.he.json", Assert.Single(assembly.Files).Name),
+            () => Assert.Equal("Contoso.Widgets/Bars/he.json", Assert.Single(assembly.Files).Name),
             () => Assert.True(resolved.IsEveryAssemblyKnown));
     }
 
@@ -221,6 +221,6 @@ public sealed class LocalePackFilesTests
     private static Dictionary<string, string> Names(TempDirectory directory, params string[] files)
         => files.ToDictionary(
             Path.GetFullPath,
-            file => Path.GetRelativePath(directory.Root, file).Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.'),
+            file => Path.GetRelativePath(directory.Root, file).Replace(Path.DirectorySeparatorChar, '/'),
             StringComparer.OrdinalIgnoreCase);
 }

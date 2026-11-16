@@ -43,7 +43,7 @@ public static class LocalePackTestFactory
         // A pack's build embeds each file under its path with the folders joined by dots.
         var resourceNames = files.ToDictionary(
             Path.GetFullPath,
-            file => Path.GetRelativePath(packDirectory, file).Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.'),
+            file => Path.GetRelativePath(packDirectory, file).Replace(Path.DirectorySeparatorChar, '/'),
             StringComparer.OrdinalIgnoreCase);
 
         var pack = new LoadedProject(

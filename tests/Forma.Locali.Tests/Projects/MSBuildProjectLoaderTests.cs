@@ -26,7 +26,7 @@ public sealed class MSBuildProjectLoaderTests
             <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
           </PropertyGroup>
           <ItemGroup>
-            <EmbeddedResource Include="Contoso.Widgetz\Bars\he.json" WithCulture="false" LogicalName="Contoso.Widgetz.Bars.he.json" />
+            <EmbeddedResource Include="Contoso.Widgetz\Bars\he.json" WithCulture="false" LogicalName="Contoso.Widgetz/Bars/he.json" />
           </ItemGroup>
         </Project>
         """;
@@ -43,7 +43,7 @@ public sealed class MSBuildProjectLoaderTests
                 <OutputType>Exe</OutputType>
               </PropertyGroup>
               <ItemGroup>
-                <EmbeddedResource Include=".locales\Contoso.Host\Bars\he.json" WithCulture="false" LogicalName="Contoso.Host..locales.Contoso.Host.Bars.he.json" />
+                <EmbeddedResource Include=".locales\Contoso.Host\Bars\he.json" WithCulture="false" LogicalName="Contoso.Host/.locales/Contoso.Host/Bars/he.json" />
               </ItemGroup>
             </Project>
             """);
@@ -142,7 +142,7 @@ public sealed class MSBuildProjectLoaderTests
                 <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
               </PropertyGroup>
               <ItemGroup>
-                <EmbeddedResource Include="Contoso.Widgets\he.json" WithCulture="false" LogicalName="Contoso.Widgets.he.json" />
+                <EmbeddedResource Include="Contoso.Widgets\he.json" WithCulture="false" LogicalName="Contoso.Widgets/he.json" />
               </ItemGroup>
             </Project>
             """);

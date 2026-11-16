@@ -136,7 +136,7 @@ public sealed class EntryConflictCheckerTests
         var own = directory.Write(Path.Combine("Widgets", "Bars", ".locales", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
         var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "עכשיו"));
         var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
-        var project = target with { EmbeddedResourceNames = new Dictionary<string, string> { [Path.GetFullPath(own)] = "Contoso.Widgets.Bars..locales.he.json" } };
+        var project = target with { EmbeddedResourceNames = new Dictionary<string, string> { [Path.GetFullPath(own)] = "Contoso.Widgets/Bars/.locales/he.json" } };
 
         // Act
         var diagnostics = ProjectLinterTestFactory.Check(new EntryConflictChecker(), project, [own], packs: [pack]);

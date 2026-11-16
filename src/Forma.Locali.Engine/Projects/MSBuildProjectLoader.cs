@@ -2,6 +2,7 @@ namespace Forma.Locali.Projects;
 
 using System.Threading.Channels;
 
+using Forma.Framework.Localization.Files;
 using Forma.Locali.Cli;
 
 using Microsoft.Build.Construction;
@@ -350,7 +351,8 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         return new EmbeddedResources(names, satelliteFiles);
     }
 
-    // A file the build moves into a satellite assembly is named there without its culture, which the runtime reads back in just before the extension.
+    // A file the SDK moves into a satellite assembly is named there without its culture, which the runtime reads back in just before
+    // the extension; one its item named keeps the culture its name holds.
     private static string GetResourceName(ProjectItemInstance item, out bool isSatellite)
     {
         var logicalName = item.GetMetadataValue("LogicalName");
@@ -364,8 +366,11 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         }
 
         var extension = Path.GetExtension(name);
+        var withoutExtension = name[..^extension.Length];
 
-        return $"{name[..^extension.Length]}.{culture}{extension}";
+        return withoutExtension.Split('.', '/').Any(part => LocaleFileNames.IsCulture(part))
+            ? name
+            : $"{withoutExtension}.{culture}{extension}";
     }
 
     // Parsing is processor-bound and each file is independent, so the trees are built across cores.

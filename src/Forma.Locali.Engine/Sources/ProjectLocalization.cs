@@ -227,6 +227,20 @@ public sealed class ProjectLocalization
         return _nameSegments.Value.Contains(part);
     }
 
+    /// <summary>A name the project embeds a file under without where the assembly's names begin, which the runtime's reading of its own files counts the name from, or the whole name where it begins elsewhere.</summary>
+    /// <param name="name">The name.</param>
+    public string GetOwnName(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        // The default reading separates a name's parts by a folder and a dot alike, so a name an item of the project's own spells with dots begins there too.
+        var rootDir = Source.GetRootDir(AssemblyName);
+
+        return rootDir.Length > 0 && name.Length > rootDir.Length && name[rootDir.Length] is '/' or '.' && name.StartsWith(rootDir, StringComparison.Ordinal)
+            ? name[(rootDir.Length + 1)..]
+            : name;
+    }
+
     /// <summary>Whether a file is an application's for another assembly: the longest assembly name its name starts with is not the project's, so it is laid out from that assembly's root namespace.</summary>
     /// <param name="file">The file, one of <see cref="Files"/>.</param>
     public bool IsForAnotherAssembly(ProjectLocaleFile file)
@@ -273,7 +287,7 @@ public sealed class ProjectLocalization
             return null;
         }
 
-        var namesStart = Source.GetRootDir(AssemblyName) + ".";
+        var namesStart = Source.GetRootDir(AssemblyName) + "/";
 
         return file.Name.StartsWith(namesStart, StringComparison.Ordinal)
             ? LocalizationFileName.Read(file.Name[namesStart.Length..], Format.Extension, LocalesDir)
@@ -283,7 +297,7 @@ public sealed class ProjectLocalization
     // The application's files beneath where its own names begin, read by the names that follow, as the runtime's application source reads them.
     private AssemblyNamedLocaleSource CreateApplicationSource(ILocaleFileFormat format)
     {
-        var namesStart = Source.GetRootDir(AssemblyName) + ".";
+        var namesStart = Source.GetRootDir(AssemblyName) + "/";
         var files = EmbeddedFiles
             .Where(file => file.Name.StartsWith(namesStart, StringComparison.Ordinal))
             .Select(file => (file.Name[namesStart.Length..], file));

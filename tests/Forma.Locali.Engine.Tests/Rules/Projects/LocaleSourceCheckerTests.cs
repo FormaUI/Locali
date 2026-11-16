@@ -319,11 +319,11 @@ public sealed class LocaleSourceCheckerTests
             CompilationTestFactory.Building("Contoso.Host"),
             false,
             false,
-            EmbeddedResourceNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [Path.GetFullPath(embeddedFile)] = "Contoso.Host." + Path.GetRelativePath(directory.Root, embeddedFile).Replace(Path.DirectorySeparatorChar, '.') });
+            EmbeddedResourceNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [Path.GetFullPath(embeddedFile)] = "Contoso.Host/" + Path.GetRelativePath(directory.Root, embeddedFile).Replace(Path.DirectorySeparatorChar, '/') });
 
     private static Dictionary<string, string> Names(TempDirectory directory, params string[] files)
         => files.ToDictionary(
             Path.GetFullPath,
-            file => "Contoso.Widgets." + Path.GetRelativePath(directory.Root, file).Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.'),
+            file => "Contoso.Widgets/" + Path.GetRelativePath(directory.Root, file).Replace(Path.DirectorySeparatorChar, '/'),
             StringComparer.OrdinalIgnoreCase);
 }

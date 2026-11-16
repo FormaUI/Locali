@@ -129,7 +129,7 @@ public sealed class LocalePackAssemblyCheckerTests
     {
         var resourceNames = files.ToDictionary(
             Path.GetFullPath,
-            file => Path.GetRelativePath(directory.Root, file).Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.'),
+            file => Path.GetRelativePath(directory.Root, file).Replace(Path.DirectorySeparatorChar, '/'),
             StringComparer.OrdinalIgnoreCase);
 
         return new LoadedProject(Path.Combine(directory.Root, "Contoso.Widgets.Locales.Hebrew.csproj"), CompilationTestFactory.Building("Contoso.Widgets.Locales.Hebrew"), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true);

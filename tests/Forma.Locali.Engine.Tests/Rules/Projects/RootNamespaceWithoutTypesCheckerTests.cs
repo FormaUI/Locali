@@ -179,7 +179,7 @@ public sealed class RootNamespaceWithoutTypesCheckerTests
         var file = directory.Write(Path.Combine(".locales", "Forma.Framework.Localization", "he.json"), LocalizationFileFakeData.Valid);
 
         // Act
-        var diagnostics = CheckApplication(directory, file, "Scratch..locales.Forma.Framework.Localization.he.json");
+        var diagnostics = CheckApplication(directory, file, "Scratch/.locales/Forma.Framework.Localization/he.json");
 
         // Assert
         Assert.Empty(diagnostics);
@@ -193,7 +193,7 @@ public sealed class RootNamespaceWithoutTypesCheckerTests
         var file = directory.Write(Path.Combine("Bars", ".locales", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
 
         // Act
-        var diagnostic = Assert.Single(CheckApplication(directory, file, "Scratch.Bars..locales.he.json"));
+        var diagnostic = Assert.Single(CheckApplication(directory, file, "Scratch/Bars/.locales/he.json"));
 
         // Assert
         Assert.Contains("'Scratch', the assembly's name", diagnostic.Message, StringComparison.Ordinal);
@@ -213,11 +213,11 @@ public sealed class RootNamespaceWithoutTypesCheckerTests
         var rootName = rootNamespace ?? "Scratch";
         var resourceNames = files.ToDictionary(
             Path.GetFullPath,
-            file => string.Join('.', [rootName, .. Path.GetRelativePath(directory.Root, file).Split(Path.DirectorySeparatorChar)]));
+            file => string.Join('/', [rootName, .. Path.GetRelativePath(directory.Root, file).Split(Path.DirectorySeparatorChar)]));
 
         if (config is not null)
         {
-            resourceNames[Path.GetFullPath(config)] = $"{rootName}..locale.json";
+            resourceNames[Path.GetFullPath(config)] = $"{rootName}/.locale.json";
         }
 
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), CompilationTestFactory.Unreferenced(source), false, false, rootNamespace, resourceNames);

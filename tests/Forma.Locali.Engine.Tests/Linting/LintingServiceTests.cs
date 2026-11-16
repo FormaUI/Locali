@@ -266,9 +266,9 @@ public sealed class LintingServiceTests
         var file = directory.Write(Path.Combine("Components", ".locales", "he.json"), LocalizationFileFakeData.Valid);
         var resourceNames = new Dictionary<string, string>
         {
-            [Path.GetFullPath(first)] = "Scratch..locale.json",
-            [Path.GetFullPath(second)] = "Scratch.Pages..locale.json",
-            [Path.GetFullPath(file)] = "Scratch.Components..locales.he.json",
+            [Path.GetFullPath(first)] = "Scratch/.locale.json",
+            [Path.GetFullPath(second)] = "Scratch/Pages/.locale.json",
+            [Path.GetFullPath(file)] = "Scratch/Components/.locales/he.json",
         };
         var compilation = CompilationTestFactory.Unreferenced("namespace Scratch.Components; public sealed class Widget;");
         var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: resourceNames));
@@ -327,7 +327,7 @@ public sealed class LintingServiceTests
         using var directory = new TempDirectory();
         var project = directory.Write("Scratch.csproj", """<Project Sdk="Microsoft.NET.Sdk" />""");
         var config = directory.Write(Path.Combine("Components", ".locale.json"), "{}");
-        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(config)] = "Scratch.Components..locale.json" };
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(config)] = "Scratch/Components/.locale.json" };
         var compilation = CompilationTestFactory.Unreferenced("namespace Scratch.Components; public sealed class Widget;");
         var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: resourceNames));
 
@@ -417,9 +417,9 @@ public sealed class LintingServiceTests
         var second = directory.Write("Components.he.json", LocalizationFileFakeData.WithSection("Widget", "Today", "עכשיו"));
         var resourceNames = new Dictionary<string, string>
         {
-            [Path.GetFullPath(config)] = "Scratch..locale.json",
-            [Path.GetFullPath(first)] = "Scratch.Components..locales.he.json",
-            [Path.GetFullPath(second)] = "Scratch.Components.he.json",
+            [Path.GetFullPath(config)] = "Scratch/.locale.json",
+            [Path.GetFullPath(first)] = "Scratch/Components/.locales/he.json",
+            [Path.GetFullPath(second)] = "Scratch/Components.he.json",
         };
         var compilation = CompilationTestFactory.Unreferenced("namespace Scratch.Components; public sealed class Widget;");
         var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false, EmbeddedResourceNames: resourceNames));
@@ -431,7 +431,7 @@ public sealed class LintingServiceTests
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Multiple(
             () => Assert.Equal(LintingCodes.EntryConflict, diagnostic.Code),
-            () => Assert.Equal(first, diagnostic.Path),
+            () => Assert.Equal(second, diagnostic.Path),
             () => Assert.Contains("'Today' different texts for 'Scratch.Components.Widget' in 'he'", diagnostic.Message, StringComparison.Ordinal));
     }
 
@@ -443,7 +443,7 @@ public sealed class LintingServiceTests
         var solution = directory.Write("Scratch.slnx", "<Solution />");
         var pack = directory.Write(Path.Combine("Packs", "Contoso.Widgets.Locales.Hebrew.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
         var file = directory.Write(Path.Combine("Packs", "Contoso.Widgetz", "he.json"), LocalizationFileFakeData.Valid);
-        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgetz.he.json" };
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgetz/he.json" };
         var loader = new StubProjectLoader(
             new LoadedProject(pack, CompilationTestFactory.Building("Contoso.Widgets.Locales.Hebrew"), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true),
             new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Widgets; public sealed class Widget;"), false, false));
@@ -466,7 +466,7 @@ public sealed class LintingServiceTests
         using var directory = new TempDirectory();
         var pack = directory.Write(Path.Combine("Packs", "Contoso.Widgets.Locales.Hebrew.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
         var file = directory.Write(Path.Combine("Packs", "Contoso.Widgets", "he.json"), LocalizationFileFakeData.WithSections(("Widget", "Today", "היום"), ("Gadget", "Today", "היום")));
-        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgets.he.json" };
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgets/he.json" };
         var loader = new StubProjectLoader(
             new LoadedProject(pack, CompilationTestFactory.Building("Contoso.Widgets.Locales.Hebrew"), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true),
             new LoadedProject(Path.Combine(directory.Root, "Widgets", "Contoso.Widgets.csproj"), CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Widgets; public sealed class Widget;"), false, false, EmbeddedResourceNames: new Dictionary<string, string>()));
@@ -489,7 +489,7 @@ public sealed class LintingServiceTests
         using var directory = new TempDirectory();
         var pack = directory.Write(Path.Combine("Packs", "Contoso.Widgets.Locales.Hebrew.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
         var file = directory.Write(Path.Combine("Packs", "Contoso.Widgetz", "he.json"), LocalizationFileFakeData.Valid);
-        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgetz.he.json" };
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgetz/he.json" };
         var loader = new StubProjectLoader(new LoadedProject(pack, CompilationTestFactory.Building("Contoso.Widgets.Locales.Hebrew"), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true));
 
         // Act

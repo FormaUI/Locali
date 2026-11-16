@@ -57,10 +57,6 @@ public sealed class AssemblyNamedLocaleSource : LocaleSource
     }
 
     /// <inheritdoc />
-    protected override char FolderSeparator
-        => '.';
-
-    /// <inheritdoc />
     protected override bool NamesStartWithAssemblyName
         => true;
 

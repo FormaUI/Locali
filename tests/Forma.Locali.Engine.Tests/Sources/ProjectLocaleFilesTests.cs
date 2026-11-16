@@ -20,7 +20,7 @@ public sealed class ProjectLocaleFilesTests
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal("Scratch.Components.Explorer..locales.he.json", resolved.Name),
+            () => Assert.Equal("Scratch/Components/Explorer/.locales/he.json", resolved.Name),
             () => Assert.Equal(CultureInfo.GetCultureInfo("he"), resolved.Culture));
     }
 
@@ -36,7 +36,7 @@ public sealed class ProjectLocaleFilesTests
         var resolved = Assert.Single(ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!.Files);
 
         // Assert
-        Assert.Equal("Forma.Framework.Emojis..locales.he.json", resolved.Name);
+        Assert.Equal("Forma.Framework/Emojis/.locales/he.json", resolved.Name);
     }
 
     [Theory]
@@ -53,7 +53,7 @@ public sealed class ProjectLocaleFilesTests
         var resolved = Assert.Single(Resolve(directory, Compile("namespace Scratch;"), file).Files);
 
         // Assert
-        Assert.Equal($"Scratch.{folder}..locales.he.json", resolved.Name);
+        Assert.Equal($"Scratch/{folder}/.locales/he.json", resolved.Name);
     }
 
     [Fact]
@@ -110,9 +110,9 @@ public sealed class ProjectLocaleFilesTests
         var uploadsFile = directory.Write(Path.Combine("Uploads", ".strings", "he.json"), LocalizationFileFakeData.Valid);
         var resourceNames = new Dictionary<string, string>
         {
-            [Path.GetFullPath(config)] = "Contoso.Library..locale.json",
-            [Path.GetFullPath(rootFile)] = "Contoso.Library..strings.he.json",
-            [Path.GetFullPath(uploadsFile)] = "Contoso.Library.Uploads..strings.he.json",
+            [Path.GetFullPath(config)] = "Contoso.Library/.locale.json",
+            [Path.GetFullPath(rootFile)] = "Contoso.Library/.strings/he.json",
+            [Path.GetFullPath(uploadsFile)] = "Contoso.Library/Uploads/.strings/he.json",
         };
         var project = new LoadedProject(Path.Combine(directory.Root, "Contoso.Library.csproj"), CompilationTestFactory.Building("Contoso.Library"), false, false, EmbeddedResourceNames: resourceNames);
 
@@ -121,7 +121,7 @@ public sealed class ProjectLocaleFilesTests
 
         // Assert
         Assert.Equal(
-            [("Contoso.Library..strings.he.json", "he"), ("Contoso.Library.Uploads..strings.he.json", "he")],
+            [("Contoso.Library/.strings/he.json", "he"), ("Contoso.Library/Uploads/.strings/he.json", "he")],
             resolved.Files.Select(file => (file.Name, file.Culture.Name)));
     }
 
@@ -138,7 +138,7 @@ public sealed class ProjectLocaleFilesTests
 
         // Assert
         Assert.Multiple(
-            () => Assert.Equal("Scratch.Uploads..i18n.strings.he.json", resolved.Name),
+            () => Assert.Equal("Scratch/Uploads/.i18n/strings/he.json", resolved.Name),
             () => Assert.Equal(CultureInfo.GetCultureInfo("he"), resolved.Culture));
     }
 
@@ -239,7 +239,7 @@ public sealed class ProjectLocaleFilesTests
         // Arrange — the build embeds every locale file alike, and the assembly's own source reads each.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine(".locales", "Forma.Blazor", "he.json"), LocalizationFileFakeData.Valid);
-        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Scratch..locales.Forma.Blazor.he.json" };
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Scratch/.locales/Forma.Blazor/he.json" };
         var project = new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), Compile("namespace Scratch;"), false, false, EmbeddedResourceNames: resourceNames);
 
         // Act
@@ -357,7 +357,7 @@ public sealed class ProjectLocaleFilesTests
         // Arrange — the runtime counts the pack's anchors from the root namespace the project's own config declares, not from the assembly's name.
         using var directory = new TempDirectory();
         var config = directory.Write(Path.Combine("Widgets", ".locale.json"), """{ "rootNamespace": "Contoso.Components.Widgets" }""");
-        var target = Target(directory, CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Components.Widgets.Bars; public sealed class Widget;"), new Dictionary<string, string> { [Path.GetFullPath(config)] = "Contoso.Widgets..locale.json" });
+        var target = Target(directory, CompilationTestFactory.Building("Contoso.Widgets", "namespace Contoso.Components.Widgets.Bars; public sealed class Widget;"), new Dictionary<string, string> { [Path.GetFullPath(config)] = "Contoso.Widgets/.locale.json" });
         var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
         var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
 
@@ -376,7 +376,7 @@ public sealed class ProjectLocaleFilesTests
         // Arrange — the runtime reads every pack's names without .locales, whatever the project it localizes names for its own.
         using var directory = new TempDirectory();
         var config = directory.Write(Path.Combine("Widgets", ".locale.json"), """{ "localesDir": ".strings" }""");
-        var target = Target(directory, Compile("namespace Contoso.Widgets.Bars; public sealed class Widget;"), new Dictionary<string, string> { [Path.GetFullPath(config)] = "Contoso.Widgets..locale.json" });
+        var target = Target(directory, Compile("namespace Contoso.Widgets.Bars; public sealed class Widget;"), new Dictionary<string, string> { [Path.GetFullPath(config)] = "Contoso.Widgets/.locale.json" });
         var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", ".locales", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
         var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
 
@@ -393,7 +393,7 @@ public sealed class ProjectLocaleFilesTests
         // Arrange — the runtime reads an assembly's embedded files first, then each pack, so a pack's entry overrides the assembly's own.
         using var directory = new TempDirectory();
         var own = directory.Write(Path.Combine("Widgets", "Bars", ".locales", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "היום"));
-        var target = Target(directory, Compile("namespace Contoso.Widgets.Bars; public sealed class Widget;"), new Dictionary<string, string> { [Path.GetFullPath(own)] = "Contoso.Widgets.Bars..locales.he.json" });
+        var target = Target(directory, Compile("namespace Contoso.Widgets.Bars; public sealed class Widget;"), new Dictionary<string, string> { [Path.GetFullPath(own)] = "Contoso.Widgets/Bars/.locales/he.json" });
         var packFile = directory.Write(Path.Combine(LocalePackTestFactory.Folder, "Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.WithSection("Widget", "Today", "מחר"));
         var pack = LocalePackTestFactory.Resolve(directory, target, packFile);
 
@@ -429,7 +429,7 @@ public sealed class ProjectLocaleFilesTests
         // Arrange — a pack embeds its files for the assemblies its folders are named for, and declares no type to read them.
         using var directory = new TempDirectory();
         var file = directory.Write(Path.Combine("Contoso.Widgets", "Bars", "he.json"), LocalizationFileFakeData.Valid);
-        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgets.Bars.he.json" };
+        var resourceNames = new Dictionary<string, string> { [Path.GetFullPath(file)] = "Contoso.Widgets/Bars/he.json" };
         var project = new LoadedProject(Path.Combine(directory.Root, "Contoso.Widgets.Locales.Hebrew.csproj"), Compile(string.Empty), false, false, EmbeddedResourceNames: resourceNames, IsLocalePack: true);
 
         // Act
