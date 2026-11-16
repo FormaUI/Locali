@@ -918,16 +918,9 @@ internal sealed class FlowEvaluator(FlowRun run, ConcurrentDictionary<(SymbolKey
 
         if (method.ContainingType.TypeKind == TypeKind.Interface)
         {
-            var key = SymbolKey.Of(method);
-            foreach (var implemented in receiverType.AllInterfaces.SelectMany(face => face.GetMembers(method.Name)).OfType<IMethodSymbol>())
-            {
-                if (SymbolKey.Of(implemented).Equals(key) && receiverType.FindImplementationForInterfaceMember(implemented) is IMethodSymbol implementation)
-                {
-                    return (implementation, receiver);
-                }
-            }
+            var implementation = MostDerived(receiverType, method);
 
-            return null;
+            return ReferenceEquals(implementation, method) ? null : (implementation, receiver);
         }
 
         return method.IsVirtual || method.IsOverride || method.IsAbstract ? (MostDerived(receiverType, method), receiver) : (method, receiver);
@@ -949,6 +942,21 @@ internal sealed class FlowEvaluator(FlowRun run, ConcurrentDictionary<(SymbolKey
         where T : class, ISymbol
     {
         var key = SymbolKey.Of(member);
+
+        // An interface's member runs as the receiver's type implements it, matched by key, since the two may come from different compilations.
+        if (member.ContainingType?.TypeKind == TypeKind.Interface)
+        {
+            foreach (var implemented in receiverType.AllInterfaces.SelectMany(face => face.GetMembers(member.Name)).OfType<T>())
+            {
+                if (SymbolKey.Of(implemented).Equals(key) && receiverType.FindImplementationForInterfaceMember(implemented) is T implementation)
+                {
+                    return implementation;
+                }
+            }
+
+            return member;
+        }
+
         foreach (var candidate in AllMembers(receiverType, member.Name).OfType<T>())
         {
             for (ISymbol? overridden = candidate; overridden is not null; overridden = Overridden(overridden))

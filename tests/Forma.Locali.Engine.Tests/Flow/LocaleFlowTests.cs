@@ -630,6 +630,33 @@ public sealed class LocaleFlowTests
     }
 
     [Fact]
+    public void Should_read_a_property_through_the_interface_an_object_implements()
+    {
+        // Act — the context is typed by its interface, as a component's is, and the object behind it is the one created.
+        var site = Single(Resolve("""
+            public interface IContext
+            {
+                IStringLocale Locale { get; }
+            }
+
+            public sealed class Context(IStringLocale locale) : IContext
+            {
+                public IStringLocale Locale => locale;
+            }
+
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private IContext Context => new Context(locale);
+
+                public string Show() => Context.Locale["Today"].Value;
+            }
+            """), "Today");
+
+        // Assert
+        Assert.Equal("Page", Assert.Single(site.Origins).Type.Name);
+    }
+
+    [Fact]
     public void Should_name_no_type_through_a_service_two_implementations_are_registered_for()
     {
         // Act — a host replacing the default leaves the implementation that runs unknown.
