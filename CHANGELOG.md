@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.18`
 
-*Unreleased*
+*November 16, 2026*
 
 - LOC0119 and LOC0207 read an application's types from its files named for its own assembly too, as
   `Forma.Framework.Localization` reads them, rather than from its other files and its packs alone, so a key or a
