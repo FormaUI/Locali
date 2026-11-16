@@ -11,6 +11,9 @@ public sealed record LintingResult(
     IReadOnlyList<SuppressedRule> Suppressed,
     int IgnoredCount)
 {
+    /// <summary>How far the run checked the lookups writing their keys in the files it linted.</summary>
+    public LookupCoverage Coverage { get; init; } = LookupCoverage.None;
+
     /// <summary>How many diagnostics in total were left out, whether by severity or by a file's own configuration.</summary>
     public int SuppressedCount
         => Suppressed.Sum(rule => rule.Count);

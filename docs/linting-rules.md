@@ -896,3 +896,28 @@ the getter; or, where the type is chosen at run time, accept the key unchecked.
 of it could be checked; the flow reaches the member's type without the hint; the lookup goes
 through the generic `IStringLocale<T>`, through a member no hint names, or through another
 instance than the one its code runs on, which LOC0207 leaves alone.
+
+### LOC0215 — A lookup reaches no type
+
+**Reports.** A lookup writing its key, in a project localized in at least one culture, from
+which no path reaches a type its locale is read for, naming where a path ended: `new
+JsonStringLocaleFactory().Create(typeof(Page))["Save"]` ends at a factory the code builds
+itself, whose files no rule can know.
+
+**Why it matters.** LOC0207 holds a key to the files of the types its lookup reads; a lookup
+reaching none has its key held to nothing, and a run reading clean would claim a check it never
+made. The JSON report counts every such lookup as unchecked, with the reason.
+
+**What fixes it.** Read the locale through `IStringLocale<T>` or the registered factory,
+injected or reached through `GetStringLocaleFactory()`; state what the code hides as a hint; or,
+where the type is chosen at run time, accept the key unchecked and name the file in
+`ignoreDiagnostics`.
+
+**Silent where.** The project is localized in no culture, by its own files or a pack, so no key
+of it could be checked; a path reaches a type, even where another ends, which the JSON report
+counts as partly checked; the type member a hint names tells no type, which LOC0214 reports; no
+path was followed from the lookup, as one found where the compilation does not bind the
+localizer contract, or in code no instance of the project runs; the key is an expression, which
+LOC0208 reports; or the lookup goes through Microsoft's `IStringLocalizer` where the run does
+not have Forma's adapter answer it.
+

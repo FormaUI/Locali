@@ -60,7 +60,8 @@ public sealed class LintingService(
                 }
             }).ConfigureAwait(false);
 
-        foreach (var diagnostic in await LintProjectsAsync(target, cancellationToken).ConfigureAwait(false))
+        var (projectDiagnostics, coverage) = await LintProjectsAsync(target, cancellationToken).ConfigureAwait(false);
+        foreach (var diagnostic in projectDiagnostics)
         {
             diagnostics.Add(diagnostic);
         }
@@ -121,14 +122,14 @@ public sealed class LintingService(
                 .OrderBy(rule => rule.Code.Id, StringComparer.Ordinal),
         ];
 
-        return new LintingResult(reported, target.FileCount, suppressed, leftOut.Count(IsIgnored));
+        return new LintingResult(reported, target.FileCount, suppressed, leftOut.Count(IsIgnored)) { Coverage = coverage };
     }
 
-    private async ValueTask<IReadOnlyList<LintingDiagnostic>> LintProjectsAsync(LintingTarget target, CancellationToken cancellationToken)
+    private async ValueTask<(IReadOnlyList<LintingDiagnostic> Diagnostics, LookupCoverage Coverage)> LintProjectsAsync(LintingTarget target, CancellationToken cancellationToken)
     {
         if (target.Projects.Count == 0)
         {
-            return [];
+            return ([], LookupCoverage.None);
         }
 
         // A project compiles whole because binding needs it, but only the named files are reported on.
@@ -155,17 +156,80 @@ public sealed class LintingService(
         // A type's entries are read from its own assembly's project, so every project's files are resolved before any rule reads them.
         var localizations = RunLocalizations.Resolve(_localeFormat.RuntimeFormat, projects.All, target.LocalizationFilesOf, packs, builtAssemblies);
 
+        var resolved = new List<LocalizerLookup>();
         foreach (var (project, sources) in linted)
         {
+            var callsites = flow.Resolve(project, sources.Callsites);
+            resolved.AddRange(callsites);
             diagnostics.AddRange(sources.Diagnostics);
-            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), flow.Resolve(project, sources.Callsites), packs, localizations));
+            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), callsites, packs, localizations));
         }
 
         diagnostics.AddRange(hints.Diagnostics);
         diagnostics.AddRange(flow.GetDiagnostics());
 
-        return diagnostics;
+        return (diagnostics, Coverage(resolved, localizations));
     }
+
+    // A lookup is checked against each certain type whose entries the run reads, from the project building the type's assembly;
+    // what kept it short of that is named for the path that ended, or for the alternatives or the entries it could not use.
+    private static LookupCoverage Coverage(List<LocalizerLookup> lookups, RunLocalizations localizations)
+    {
+        int fullyChecked = 0, partiallyChecked = 0, notChecked = 0, byAnalysis = 0, byVerifiedHint = 0, byHint = 0;
+        var reasons = new SortedDictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (var lookup in lookups)
+        {
+            var certain = lookup.Origins.Where(origin => !origin.IsApproximate).ToArray();
+            var read = certain.Where(origin => origin.Type.ContainingAssembly?.Name is { Length: > 0 } name && localizations.ForAssembly(name) is not null).ToArray();
+
+            var shortfalls = new SortedSet<string>(lookup.Gaps.Select(gap => Camel(gap.Kind.ToString())), StringComparer.Ordinal);
+            if (certain.Length < lookup.Origins.Count)
+            {
+                shortfalls.Add("approximate");
+            }
+
+            if (read.Length < certain.Length)
+            {
+                shortfalls.Add("unavailableEntries");
+            }
+
+            // A lookup found without a bound compilation, or in code no instance runs, was never followed to a type.
+            if (read.Length == 0 && shortfalls.Count == 0)
+            {
+                shortfalls.Add("notFollowed");
+            }
+
+            foreach (var reason in shortfalls)
+            {
+                reasons[reason] = reasons.GetValueOrDefault(reason) + 1;
+            }
+
+            if (read.Length == 0)
+            {
+                notChecked++;
+                continue;
+            }
+
+            if (shortfalls.Count == 0)
+            {
+                fullyChecked++;
+            }
+            else
+            {
+                partiallyChecked++;
+            }
+
+            byAnalysis += read.Any(origin => origin.Evidence == LocaleEvidence.Analysis) ? 1 : 0;
+            byVerifiedHint += read.Any(origin => origin.Evidence == LocaleEvidence.VerifiedHint) ? 1 : 0;
+            byHint += read.Any(origin => origin.Evidence == LocaleEvidence.Hint) ? 1 : 0;
+        }
+
+        return new LookupCoverage(lookups.Count, fullyChecked, partiallyChecked, notChecked, new LookupEvidence(byAnalysis, byVerifiedHint, byHint), reasons);
+    }
+
+    private static string Camel(string name)
+        => string.Concat(char.ToLowerInvariant(name[0]).ToString(), name[1..]);
 
     private static string[] ProjectFolders(IReadOnlyList<LoadedProject> projects)
         => [.. projects.Select(project => Path.GetDirectoryName(Path.GetFullPath(project.Path))!).Distinct(StringComparer.OrdinalIgnoreCase)];

@@ -62,6 +62,29 @@ public sealed class JsonDiagnosticReporterTests
     }
 
     [Fact]
+    public async Task Should_write_how_far_the_run_checked_its_lookups()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var report = Path.Combine(directory.Root, "report.json");
+        var coverage = new LookupCoverage(3, 1, 1, 1, new LookupEvidence(1, 0, 1), new Dictionary<string, int> { ["customFactory"] = 1, ["externalCallers"] = 1 });
+
+        // Act
+        await new JsonDiagnosticReporter(report).ReportAsync(
+            new LintingResult([], 2, [], 0) { Coverage = coverage },
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        var text = await File.ReadAllTextAsync(report, TestContext.Current.CancellationToken);
+        var written = LintReportTestReader.Read(text);
+        Assert.Multiple(
+            () => Assert.Equal((3, 1, 1, 1), (written.Coverage.Lookups, written.Coverage.FullyChecked, written.Coverage.PartiallyChecked, written.Coverage.Unchecked)),
+            () => Assert.Equal(new LookupEvidence(1, 0, 1), written.Coverage.Evidence),
+            () => Assert.Equal(1, written.Coverage.Reasons["customFactory"]),
+            () => Assert.Contains("\"verifiedHint\": 0", text, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Should_create_the_directory_the_report_goes_into()
     {
         // Arrange

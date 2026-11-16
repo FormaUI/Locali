@@ -636,6 +636,47 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
+    public async Task Should_count_how_far_the_run_checked_its_lookups()
+    {
+        // Arrange — one lookup reads its type's own files, and another a locale a factory the code builds makes.
+        using var directory = new TempDirectory();
+        var project = directory.Write(Path.Combine("Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var source = directory.Write(Path.Combine("Widgets", "Widget.cs"), """
+            using System;
+
+            using Forma.Framework.Localization;
+
+            namespace Scratch;
+
+            internal sealed class Factory : IStringLocaleFactory
+            {
+                public IStringLocale Create(Type resourceSource) => throw new NotSupportedException();
+
+                public IStringLocale Create(string baseName, string location) => throw new NotSupportedException();
+            }
+
+            public sealed class Widget(IStringLocale<Widget> locale)
+            {
+                public string Show() => locale["Today"].Value;
+
+                public string Other() => new Factory().Create(typeof(Widget))["Tomorrow"].Value;
+            }
+            """);
+        directory.Write(Path.Combine("Widgets", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.ReferencedFiles("Scratch", source), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var coverage = result.Coverage;
+        Assert.Multiple(
+            () => Assert.Equal((2, 1, 0, 1), (coverage.Lookups, coverage.FullyChecked, coverage.PartiallyChecked, coverage.Unchecked)),
+            () => Assert.Equal(new LookupEvidence(1, 0, 0), coverage.Evidence),
+            () => Assert.Equal(new Dictionary<string, int> { ["customFactory"] = 1 }, coverage.Reasons));
+    }
+
+    [Fact]
     public async Task Should_report_a_key_left_out_of_the_files_of_the_assembly_declaring_the_type()
     {
         // Arrange — the lookup sits in one project and reads a type the other declares, whose files the runtime reads.

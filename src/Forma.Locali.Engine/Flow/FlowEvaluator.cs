@@ -1237,8 +1237,13 @@ internal sealed class FlowEvaluator(
         }
     }
 
+    // Code as written, on one line and cut short where it runs long, so a message can quote it.
     private static string Describe(IOperation operation)
-        => operation.Syntax.ToString() is { Length: <= 60 } text ? text : operation.Kind.ToString();
+    {
+        var text = string.Join(' ', operation.Syntax.ToString().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+        return text.Length <= 60 ? text : string.Concat(text.AsSpan(0, 57).TrimEnd(), "...");
+    }
 
     private static string Name(ISymbol symbol)
         => symbol is IMethodSymbol { AssociatedSymbol: { } associated }

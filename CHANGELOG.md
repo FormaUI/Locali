@@ -27,6 +27,10 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 - LOC0207 holds a lookup through Microsoft's `IStringLocalizer<T>` with a literal key to `T`'s entries where the run has
   Forma's adapter answer it, registering `AddFormaStringLocalizerAdapter` ahead of any of Microsoft's localization; no
   other rule reads such a lookup, since the localizer fills a composite key with `string.Format`.
+- LOC0215 reports, as a warning, a lookup writing its key in a localized project from which no path reaches a type its
+  locale is read for, naming where a path ended.
+- The JSON report carries a `coverage` object: how many lookups writing their keys were fully, partly or not checked,
+  what established the types they were held to, and why the rest went unchecked.
 - LOC0028 reports a hint naming a type, a member or a package that is not there or not of the kind the hint reads, and
   LOC0029 two hints relating one member to different type members, or a hint the flow contradicts.
 - Breaking: `[LocaleSource]` is no longer read; a hint states the relationship it carried, and LOC0214 reports a hinted

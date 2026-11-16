@@ -58,6 +58,7 @@ public static class LintingCodes
             ReservedShapedLookup,
             ReformattedLookup,
             UnreadLocaleSource,
+            UnresolvedLocale,
         ];
 
     /// <summary>The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define.</summary>
@@ -353,4 +354,10 @@ public static class LintingCodes
         "LOC0214",
         LintingSeverity.Warning,
         "A lookup goes through a member a hint relates to a type member whose getter tells no type that could be read, so its key went unchecked.");
+
+    /// <summary>A lookup writing its key in a localized project reaches no type its locale is read for.</summary>
+    public static LintingCode UnresolvedLocale { get; } = new(
+        "LOC0215",
+        LintingSeverity.Warning,
+        "A lookup writes its key in a localized project, but no path from it reaches the type its locale is read for, so whether a culture answers the key went unchecked.");
 }

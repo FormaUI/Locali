@@ -164,8 +164,16 @@ some or all of what is left out, it says so instead.
 
 `--report` writes a JSON report carrying `fileCount`, `diagnosticCount`, `suppressedCount`,
 `ignoredCount` — how many of the suppressed diagnostics the linting configuration left out
-rather than the severity — and a `diagnostics` array of `path`, `line`, `column`, `severity`,
-`code`, `message`.
+rather than the severity — a `diagnostics` array of `path`, `line`, `column`, `severity`,
+`code`, `message`, and a `coverage` object for the lookups writing their keys in the files the
+run linted: `lookups`; `fullyChecked`, `partiallyChecked` and `unchecked`, as each was held to
+every type it reads with entries the run could read, to some, or to none; `evidence`, how many
+checked lookups rest on the flow alone (`analysis`), on a hint the flow confirmed
+(`verifiedHint`), or on a hint alone (`hint`); and `reasons`, how many lookups each reason left
+short of fully checked: the kind of place a path ended, as `customFactory` or `externalCallers`,
+`approximate` alternatives, `unavailableEntries` for a type whose assembly no project of the run
+builds, or `notFollowed` for a lookup found without a bound compilation, or in code no instance
+runs.
 
 ## How Callsites Are Found
 
@@ -281,6 +289,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0212 | Error | A lookup writes a key shaped like a reserved entry |
 | LOC0213 | Error | A lookup supplies `string.Format`'s format text |
 | LOC0214 | Warning | A lookup's type through a hinted member could not be read |
+| LOC0215 | Warning | A lookup writing its key in a localized project reaches no type its locale is read for |
 
 ## Contributing
 
@@ -294,7 +303,7 @@ root namespace `Forma.Locali`, so a folder's namespace is the same in either pro
 |---------|--------|-------|
 | Engine | `Cli/` | Target resolution, the options a run takes, the shared glob matcher |
 | Engine | `Configuration/` | Reading `.locali.json` into the linting configuration a run applies, with the hints it states and imports, and `.locale.json` for the runtime's rule |
-| Engine | `Diagnostics/` | `LintingCode`, the `LintingCodes` catalogue, `LintingDiagnostic` |
+| Engine | `Diagnostics/` | `LintingCode`, the `LintingCodes` catalogue, `LintingDiagnostic`, and what a run found and how far it checked its lookups |
 | Engine | `Documents/` | The locale format, `ILocaleFormat`, and its JSON implementation, which reads a locale file into ordered entries with offsets |
 | Engine | `Linting/` | The services that drive file and schema linting |
 | Engine | `Projects/` | MSBuild loading |

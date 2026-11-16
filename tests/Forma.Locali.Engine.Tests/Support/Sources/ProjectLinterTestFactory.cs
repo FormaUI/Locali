@@ -19,6 +19,7 @@ public static class ProjectLinterTestFactory
             new UnreachableLocalizationChecker(),
             new LocalizationCoverageChecker(),
             new UnreadLocaleSourceChecker(),
+            new UnresolvedLocaleChecker(),
             new TypeNamedFolderChecker(),
             new CultureCoverageChecker(),
             new EntryConflictChecker(),

@@ -36,7 +36,8 @@ public sealed class JsonDiagnosticReporter(string path) : IDiagnosticReporter
             result.Diagnostics.Count,
             result.SuppressedCount,
             result.IgnoredCount,
-            [.. result.Diagnostics.Select(LintReportEntry.From)]);
+            [.. result.Diagnostics.Select(LintReportEntry.From)],
+            result.Coverage);
 
         var stream = File.Create(_path);
         await using (stream.ConfigureAwait(false))
