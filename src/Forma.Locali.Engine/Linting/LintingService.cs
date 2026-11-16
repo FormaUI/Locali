@@ -151,10 +151,13 @@ public sealed class LintingService(
         // One no project of the run builds is read in the compiled code of the assembly the project runs.
         Compilation[] compilations = [.. projects.All.OrderBy(project => project.Path, StringComparer.Ordinal).Select(project => project.Compilation).OfType<Compilation>()];
 
+        // A type's entries are read from its own assembly's project, so every project's files are resolved before any rule reads them.
+        var localizations = RunLocalizations.Resolve(_localeFormat.RuntimeFormat, projects.All, target.LocalizationFilesOf, packs, builtAssemblies);
+
         foreach (var (project, sources) in linted)
         {
             diagnostics.AddRange(sources.Diagnostics);
-            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), LocaleSourceTypes.ReadUnread(project, sources.Callsites, compilations), packs, builtAssemblies));
+            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), LocaleSourceTypes.ReadUnread(project, sources.Callsites, compilations), packs, localizations));
         }
 
         return diagnostics;

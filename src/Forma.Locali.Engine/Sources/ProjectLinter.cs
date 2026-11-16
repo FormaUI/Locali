@@ -2,33 +2,31 @@ namespace Forma.Locali.Sources;
 
 using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
-using Forma.Locali.Documents;
 using Forma.Locali.Projects;
 using Forma.Locali.Rules;
 
-/// <summary>Resolves a project's locale files once, then lets every project rule read them.</summary>
+/// <summary>Lets every project rule read a project's locale files, resolved once for the whole run.</summary>
 /// <param name="checkers">The rules to run over each project.</param>
-/// <param name="localeFormat">Reads the project's locale files as the runtime reads them.</param>
-public sealed class ProjectLinter(IEnumerable<IProjectRuleChecker> checkers, ILocaleFormat localeFormat) : IProjectLinter
+public sealed class ProjectLinter(IEnumerable<IProjectRuleChecker> checkers) : IProjectLinter
 {
     private readonly IEnumerable<IProjectRuleChecker> _checkers = checkers ?? throw new ArgumentNullException(nameof(checkers));
-    private readonly ILocaleFormat _localeFormat = localeFormat ?? throw new ArgumentNullException(nameof(localeFormat));
 
     /// <inheritdoc />
-    public IReadOnlyList<LintingDiagnostic> Lint(LoadedProject project, IReadOnlyList<string> localizationFiles, IReadOnlyList<LocalizerLookup> callsites, IReadOnlyList<LocalePack> packs, IReadOnlyList<BuiltAssembly> builtAssemblies)
+    public IReadOnlyList<LintingDiagnostic> Lint(LoadedProject project, IReadOnlyList<string> localizationFiles, IReadOnlyList<LocalizerLookup> callsites, IReadOnlyList<LocalePack> packs, RunLocalizations run)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
         ArgumentNullException.ThrowIfNull(callsites);
         ArgumentNullException.ThrowIfNull(packs);
-        ArgumentNullException.ThrowIfNull(builtAssemblies);
+        ArgumentNullException.ThrowIfNull(run);
 
         var context = new ProjectContext(
             project,
             localizationFiles,
-            ProjectLocaleFiles.Resolve(_localeFormat.RuntimeFormat, project, localizationFiles, packs, builtAssemblies),
+            run.ForProject(project),
             callsites,
-            packs.FirstOrDefault(pack => pack.Project == project));
+            packs.FirstOrDefault(pack => pack.Project == project),
+            run);
 
         var refusal = default(LocaleConfigException);
 

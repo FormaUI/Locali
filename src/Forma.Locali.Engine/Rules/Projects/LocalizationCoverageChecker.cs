@@ -28,25 +28,35 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
         }
 
         // A key written at several sites is reported once per culture it is missing from, at the first site.
-        var seen = new HashSet<(string Key, string TypeName, string CultureName)>();
+        var seen = new HashSet<(string Key, string AssemblyName, string TypeName, string CultureName)>();
 
         foreach (var site in Ordered(context.Callsites))
         {
             // The runtime matches the key behind its escape, and so do the entries it read from the file.
             var key = LocalizationSchema.Unescape(site.Key.Text);
 
-            foreach (var typeName in site.ResourceTypes.Select(ResourceTypeNames.GetName))
+            foreach (var resource in site.ResourceTypes)
             {
-                foreach (var culture in localization.Cultures)
+                // A type's entries are its own assembly's, and a type no project of the run builds has none the run can read.
+                if (context.GetOwnerLocalization(resource) is not { } owner)
+                {
+                    continue;
+                }
+
+                var typeName = ResourceTypeNames.GetName(resource);
+
+                foreach (var culture in owner.Cultures)
                 {
                     // A type with no entries in a culture is unlocalized there rather than under-localized.
-                    var entries = localization.Read(typeName, culture);
-                    if (entries.Count == 0 || IsAnswered(localization, typeName, culture, key) || !seen.Add((key, typeName, culture.Name)))
+                    var entries = owner.Read(typeName, culture);
+                    if (entries.Count == 0
+                        || IsAnswered(owner, localization, typeName, culture, key)
+                        || !seen.Add((key, owner.AssemblyName, typeName, culture.Name)))
                     {
                         continue;
                     }
 
-                    var filePath = localization.GetFile(entries[^1].FileName) is { } file
+                    var filePath = owner.GetFile(entries[^1].FileName) is { } file
                         ? FormatFilePath(site.Key.Location.Path, file.Path)
                         : entries[^1].FileName;
 
@@ -65,12 +75,14 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
             ? Path.GetRelativePath(callsiteFolder, filePath)
             : filePath;
 
-    // The runtime walks the culture up to its parents, so a regional file need only carry what differs.
-    private static bool IsAnswered(ProjectLocalization localization, string typeName, CultureInfo culture, string key)
+    // The runtime walks the culture up to its parents, so a regional file need only carry what differs, and an application lays its
+    // own files for another assembly's type over that assembly's.
+    private static bool IsAnswered(ProjectLocalization owner, ProjectLocalization lookupProject, string typeName, CultureInfo culture, string key)
     {
         for (var candidate = culture; candidate.Name.Length != 0; candidate = candidate.Parent)
         {
-            if (localization.Read(typeName, candidate).Any(entry => entry.Key == key))
+            if (owner.Read(typeName, candidate).Any(entry => entry.Key == key)
+                || (lookupProject != owner && lookupProject.ReadApplication(owner.AssemblyName, typeName, candidate).Any(entry => entry.Key == key)))
             {
                 return true;
             }

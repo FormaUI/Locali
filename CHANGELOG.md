@@ -3,6 +3,15 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.20`
+
+*Unreleased*
+
+- LOC0207 reads a type's entries and cultures from the assembly declaring it, as `Forma.Framework.Localization` reads
+  them, rather than from the project holding the lookup, so a lookup reading a type of another project of the run is
+  held to that project's files, a type sharing its full name with one of another assembly is held to its own, and a
+  type no project of the run builds is left alone. An application's own files for that assembly still answer.
+
 ## `1.0.0-preview.19`
 
 *November 16, 2026*

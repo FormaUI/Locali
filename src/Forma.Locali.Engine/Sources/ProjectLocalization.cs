@@ -352,6 +352,19 @@ public sealed class ProjectLocalization
         }
     }
 
+    /// <summary>What an application's files give a type of another assembly in one culture, as the runtime lays them over that assembly's own; none for a library.</summary>
+    /// <param name="assemblyName">The name of the assembly declaring the type.</param>
+    /// <param name="typeName">The type's name, as the runtime resolves it.</param>
+    /// <param name="culture">The culture.</param>
+    public IReadOnlyList<LocaleSourceEntry> ReadApplication(string assemblyName, string typeName, CultureInfo culture)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(assemblyName);
+        ArgumentException.ThrowIfNullOrEmpty(typeName);
+        ArgumentNullException.ThrowIfNull(culture);
+
+        return _applicationSource.Value?.Read(assemblyName, typeName, culture.Name) ?? [];
+    }
+
     /// <summary>What the runtime reads for a type in one culture, anchor by anchor from the root down to the type, from the embedded files, then from each pack in turn, then from an application's files named for its own assembly.</summary>
     /// <param name="typeName">The type's name, as the runtime resolves it.</param>
     /// <param name="culture">The culture.</param>

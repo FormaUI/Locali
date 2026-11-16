@@ -72,19 +72,20 @@ name, the culture before it or after it, which its build embeds as it does every
 ```
 
 The rules that read a type's files, LOC0112 and LOC0207 among them, read a project's own
-embedded files, whatever folder they sit in. An application's file whose name starts with an
-assembly's name localizes that assembly's types, so LOC0112 and LOC0120 hold it to that
-assembly's types where a project of the run builds it, LOC0119 and LOC0207 read it for the
-application's own types where that assembly is the application's own, and a host's file, one the
-project copies beside the application rather than embeds, is read by the file rules alone. A
-locale pack, a project declaring `IsLocalePack`, is an application's files for other assemblies
-shipped as an assembly: each file's name starts with the name of the assembly it localizes, the
-culture before it or after it, and goes on from the root namespace that assembly declares. The
-type-bound rules read a pack's file for the project building the longest assembly name it starts
-with, so it is held to that project's types and callsites as its own files are, LOC0120 reads
-each pack as a source of its own, and LOC0024 reports a file whose name starts with no assembly
-the solution builds or references. `Forma.Framework.Localization`'s README walks the whole
-layout; this document covers the linter.
+embedded files, whatever folder they sit in, and LOC0207 reads a type of another project of the
+run in that project's files. An application's file whose name starts with an assembly's name
+localizes that assembly's types, so LOC0112 and LOC0120 hold it to that assembly's types where a
+project of the run builds it, LOC0119 and LOC0207 read it for the application's own types where
+that assembly is the application's own, and a host's file, one the project copies beside the
+application rather than embeds, is read by the file rules alone. A locale pack, a project
+declaring `IsLocalePack`, is an application's files for other assemblies shipped as an assembly:
+each file's name starts with the name of the assembly it localizes, the culture before it or
+after it, and goes on from the root namespace that assembly declares. The type-bound rules read
+a pack's file for the project building the longest assembly name it starts with, so it is held
+to that project's types and callsites as its own files are, LOC0120 reads each pack as a source
+of its own, and LOC0024 reports a file whose name starts with no assembly the solution builds or
+references. `Forma.Framework.Localization`'s README walks the whole layout; this document covers
+the linter.
 
 ## Options
 

@@ -50,6 +50,8 @@ public static class ProjectLinterTestFactory
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(localizationFiles);
 
-        return new ProjectLinter([checker], LocaleFormatTestFactory.Json).Lint(project, localizationFiles, callsites ?? [], packs ?? [], builtAssemblies ?? []);
+        var run = RunLocalizations.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, [project], _ => localizationFiles, packs ?? [], builtAssemblies ?? []);
+
+        return new ProjectLinter([checker]).Lint(project, localizationFiles, callsites ?? [], packs ?? [], run);
     }
 }

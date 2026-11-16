@@ -670,10 +670,12 @@ build gate.
 
 ### LOC0207 — A key is not answered in a culture its type is localized in
 
-**Reports.** A key written at a callsite that a culture localizing its type leaves out, once
-per key per culture, at the first callsite writing it. The cultures localizing a type are read
-from the project's own files, an application's files named for its own assembly among them, and
-from every locale pack's files for it alike.
+**Reports.** A key written at a callsite that a culture localizing its type leaves out, once per
+key per culture, at the first callsite writing it. A type's entries and cultures are read from
+the assembly declaring it, as the runtime reads them: the files of the project of the run that
+builds that assembly, an application's files named for its own assembly among them, and every
+locale pack's files for it, with the files the lookup's own application writes for that assembly
+laid over them.
 
 A lookup's type is the one `IStringLocale<T>` or a `[LocaleKey]` method's one type argument
 names, or, for a lookup through a member carrying `[LocaleSource]` on the instance its code
@@ -697,9 +699,10 @@ JSON `null`: `"Email": null`. A null entry is *found* — `ResourceNotFound` is 
 genuinely missing cannot use it, and the warning is the honest answer there.
 
 **Silent where.** The type has no entries at all, since it is unlocalized rather than
-under-localized; the lookup is through the unbound `IStringLocale` other than through a member
-carrying `[LocaleSource]` on the instance its code runs on, or is a call through `[LocaleKey]`
-to a method without exactly one type argument; the property `[LocaleSource]` names, as a type of
+under-localized; no project of the run builds the type's assembly, so none of its entries can be
+read; the lookup is through the unbound `IStringLocale` other than through a member carrying
+`[LocaleSource]` on the instance its code runs on, or is a call through `[LocaleKey]` to a
+method without exactly one type argument; the property `[LocaleSource]` names, as a type of
 instance reads it, returns anything but `typeof` of a type or the instance's `GetType()`,
 returns more than once, or its getter is read neither in source nor in compiled code, which
 leaves that type of instance unread and LOC0214 reports; a type derived from the lookup's own

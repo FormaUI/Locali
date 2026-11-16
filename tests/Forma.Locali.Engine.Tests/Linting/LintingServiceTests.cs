@@ -2,6 +2,8 @@ namespace Forma.Locali.Tests.Linting;
 
 using Forma.Locali.Projects;
 
+using Microsoft.CodeAnalysis;
+
 public sealed class LintingServiceTests
 {
     [Fact]
@@ -543,5 +545,147 @@ public sealed class LintingServiceTests
             () => Assert.Equal(source, diagnostic.Path),
             () => Assert.Contains("'Tomorrow' has no entry", diagnostic.Message, StringComparison.Ordinal),
             () => Assert.Contains("'Scratch.Widget'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_report_a_key_left_out_of_the_files_of_the_assembly_declaring_the_type()
+    {
+        // Arrange — the lookup sits in one project and reads a type the other declares, whose files the runtime reads.
+        using var directory = new TempDirectory();
+        var (widgets, widgetsProject) = WidgetsProject(directory, LocalizationFileFakeData.Valid);
+        var appProject = directory.Write(Path.Combine("App", "Contoso.App.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var source = directory.Write(Path.Combine("App", "Page.cs"), """
+            using Forma.Framework.Localization;
+
+            namespace Contoso.App;
+
+            public sealed class Page
+            {
+                private IStringLocale<Contoso.Widgets.Widget> L { get; } = default!;
+
+                public void Show() => _ = L["Tomorrow"];
+            }
+            """);
+        var app = CompilationTestFactory.ReferencedFiles("Contoso.App", source).AddReferences(CompilationTestFactory.MetadataOf(widgets));
+        var loader = new StubProjectLoader(new LoadedProject(appProject, app, false, false), widgetsProject);
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MissingLocalization, diagnostic.Code),
+            () => Assert.Equal(source, diagnostic.Path),
+            () => Assert.Contains("'Contoso.Widgets.Widget' in 'he'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_read_a_type_in_its_own_assembly_rather_than_one_declaring_the_same_name()
+    {
+        // Arrange — the app declares a type of the same full name whose file answers the key; the lookup reads the other assembly's.
+        using var directory = new TempDirectory();
+        var (widgets, widgetsProject) = WidgetsProject(directory, LocalizationFileFakeData.Valid);
+        var appProject = directory.Write(Path.Combine("App", "Contoso.App.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("App", ".locales", "Contoso.Widgets.Widget.he.json"), LocalizationFileFakeData.WithSection("he", "Contoso.Widgets.Widget", "Tomorrow", "מחר"));
+        var source = directory.Write(Path.Combine("App", "Page.cs"), """
+            extern alias widgets;
+
+            using Forma.Framework.Localization;
+
+            namespace Contoso.Widgets
+            {
+                public sealed class Widget;
+            }
+
+            namespace Contoso.App
+            {
+                public sealed class Page
+                {
+                    private IStringLocale<widgets::Contoso.Widgets.Widget> L { get; } = default!;
+
+                    public void Show() => _ = L["Tomorrow"];
+                }
+            }
+            """);
+        var app = CompilationTestFactory.ReferencedFiles("Contoso.App", source).AddReferences(CompilationTestFactory.MetadataOf(widgets).WithAliases(["widgets"]));
+        var loader = new StubProjectLoader(new LoadedProject(appProject, app, false, false), widgetsProject);
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == LintingCodes.MissingLocalization && diagnostic.Path == source);
+    }
+
+    [Fact]
+    public async Task Should_leave_a_key_of_a_type_no_project_of_the_run_builds_alone()
+    {
+        // Arrange — the assembly declaring the type is read as metadata alone, so none of its entries can be read.
+        using var directory = new TempDirectory();
+        var (widgets, _) = WidgetsProject(directory, LocalizationFileFakeData.Valid);
+        var appProject = directory.Write(Path.Combine("App", "Contoso.App.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("App", ".locales", "Page.he.json"), LocalizationFileFakeData.Valid);
+        var source = directory.Write(Path.Combine("App", "Page.cs"), """
+            using Forma.Framework.Localization;
+
+            namespace Contoso.App;
+
+            public sealed class Page
+            {
+                private IStringLocale<Contoso.Widgets.Widget> L { get; } = default!;
+
+                public void Show() => _ = L["Tomorrow"];
+            }
+            """);
+        var app = CompilationTestFactory.ReferencedFiles("Contoso.App", source).AddReferences(CompilationTestFactory.MetadataOf(widgets));
+        var loader = new StubProjectLoader(new LoadedProject(appProject, app, false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == LintingCodes.MissingLocalization);
+    }
+
+    [Fact]
+    public async Task Should_leave_a_key_an_applications_file_for_the_declaring_assembly_answers_alone()
+    {
+        // Arrange — the runtime lays an application's files for another assembly over that assembly's own.
+        using var directory = new TempDirectory();
+        var (widgets, widgetsProject) = WidgetsProject(directory, LocalizationFileFakeData.Valid);
+        var appProject = directory.Write(Path.Combine("App", "Contoso.App.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("App", ".locales", "he", "Contoso.Widgets.json"), LocalizationFileFakeData.WithSection("he", "Widget", "Tomorrow", "מחר"));
+        var source = directory.Write(Path.Combine("App", "Program.cs"), """
+            using Forma.Framework.Localization;
+
+            namespace Contoso.App;
+
+            public static class Program
+            {
+                private static IStringLocale<Contoso.Widgets.Widget> L { get; } = default!;
+
+                public static void Main() => _ = L["Tomorrow"];
+            }
+            """);
+        var app = CompilationTestFactory.ReferencedFiles("Contoso.App", source).AddReferences(CompilationTestFactory.MetadataOf(widgets));
+        app = app.WithOptions(app.Options.WithOutputKind(OutputKind.ConsoleApplication));
+        var loader = new StubProjectLoader(new LoadedProject(appProject, app, false, false), widgetsProject);
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == LintingCodes.MissingLocalization);
+    }
+
+    // A library declaring Contoso.Widgets.Widget, with a Hebrew file for it, written under its own folder of the run.
+    private static (Compilation Compilation, LoadedProject Project) WidgetsProject(TempDirectory directory, string hebrew)
+    {
+        var path = directory.Write(Path.Combine("Widgets", "Contoso.Widgets.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("Widgets", ".locales", "Widget.he.json"), hebrew);
+        var compilation = CompilationTestFactory.Referenced("namespace Contoso.Widgets; public sealed class Widget;").WithAssemblyName("Contoso.Widgets");
+
+        return (compilation, new LoadedProject(path, compilation, false, false));
     }
 }
