@@ -42,6 +42,16 @@ public sealed class ProjectLocaleSource : LocaleSource
         return _files.GetValueOrDefault(name);
     }
 
+    /// <summary>Whether the source holds a config file for an assembly.</summary>
+    /// <param name="assemblyName">The assembly's name.</param>
+    /// <exception cref="LocaleConfigException">The source holds more than one config file.</exception>
+    public bool HasConfig(string assemblyName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(assemblyName);
+
+        return GetConfig(assemblyName) is not null;
+    }
+
     /// <inheritdoc />
     protected override IEnumerable<string> EnumerateNames()
         => _files.Keys.Concat(_configPaths.Keys);

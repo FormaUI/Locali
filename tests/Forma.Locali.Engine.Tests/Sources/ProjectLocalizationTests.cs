@@ -114,6 +114,72 @@ public sealed class ProjectLocalizationTests
     }
 
     [Fact]
+    public void Should_name_an_assembly_a_marked_applications_file_names_beneath_the_root_namespace_its_mark_records()
+    {
+        // Arrange — the build names the files under the root namespace Contoso.Web and records it on the mark, which the runtime begins the names at.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Forma.Framework.Localization", "he.json"), LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Referenced("""[assembly: Forma.Framework.Localization.LocaleApplicationAttribute("Contoso.Web")]""").WithAssemblyName("Contoso.Host");
+        var project = new LoadedProject(Path.Combine(directory.Root, "Contoso.Host.csproj"), compilation, false, false, RootNamespace: "Contoso.Web");
+        var localization = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!;
+
+        // Act
+        var named = localization.GetNamedAssemblies(Assert.Single(localization.Files));
+
+        // Assert
+        Assert.Equal(["Forma.Framework.Localization"], named);
+    }
+
+    [Fact]
+    public void Should_name_no_assembly_for_an_unmarked_applications_file_beneath_a_root_namespace_apart_from_its_name()
+    {
+        // Arrange — with no mark, the runtime begins an application's names at its name, Contoso.Host, which the build's name does not start with.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "Forma.Framework.Localization", "he.json"), LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Referenced("namespace Contoso.Web;").WithAssemblyName("Contoso.Host");
+        var project = new LoadedProject(
+            Path.Combine(directory.Root, "Contoso.Host.csproj"),
+            compilation.WithOptions(compilation.Options.WithOutputKind(OutputKind.ConsoleApplication)),
+            false,
+            false,
+            RootNamespace: "Contoso.Web");
+        var localization = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!;
+
+        // Act
+        var named = localization.GetNamedAssemblies(Assert.Single(localization.Files));
+
+        // Assert
+        Assert.Empty(named);
+    }
+
+    [Fact]
+    public void Should_name_an_assembly_a_marked_applications_file_names_beneath_where_its_config_puts_its_names()
+    {
+        // Arrange — the config's rootDir begins the names at Contoso.Web/Strings, whatever the mark records.
+        using var directory = new TempDirectory();
+        var config = directory.Write(".locale.json", """{ "rootDir": "Strings" }""");
+        var file = directory.Write(Path.Combine("Strings", ".locales", "Forma.Framework.Localization", "he.json"), LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Referenced("""[assembly: Forma.Framework.Localization.LocaleApplicationAttribute("Contoso.Web")]""").WithAssemblyName("Contoso.Web");
+        var project = new LoadedProject(
+            Path.Combine(directory.Root, "Contoso.Web.csproj"),
+            compilation,
+            false,
+            false,
+            EmbeddedResourceNames: new Dictionary<string, string>
+            {
+                [Path.GetFullPath(config)] = "Contoso.Web/.locale.json",
+                [Path.GetFullPath(file)] = "Contoso.Web/Strings/.locales/Forma.Framework.Localization/he.json",
+            });
+        var localization = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!;
+
+        // Act
+        var named = localization.GetNamedAssemblies(Assert.Single(localization.Files));
+
+        // Assert
+        Assert.Equal(["Forma.Framework.Localization"], named);
+    }
+
+    [Fact]
     public void Should_take_an_applications_file_whose_longest_assembly_name_is_anothers_for_another_assemblys()
     {
         // Arrange — the application Scratch.App reads the file for both assemblies its name starts with, and the longer, Scratch.App.Core, lays it out.

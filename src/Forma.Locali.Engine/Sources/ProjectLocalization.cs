@@ -13,8 +13,10 @@ public sealed class ProjectLocalization
     private readonly Dictionary<string, IReadOnlyList<string>> _namedAssemblies = [with(StringComparer.OrdinalIgnoreCase)];
     private readonly Dictionary<string, BuiltAssembly> _builtAssemblies = [with(StringComparer.Ordinal)];
     private readonly string[] _assemblyNames;
+    private readonly string? _markedRootNamespace;
     private readonly Lazy<AssemblyNamedLocaleSource?> _applicationSource;
     private readonly Lazy<HashSet<string>> _nameSegments;
+    private string? _namesStart;
 
     /// <summary>Resolves the files against the types.</summary>
     /// <param name="assemblyName">The name of the assembly the project builds.</param>
@@ -24,6 +26,7 @@ public sealed class ProjectLocalization
     /// <param name="localesDir">The folder of locale files the assembly's names are read without, its files for other assemblies' included.</param>
     /// <param name="packs">Every locale pack's files naming the project's assembly, with the pack read as the runtime reads it for the project.</param>
     /// <param name="isApplication">Whether the project builds an application, whose files the runtime also reads for every assembly their names start with.</param>
+    /// <param name="markedRootNamespace">The root namespace the build records on the mark it writes into an application, which the runtime begins its names at where it has no config, or null where the build marks none.</param>
     /// <param name="referencedAssemblyNames">The name of every assembly the project references.</param>
     /// <param name="builtAssemblies">Every assembly a project of the run builds, which an application's files are read for as well as its own types.</param>
     /// <param name="format">The format the files are written in.</param>
@@ -35,6 +38,7 @@ public sealed class ProjectLocalization
         string localesDir,
         IReadOnlyList<PackLocalization> packs,
         bool isApplication,
+        string? markedRootNamespace,
         IReadOnlyCollection<string> referencedAssemblyNames,
         IReadOnlyList<BuiltAssembly> builtAssemblies,
         ILocaleFileFormat format)
@@ -51,6 +55,7 @@ public sealed class ProjectLocalization
 
         AssemblyName = assemblyName;
         IsApplication = isApplication;
+        _markedRootNamespace = markedRootNamespace;
 
         foreach (var builtAssembly in builtAssemblies)
         {
@@ -112,6 +117,13 @@ public sealed class ProjectLocalization
 
     /// <summary>The format the files are written in, whose extension ends every name the runtime reads.</summary>
     public ILocaleFileFormat Format { get; }
+
+    // Where the names an application reads for other assemblies begin, followed by a /: where its config puts them or, where it has
+    // none, at the root namespace its build recorded on its mark, or at its name.
+    private string NamesStart
+        => _namesStart ??= (!Source.HasConfig(AssemblyName) && _markedRootNamespace is { } marked ? marked : Source.GetRootDir(AssemblyName)) is { Length: > 0 } namesRoot
+            ? namesRoot + "/"
+            : string.Empty;
 
     /// <summary>The file the walk's entries report under a name, from the embedded files or any pack's, or null when none answers to it.</summary>
     /// <param name="name">The name, as the walk's entries report it.</param>
@@ -287,7 +299,7 @@ public sealed class ProjectLocalization
             return null;
         }
 
-        var namesStart = Source.GetRootDir(AssemblyName) + "/";
+        var namesStart = NamesStart;
 
         return file.Name.StartsWith(namesStart, StringComparison.Ordinal)
             ? LocalizationFileName.Read(file.Name[namesStart.Length..], Format.Extension, LocalesDir)
@@ -297,7 +309,7 @@ public sealed class ProjectLocalization
     // The application's files beneath where its own names begin, read by the names that follow, as the runtime's application source reads them.
     private AssemblyNamedLocaleSource CreateApplicationSource(ILocaleFileFormat format)
     {
-        var namesStart = Source.GetRootDir(AssemblyName) + "/";
+        var namesStart = NamesStart;
         var files = EmbeddedFiles
             .Where(file => file.Name.StartsWith(namesStart, StringComparison.Ordinal))
             .Select(file => (file.Name[namesStart.Length..], file));

@@ -104,6 +104,7 @@ public static class ProjectLocaleFiles
             localesDir,
             packLocalizations,
             IsApplication(compilation),
+            GetMark(compilation) is { ConstructorArguments: [{ Value: string markedRootNamespace }] } ? markedRootNamespace : null,
             [.. compilation.ReferencedAssemblyNames.Select(identity => identity.Name)],
             builtAssemblies ?? [],
             format);
@@ -144,7 +145,11 @@ public static class ProjectLocaleFiles
     // The runtime reads the assembly that runs as the application, or, where none runs, the one its build marked.
     private static bool IsApplication(Compilation compilation)
         => compilation.Options.OutputKind is OutputKind.ConsoleApplication or OutputKind.WindowsApplication or OutputKind.WindowsRuntimeApplication
-            || compilation.Assembly.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == typeof(LocaleApplicationAttribute).FullName);
+            || GetMark(compilation) is not null;
+
+    // The mark the build writes into an application, recording the root namespace it names the application's locale files under.
+    private static AttributeData? GetMark(Compilation compilation)
+        => compilation.Assembly.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == typeof(LocaleApplicationAttribute).FullName);
 
     // A config the runtime cannot place is reported by the rules, which find it refused wherever they read the assembly's names.
     private static string ReadLocalesDir(ProjectLocaleSource configs, string assemblyName)

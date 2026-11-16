@@ -270,7 +270,7 @@ public sealed class ProjectLocaleFilesTests
     {
         // Arrange — where no entry assembly runs, as on Android, the runtime reads the assembly the build marked.
         using var directory = new TempDirectory();
-        var compilation = CompilationTestFactory.Referenced("[assembly: Forma.Framework.Localization.LocaleApplicationAttribute]");
+        var compilation = CompilationTestFactory.Referenced("""[assembly: Forma.Framework.Localization.LocaleApplicationAttribute("Scratch")]""");
 
         // Act
         var resolved = Resolve(directory, compilation);

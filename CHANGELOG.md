@@ -13,6 +13,9 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   root namespace it declares and LOC0112 the files laid out by it. An application's files for other assemblies are
   read beneath its root and a `/` alone, a satellite's file whose name holds its culture keeps that name, and of two
   files giving one entry different texts, the one LOC0120 sets aside is the one whose path sorts first.
+- An application with no `.locale.json` has its files for other assemblies read beneath the root namespace its build
+  records on `LocaleApplicationAttribute`, as `Forma.Framework.Localization` reads them, rather than beneath its name,
+  so where the two differ, LOC0112, LOC0120 and LOC0121 hold such a file to the other assembly's types.
 
 ## `1.0.0-preview.16`
 
