@@ -46,10 +46,10 @@ public sealed class LocaleFlow
         }
 
         // A lookup through Microsoft's localizer reads Forma's entries only where the run has Forma's adapter answer it.
-        var isStringLocalizerAdapted = lookups.Any(lookup => lookup.UsesStringLocalizer) && _run.IsStringLocalizerAdapted;
+        var usesStringLocalizer = lookups.Any(lookup => lookup.UsesStringLocalizer) && _run.UsesStringLocalizer;
 
         return [.. lookups
-            .Where(lookup => !lookup.UsesStringLocalizer || isStringLocalizerAdapted)
+            .Where(lookup => !lookup.UsesStringLocalizer || usesStringLocalizer)
             .AsParallel()
             .AsOrdered()
             .Select(lookup => lookup.Receiver is null ? lookup : Resolve(compilation, lookup))];

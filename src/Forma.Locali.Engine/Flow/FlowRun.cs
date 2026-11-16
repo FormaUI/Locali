@@ -30,7 +30,7 @@ internal sealed class FlowRun
     private static readonly string[] RegistrationNames = ["Add", "TryAdd", "Replace", "Decorate", "Scoped", "Singleton", "Transient", "Describe"];
 
     private readonly ConcurrentDictionary<SymbolKey, Lazy<IReadOnlyList<INamedTypeSymbol?>>> _registrations = new();
-    private readonly Lazy<bool> _isStringLocalizerAdapted;
+    private readonly Lazy<bool> _usesStringLocalizer;
 
     /// <summary>Reads the run's projects.</summary>
     /// <param name="projects">Every project the run loaded.</param>
@@ -50,7 +50,7 @@ internal sealed class FlowRun
 
         Compilations = [.. _projects.Keys];
         Hints = new LocaleMemberHints(Compilations, hints);
-        _isStringLocalizerAdapted = new(ReadStringLocalizerAdapted);
+        _usesStringLocalizer = new(ReadUsesStringLocalizer);
     }
 
     /// <summary>The compilation of every project of the run, ordered by the project's path.</summary>
@@ -59,9 +59,9 @@ internal sealed class FlowRun
     /// <summary>The member hints the run applies.</summary>
     public LocaleMemberHints Hints { get; }
 
-    /// <summary>Whether Forma's adapter answers Microsoft's string localizer across the run: its product code registers the adapter, ahead of any of Microsoft's localization, and registers neither contract in the adapter's place.</summary>
-    public bool IsStringLocalizerAdapted
-        => _isStringLocalizerAdapted.Value;
+    /// <summary>Whether the run uses Microsoft's string localizer through Forma's adapter: its product code registers the adapter, ahead of any of Microsoft's localization, and registers neither contract in the adapter's place.</summary>
+    public bool UsesStringLocalizer
+        => _usesStringLocalizer.Value;
 
     /// <summary>The semantic model of a tree, made once and shared, so a member bound for one lookup is bound for every other.</summary>
     /// <param name="compilation">The compilation holding the tree.</param>
@@ -352,7 +352,7 @@ internal sealed class FlowRun
     // The adapter and Microsoft's localization, AddLocalization and AddViewLocalization among its calls, each register the factory only
     // where nothing is registered yet, so a Microsoft call answers in the adapter's place unless the adapter registered first, before it
     // in the same block; and the application registering either contract itself answers in place of both.
-    private bool ReadStringLocalizerAdapted()
+    private bool ReadUsesStringLocalizer()
     {
         var adapters = new List<IOperation>();
         var microsofts = new List<IOperation>();
