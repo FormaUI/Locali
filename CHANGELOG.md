@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.20`
 
-*November 16, 2026*
+*November 17, 2026*
 
 - LOC0207 reads a type's entries and cultures from the assembly declaring it, as `Forma.Framework.Localization` reads
   them, rather than from the project holding the lookup, so a lookup reading a type of another project of the run is
