@@ -20,6 +20,9 @@ public static class LocalizerContract
     /// <summary>The metadata name of the attribute marking a parameter whose argument is a localization key.</summary>
     public const string KeyAttributeMetadataName = "Forma.Framework.Localization.LocaleKeyAttribute";
 
+    /// <summary>The metadata name of the attribute marking a member holding a locale read for the type another member of the same instance names.</summary>
+    public const string SourceAttributeMetadataName = "Forma.Framework.Localization.LocaleSourceAttribute";
+
     private const string KeyAttributeName = "LocaleKeyAttribute";
 
     /// <summary>Whether the parameter carries the attribute marking its argument as a localization key.</summary>

@@ -2,6 +2,7 @@ namespace Forma.Locali.Tests.Support.Sources;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.VisualBasic;
 
 /// <summary>Builds compilations a test can walk.</summary>
@@ -63,6 +64,37 @@ public static class CompilationTestFactory
             sources.Select(source => CSharpSyntaxTree.ParseText(source, path: $"{Guid.NewGuid():N}.cs")),
             Platform,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+    }
+
+    /// <summary>A compilation carrying everything the test run loaded, building the assembly named from the C# files at the paths, so a run naming those files reports on them.</summary>
+    /// <param name="assemblyName">The name of the assembly the compilation builds.</param>
+    /// <param name="paths">The C# files to parse.</param>
+    public static Compilation ReferencedFiles(string assemblyName, params string[] paths)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(assemblyName);
+        ArgumentNullException.ThrowIfNull(paths);
+
+        return CSharpCompilation.Create(
+            assemblyName,
+            paths.Select(path => CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: path)),
+            Platform,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+    }
+
+    /// <summary>The reference assembly a compilation builds, holding its metadata and no member's body, as the build hands one project another's.</summary>
+    /// <param name="compilation">The compilation building the assembly.</param>
+    public static MetadataReference MetadataOf(Compilation compilation)
+    {
+        ArgumentNullException.ThrowIfNull(compilation);
+
+        using var image = new MemoryStream();
+        var emitted = compilation.Emit(image, options: new EmitOptions(metadataOnly: true));
+        if (!emitted.Success)
+        {
+            throw new InvalidOperationException($"'{compilation.AssemblyName}' does not compile: {string.Join(' ', emitted.Diagnostics)}");
+        }
+
+        return MetadataReference.CreateFromImage(image.ToArray());
     }
 
     /// <summary>A Visual Basic compilation carrying everything the test run loaded, so the localizer contract binds.</summary>

@@ -6,9 +6,14 @@ using Microsoft.CodeAnalysis;
 /// <param name="Key">The key the lookup reads.</param>
 /// <param name="Arguments">How the lookup supplies the values its key's holes read.</param>
 /// <param name="IsFormatString">Whether the lookup itself supplies the format text a <c>string.Format</c> call reads.</param>
-/// <param name="ResourceType">The type whose entries the lookup reads, or null where nothing bound it.</param>
 public sealed record LocalizerLookup(
     LocalizationKeyReference Key,
     LocalizerArguments Arguments,
-    bool IsFormatString,
-    INamedTypeSymbol? ResourceType = null);
+    bool IsFormatString)
+{
+    /// <summary>The types whose entries the lookup reads, one for each type of instance it is read through, or none where nothing bound it.</summary>
+    public IReadOnlyList<INamedTypeSymbol> ResourceTypes { get; init; } = [];
+
+    /// <summary>The properties naming a type the lookup reads whose getter its project holds as metadata alone, read in the source of the project of the run that builds them.</summary>
+    public IReadOnlyList<LocaleSourceProperty> UnreadProperties { get; init; } = [];
+}

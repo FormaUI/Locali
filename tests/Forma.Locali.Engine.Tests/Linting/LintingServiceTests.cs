@@ -498,4 +498,50 @@ public sealed class LintingServiceTests
         // Assert
         Assert.Empty(result.Diagnostics);
     }
+
+    [Fact]
+    public async Task Should_report_a_key_left_out_for_the_type_a_property_another_project_of_the_run_builds_names()
+    {
+        // Arrange — the project reads the other's reference assembly, and loads first, as a load of a built tree may hand it over.
+        using var directory = new TempDirectory();
+        var componentsProject = directory.Write(Path.Combine("Components", "Contoso.Components.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var project = directory.Write(Path.Combine("Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var source = directory.Write(Path.Combine("Widgets", "Widget.cs"), """
+            namespace Scratch;
+
+            public sealed class Widget : Contoso.Components.Component
+            {
+                public void Show() => _ = L["Tomorrow"];
+            }
+            """);
+        directory.Write(Path.Combine("Widgets", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var components = CompilationTestFactory.Referenced("""
+            using System;
+
+            using Forma.Framework.Localization;
+
+            namespace Contoso.Components;
+
+            public abstract class Component
+            {
+                protected virtual Type LocalizationSourceType => GetType();
+
+                [LocaleSource(nameof(LocalizationSourceType))]
+                protected IStringLocale L => default!;
+            }
+            """).WithAssemblyName("Contoso.Components");
+        var compilation = CompilationTestFactory.ReferencedFiles("Scratch", source).AddReferences(CompilationTestFactory.MetadataOf(components));
+        var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false), new LoadedProject(componentsProject, components, false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MissingLocalization, diagnostic.Code),
+            () => Assert.Equal(source, diagnostic.Path),
+            () => Assert.Contains("'Tomorrow' has no entry", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains("'Scratch.Widget'", diagnostic.Message, StringComparison.Ordinal));
+    }
 }

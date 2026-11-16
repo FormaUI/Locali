@@ -32,33 +32,29 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
 
         foreach (var site in Ordered(context.Callsites))
         {
-            if (site.ResourceType is not { } resource)
-            {
-                continue;
-            }
-
-            var typeName = ResourceTypeNames.GetName(resource);
-
             // The runtime matches the key behind its escape, and so do the entries it read from the file.
             var key = LocalizationSchema.Unescape(site.Key.Text);
 
-            foreach (var culture in localization.Cultures)
+            foreach (var typeName in site.ResourceTypes.Select(ResourceTypeNames.GetName))
             {
-                // A type with no entries in a culture is unlocalized there rather than under-localized.
-                var entries = localization.Read(typeName, culture);
-                if (entries.Count == 0 || IsAnswered(localization, typeName, culture, key) || !seen.Add((key, typeName, culture.Name)))
+                foreach (var culture in localization.Cultures)
                 {
-                    continue;
+                    // A type with no entries in a culture is unlocalized there rather than under-localized.
+                    var entries = localization.Read(typeName, culture);
+                    if (entries.Count == 0 || IsAnswered(localization, typeName, culture, key) || !seen.Add((key, typeName, culture.Name)))
+                    {
+                        continue;
+                    }
+
+                    var filePath = localization.GetFile(entries[^1].FileName) is { } file
+                        ? FormatFilePath(site.Key.Location.Path, file.Path)
+                        : entries[^1].FileName;
+
+                    context.Report(
+                        Code,
+                        site,
+                        $"'{site.Key.Text}' has no entry in '{filePath}', which localizes '{typeName}' in '{culture.Name}', so it renders in the source language there.");
                 }
-
-                var filePath = localization.GetFile(entries[^1].FileName) is { } file
-                    ? FormatFilePath(site.Key.Location.Path, file.Path)
-                    : entries[^1].FileName;
-
-                context.Report(
-                    Code,
-                    site,
-                    $"'{site.Key.Text}' has no entry in '{filePath}', which localizes '{typeName}' in '{culture.Name}', so it renders in the source language there.");
             }
         }
     }

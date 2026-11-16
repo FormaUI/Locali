@@ -675,6 +675,16 @@ per key per culture, at the first callsite writing it. The cultures localizing a
 from the project's own files, an application's files named for its own assembly among them, and
 from every locale pack's files for it alike.
 
+A lookup's type is the one `IStringLocale<T>` or a `[LocaleKey]` method's one type argument
+names, or, for a lookup through a member carrying `[LocaleSource]` on the instance its code
+runs on, as `FormaComponentBase.L` does, the type the property the attribute names returns for
+each type of instance: `typeof(X)` names `X`, and `GetType()` the instance's own type. The
+instances are the lookup's own type, unless it is abstract, and every type of its project
+derived from it that keeps the member holding the lookup as it is, each reading the property as
+it overrides it. A property another project of the run builds is read in that project's source,
+so `L["Details columns"]` in a component deriving from `FormaComponentBase` is held to the
+component's own files.
+
 **Why it matters.** Falling back to the key is exactly what the runtime is defined to do, so the
 string renders in the source language and every other rule stays green; adding
 `L["Details columns"]` to a component whose `he` and `es` files exist leaves both behind without
@@ -686,10 +696,14 @@ JSON `null`: `"Email": null`. A null entry is *found* — `ResourceNotFound` is 
 genuinely missing cannot use it, and the warning is the honest answer there.
 
 **Silent where.** The type has no entries at all, since it is unlocalized rather than
-under-localized; the lookup is through the unbound `IStringLocale`, which names no type, or is
-a call through `[LocaleKey]` to a method without exactly one type argument; a parent culture
-answers, since `es-419` reads `es` for what it does not declare; or the run did not name the
-project's files.
+under-localized; the lookup is through the unbound `IStringLocale` other than through a member
+carrying `[LocaleSource]` on the instance its code runs on, or is a call through `[LocaleKey]`
+to a method without exactly one type argument; the property `[LocaleSource]` names, as a type
+of instance reads it, returns anything but `typeof` of a type or the instance's `GetType()`,
+returns more than once, or sits in an assembly no project of the run builds, which leaves that
+type of instance unread; a type derived from the lookup's own overrides the member holding
+the lookup, so its instances never run it; a parent culture answers, since `es-419` reads `es`
+for what it does not declare; or the run did not name the project's files.
 
 ### LOC0208 — A lookup writes its key as an expression
 

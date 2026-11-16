@@ -37,12 +37,12 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         {
             IPropertyReferenceOperation { Arguments.Length: > 0 } indexer
                 when LocalizerContract.Implements(indexer.Property.ContainingType, contract)
-                => new(indexer.Arguments, 0, Resource(indexer.Instance, generic), KeyedMethod: null),
+                => new(indexer.Arguments, 0, Resources(indexer.Instance, generic), KeyedMethod: null),
             IInvocationOperation { TargetMethod.Name: LocalizerContract.ResolveMethod } invocation
                 when LocalizerContract.Implements(invocation.TargetMethod.ContainingType, contract)
-                => new(invocation.Arguments, 0, Resource(invocation.Instance, generic), KeyedMethod: null),
+                => new(invocation.Arguments, 0, Resources(invocation.Instance, generic), KeyedMethod: null),
             IInvocationOperation invocation when LocalizerContract.KeyOrdinal(invocation.TargetMethod) is { } ordinal
-                => new(invocation.Arguments, ordinal, LocalizerContract.ResourceOf(invocation.TargetMethod), invocation.TargetMethod),
+                => new(invocation.Arguments, ordinal, (LocalizerContract.ResourceOf(invocation.TargetMethod) is { } resource ? [resource] : [], []), invocation.TargetMethod),
             _ => null,
         };
 
@@ -66,7 +66,7 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 
             if (SemanticCallsiteReader.Read(operation, lookup.Arguments, lookup.KeyOrdinal) is { } site)
             {
-                var resolved = site with { ResourceType = lookup.Resource };
+                var resolved = site with { ResourceTypes = lookup.Resources.Types, UnreadProperties = lookup.Resources.Unread };
 
                 lookups.Add(lookup.KeyedMethod is { } method ? Keyed(resolved, method, lookup.KeyOrdinal) : resolved);
             }
@@ -136,15 +136,18 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
     private static bool IsVisualBasicCandidate(SyntaxNode node)
         => node is VisualBasic.InvocationExpressionSyntax;
 
-    // The indexer is declared on the unbound contract, so the type it localizes is only on the receiver.
-    private static INamedTypeSymbol? Resource(IOperation? receiver, INamedTypeSymbol? generic)
-        => generic is null || receiver is null ? null : LocalizerContract.ResourceOf(receiver.Type, generic);
+    // The indexer is declared on the unbound contract, so the type it localizes is on the receiver, or on the property a
+    // member carrying [LocaleSource] names.
+    private static (IReadOnlyList<INamedTypeSymbol> Types, IReadOnlyList<LocaleSourceProperty> Unread) Resources(IOperation? receiver, INamedTypeSymbol? generic)
+        => receiver is null ? ([], [])
+            : generic is not null && LocalizerContract.ResourceOf(receiver.Type, generic) is { } resource ? ([resource], [])
+            : LocaleSourceTypes.Resolve(receiver);
 
-    // A lookup as the compiler bound it: its arguments, the ordinal its key binds to, the type its key is read in,
+    // A lookup as the compiler bound it: its arguments, the ordinal its key binds to, the types its key is read in,
     // and the method a call marked with a key binds to.
     private readonly record struct BoundLookup(
         ImmutableArray<IArgumentOperation> Arguments,
         int KeyOrdinal,
-        INamedTypeSymbol? Resource,
+        (IReadOnlyList<INamedTypeSymbol> Types, IReadOnlyList<LocaleSourceProperty> Unread) Resources,
         IMethodSymbol? KeyedMethod);
 }

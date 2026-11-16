@@ -180,6 +180,15 @@ the entries of the method's one type argument, and its values are counted where 
 parameter follows the key, as a lookup's are. A key a method passes on from a `[LocaleKey]`
 parameter of its own is checked where that method is called.
 
+A lookup through the unbound `IStringLocale` names a type on the semantic path where it goes
+through a member carrying `[LocaleSource]` on the instance its code runs on, as
+`FormaComponentBase.L` does: the property the attribute names, as each type of instance
+overrides it, names the type in its getter's one return, `typeof(X)` naming `X` and `GetType()`
+the instance's own type. The instances are the lookup's own type, unless it is abstract, and
+every type of its project derived from it that keeps the member holding the lookup as it is. A
+getter in an assembly the project reads from another project of the run is read in that
+project's source, once every project of the run is loaded.
+
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no
 build property is needed; `locali --path MyProject.csproj` is enough. LOC0205 covers the case
@@ -262,7 +271,7 @@ root namespace `Forma.Locali`, so a folder's namespace is the same in either pro
 | Engine | `Rules/Files/` | Rules over a locale file |
 | Engine | `Rules/Sources/` | Rules over a callsite |
 | Engine | `Rules/Projects/` | Rules over a project's locale files read whole |
-| Engine | `Sources/` | Finding callsites, and resolving a project's locale files, the locale packs carrying files for it, and the assemblies of the run an application's files are read for, for the project rules |
+| Engine | `Sources/` | Finding callsites and the types they read, and resolving a project's locale files, the locale packs carrying files for it, and the assemblies of the run an application's files are read for, for the project rules |
 | Tool | `Cli/` | Argument parsing and exit codes |
 | Tool | `Projects/` | Binding Roslyn to the SDK's copy |
 | Tool | `Reporting/` | Console and JSON reporters |

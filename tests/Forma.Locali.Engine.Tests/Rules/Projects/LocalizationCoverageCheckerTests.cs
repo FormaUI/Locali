@@ -308,6 +308,43 @@ public sealed class LocalizationCoverageCheckerTests
         Assert.Empty(diagnostics);
     }
 
+    [Fact]
+    public void Should_report_a_key_left_out_for_each_type_a_lookup_reads()
+    {
+        // Arrange — an instance of the derived type runs the lookup its base writes, and reads its own type's entries.
+        using var directory = new TempDirectory();
+        var widgetFile = directory.Write(HebrewFile, LocalizationFileFakeData.Valid);
+        var gadgetFile = directory.Write(Path.Combine("Gadget", ".locales", "he.json"), LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Referenced("""
+            using System;
+
+            using Forma.Framework.Localization;
+
+            namespace Scratch;
+
+            public class Widget
+            {
+                protected virtual Type LocalizationSourceType => GetType();
+
+                [LocaleSource(nameof(LocalizationSourceType))]
+                protected IStringLocale L => default!;
+
+                public void Show() => _ = L["Tomorrow"];
+            }
+
+            public sealed class Gadget : Widget;
+            """);
+
+        // Act
+        var diagnostics = Check(new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false), widgetFile, gadgetFile);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(2, diagnostics.Count),
+            () => Assert.Contains(diagnostics, diagnostic => diagnostic.Message.Contains("'Scratch.Widget'", StringComparison.Ordinal)),
+            () => Assert.Contains(diagnostics, diagnostic => diagnostic.Message.Contains("'Scratch.Gadget'", StringComparison.Ordinal)));
+    }
+
     // The project's callsites as the source linter finds them.
     private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, params string[] localizationFiles)
     {

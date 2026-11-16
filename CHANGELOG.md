@@ -10,6 +10,11 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 - LOC0119 and LOC0207 read an application's types from its files named for its own assembly too, as
   `Forma.Framework.Localization` reads them, rather than from its other files and its packs alone, so a key or a
   culture such a file answers is no longer reported as missing.
+- LOC0207 holds a lookup through the unbound `IStringLocale` made through a member carrying `[LocaleSource]`, as
+  `FormaComponentBase.L` is, to the type the property it names returns for each type of instance running the
+  lookup: `typeof(X)` names `X`, and `GetType()` the instance's own type. A property another project of the run
+  builds is read in that project's source, so a component deriving from `FormaComponentBase` is held to its own
+  files where it was left unchecked.
 
 ## `1.0.0-preview.17`
 

@@ -9,6 +9,7 @@ using Forma.Locali.Documents;
 using Forma.Locali.Projects;
 using Forma.Locali.Sources;
 
+using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Options;
 
 /// <summary>Lints the localization files and the source callsites the target names.</summary>
@@ -146,10 +147,13 @@ public sealed class LintingService(
         var packs = LocalePackFiles.ResolveAll(_localeFormat.RuntimeFormat, projects, target.LocalizationFilesOf);
         var builtAssemblies = BuiltAssemblies.ResolveAll(projects);
 
+        // A property another project of the run builds is read in that project's source, so the type it names waits for every project as well.
+        Compilation[] compilations = [.. projects.All.OrderBy(project => project.Path, StringComparer.Ordinal).Select(project => project.Compilation).OfType<Compilation>()];
+
         foreach (var (project, sources) in linted)
         {
             diagnostics.AddRange(sources.Diagnostics);
-            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), sources.Callsites, packs, builtAssemblies));
+            diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), LocaleSourceTypes.ReadUnread(sources.Callsites, compilations), packs, builtAssemblies));
         }
 
         return diagnostics;
