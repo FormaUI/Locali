@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.20`
 
-*Unreleased*
+*November 16, 2026*
 
 - LOC0207 reads a type's entries and cultures from the assembly declaring it, as `Forma.Framework.Localization` reads
   them, rather than from the project holding the lookup, so a lookup reading a type of another project of the run is
@@ -24,6 +24,10 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   where an application's `hints.packages` names the package. The flow is followed without hints first, so a hint is
   verified where it reaches the same type, set aside where it reaches another, and used where it reaches none, as over a
   compiled library; LOC0207 names the hint a finding rests on.
+- LOC0028 reports a hint naming a type, a member or a package that is not there or not of the kind the hint reads, and
+  LOC0029 two hints relating one member to different type members, or a hint the flow contradicts.
+- Breaking: `[LocaleSource]` is no longer read; a hint states the relationship it carried, and LOC0214 reports a hinted
+  member whose type member tells no type.
 - LOC0207 holds a lookup through Microsoft's `IStringLocalizer<T>` with a literal key to `T`'s entries where the run has
   Forma's adapter answer it, registering `AddFormaStringLocalizerAdapter` ahead of any of Microsoft's localization; no
   other rule reads such a lookup, since the localizer fills a composite key with `string.Format`.
@@ -31,10 +35,6 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   locale is read for, naming where a path ended.
 - The JSON report carries a `coverage` object: how many lookups writing their keys were fully, partly or not checked,
   what established the types they were held to, and why the rest went unchecked.
-- LOC0028 reports a hint naming a type, a member or a package that is not there or not of the kind the hint reads, and
-  LOC0029 two hints relating one member to different type members, or a hint the flow contradicts.
-- Breaking: `[LocaleSource]` is no longer read; a hint states the relationship it carried, and LOC0214 reports a hinted
-  member whose type member tells no type.
 
 ## `1.0.0-preview.19`
 
