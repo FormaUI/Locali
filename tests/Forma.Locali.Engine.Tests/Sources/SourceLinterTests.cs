@@ -10,7 +10,10 @@ public sealed class SourceLinterTests
     public void Should_report_a_key_written_as_an_expression()
     {
         // Act
-        var diagnostics = Lint("""public void Show(string column) => _ = L[column];""");
+        var diagnostics = Lint("""
+            private string Column { get; } = "Name";
+            public void Show() => _ = L[Column];
+            """);
 
         // Assert
         var diagnostic = Assert.Single(diagnostics);
@@ -271,10 +274,22 @@ public sealed class SourceLinterTests
     }
 
     [Fact]
-    public void Should_report_a_key_forwarded_from_a_parameter_that_is_not_marked()
+    public void Should_leave_a_key_a_parameter_passes_to_the_calls_of_its_method()
     {
-        // Act
-        var diagnostics = Lint("""public LocalizableText Carry(string key) => LocalizableText.For<Widget>(key);""");
+        // Act — the calls write the key, and are read once every project of the run is loaded.
+        var result = Result(Compile("""public LocalizableText Carry(string key) => LocalizableText.For<Widget>(key);"""));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(result.Diagnostics),
+            () => Assert.Equal("key", Assert.Single(result.ForwardedKeys).Parameter));
+    }
+
+    [Fact]
+    public void Should_report_a_key_a_lookup_takes_from_a_parameter_only_under_a_condition()
+    {
+        // Act — a call's text may never be looked up, so the key stays the expression it is here.
+        var diagnostics = Lint("""public string Text(string key) => key.Length == 0 ? string.Empty : L[key].Value;""");
 
         // Assert
         Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);

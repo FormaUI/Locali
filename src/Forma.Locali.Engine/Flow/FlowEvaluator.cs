@@ -21,6 +21,7 @@ internal sealed class FlowEvaluator(
     ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> analysisMemo)
 {
     private const int MaxDepth = 24;
+    private const int MaxForwardDepth = 4;
     private const string LocaleFactoryMetadataName = "Forma.Framework.Localization.IStringLocaleFactory";
     private const string LocaleFactoryExtensionsMetadataName = "Forma.Framework.Localization.StringLocaleFactoryExtensions";
     private const string ServiceProviderExtensionsMetadataName = "Forma.Framework.Localization.ServiceProviderExtensions";
@@ -106,6 +107,131 @@ internal sealed class FlowEvaluator(
             ILiteralOperation { ConstantValue: { HasValue: true, Value: null } } or IDefaultValueOperation => [],
             _ => [new FlowValue.Gap(LocaleGapKind.Unsupported, Describe(operation))],
         };
+
+    /// <summary>Whether every call reaching a lookup that takes its key from its method's parameter writes the key as text, followed through calls passing it on; each call writing it is added with what the lookup's locale is in the frames it enters.</summary>
+    /// <param name="lookup">The lookup: an indexer, a call to Resolve, or a call to <c>LocalizableText.For</c>.</param>
+    /// <param name="parameter">The parameter of the lookup's own method the key is.</param>
+    /// <param name="calls">Receives each call writing the key as text.</param>
+    public bool Forward(IOperation lookup, IParameterSymbol parameter, List<ForwardedCall> calls)
+    {
+        ArgumentNullException.ThrowIfNull(lookup);
+        ArgumentNullException.ThrowIfNull(parameter);
+        ArgumentNullException.ThrowIfNull(calls);
+
+        return parameter.ContainingSymbol is IMethodSymbol method && Forward(method, parameter, lookup, static frame => [frame], calls, 0, []);
+    }
+
+    // A call writes the key as text, passes on a parameter of its own method, whose calls are followed in turn, or writes anything
+    // else, which leaves the key unread. A method called through a delegate, a base or an interface, or from outside the run, has calls
+    // the flow does not see, so their keys go unread too.
+    private bool Forward(IMethodSymbol method, IParameterSymbol parameter, IOperation lookup, Func<FlowFrame, IEnumerable<FlowFrame>> enterLookup, List<ForwardedCall> calls, int depth, HashSet<SymbolKey> following)
+    {
+        var key = SymbolKey.Of(parameter);
+        if (depth > MaxForwardDepth || !following.Add(key) || _run.FindSource(method) is not ({ } source, { } methodCompilation) || source is not IMethodSymbol sourceMethod)
+        {
+            return false;
+        }
+
+        try
+        {
+            var isComplete = !IsCalledUnseen(sourceMethod, methodCompilation);
+            var reaches = false;
+            foreach (var compilation in _run.Compilations)
+            {
+                foreach (var call in _run.CallsOf(sourceMethod, compilation))
+                {
+                    if (call is not IInvocationOperation invocation || Enclosing(invocation, compilation) is not { } enclosing)
+                    {
+                        isComplete = false;
+                        continue;
+                    }
+
+                    IEnumerable<FlowFrame> EnterCall(FlowFrame callerFrame)
+                    {
+                        return Entered(sourceMethod, methodCompilation, invocation, callerFrame).SelectMany(enterLookup);
+                    }
+
+                    var frames = EntryFrames(compilation, enclosing, 0).SelectMany(EnterCall).ToArray();
+                    if (frames.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    reaches = true;
+                    switch (Unconverted(ArgumentFor(invocation.Arguments, parameter.Ordinal)))
+                    {
+                        case { ConstantValue: { HasValue: true, Value: string } }:
+                            calls.Add(new ForwardedCall(invocation, parameter.Ordinal, compilation, [.. frames.SelectMany(frame => LocaleOf(lookup, frame))]));
+                            break;
+                        case IParameterReferenceOperation { Parameter: { ContainingSymbol: IMethodSymbol { MethodKind: MethodKind.Ordinary } outer } next }:
+                            isComplete &= Forward(outer, next, lookup, EnterCall, calls, depth + 1, following);
+                            break;
+                        default:
+                            isComplete = false;
+                            break;
+                    }
+                }
+            }
+
+            return reaches && isComplete;
+        }
+        finally
+        {
+            following.Remove(key);
+        }
+    }
+
+    // A call enters its method's body on each receiver that runs that body, with the call's arguments and type arguments; a receiver
+    // whose type overrides the method runs the override instead.
+    private IEnumerable<FlowFrame> Entered(IMethodSymbol method, Compilation compilation, IInvocationOperation invocation, FlowFrame callerFrame)
+    {
+        var nonVirtual = IsBaseReference(invocation.Instance);
+        IReadOnlyList<FlowValue?> receivers = invocation.Instance is null || method.IsStatic ? [null] : [.. Evaluate(invocation.Instance, callerFrame)];
+        foreach (var receiver in receivers)
+        {
+            if (receiver is not (null or FlowValue.Gap) && Dispatch(method, receiver, nonVirtual) is { } target
+                && !SymbolKey.Of(target.Method.OriginalDefinition).Equals(SymbolKey.Of(method.OriginalDefinition)))
+            {
+                continue;
+            }
+
+            yield return new FlowFrame
+            {
+                Compilation = compilation,
+                This = receiver,
+                Arguments = Bind(method, invocation.Arguments, callerFrame),
+                TypeArguments = BindTypes(method, invocation.TargetMethod, callerFrame),
+                Depth = callerFrame.Depth + 1,
+            };
+        }
+    }
+
+    // The locale a lookup reads in a frame: its receiver's, or the type LocalizableText.For names.
+    private IReadOnlyList<FlowValue> LocaleOf(IOperation lookup, FlowFrame frame)
+        => lookup switch
+        {
+            IInvocationOperation { TargetMethod: { Name: LocalizerContract.LocalizableTextMethod, TypeArguments: [var type] } } => Locale(Named(type, frame, $"LocalizableText.For<{type.Name}>")),
+            IPropertyReferenceOperation { Instance: { } receiver } => Evaluate(receiver, frame),
+            IInvocationOperation { Instance: { } receiver } => Evaluate(receiver, frame),
+            _ => [new FlowValue.Gap(LocaleGapKind.Unsupported, Describe(lookup))],
+        };
+
+    // A virtual method, one implementing an interface, or a public one of a library, is called where the run's calls of it do not show.
+    private static bool IsCalledUnseen(IMethodSymbol method, Compilation compilation)
+        => method.IsVirtual || method.IsOverride || method.IsAbstract
+            || IsReachableFromOutside(method) && compilation.Options.OutputKind == OutputKind.DynamicallyLinkedLibrary
+            || method.ContainingType.AllInterfaces.SelectMany(face => face.GetMembers()).OfType<IMethodSymbol>()
+                .Any(member => SymbolEqualityComparer.Default.Equals(method.ContainingType.FindImplementationForInterfaceMember(member), method));
+
+    private static IOperation? Unconverted(IOperation? operation)
+    {
+        while (operation is IConversionOperation conversion)
+        {
+            operation = conversion.Operand;
+        }
+
+        return operation;
+    }
 
     /// <summary>The values a member's body returns when entered with a frame.</summary>
     /// <param name="member">The method or accessor, from any compilation of the run.</param>

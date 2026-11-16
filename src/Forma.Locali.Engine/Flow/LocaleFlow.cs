@@ -78,6 +78,74 @@ public sealed class LocaleFlow
             return lookup with { Receiver = null };
         }
 
+        var (origins, gaps) = Settle(values);
+
+        return lookup with { Receiver = null, Origins = origins, Gaps = gaps };
+    }
+
+    /// <summary>The lookups keys passed through parameters make where the calls of their methods write them as text, by the project holding each call, and the keys some call writes otherwise or no call of the run writes at all.</summary>
+    /// <param name="keys">Every key the run's callsites take from a parameter, with the project holding it.</param>
+    public ForwardedLookups Forward(IReadOnlyList<(LoadedProject Project, ForwardedKey Key)> keys)
+    {
+        ArgumentNullException.ThrowIfNull(keys);
+
+        var byCall = new Dictionary<(string Project, FileLinePositionSpan Key), (LocalizerLookup Site, List<FlowValue> Values)>();
+        var unforwarded = new List<ForwardedKey>();
+        foreach (var (project, key) in keys)
+        {
+            if (project.Compilation is not { } compilation
+                || _run.ModelOf(compilation, key.Lookup.SyntaxTree).GetOperation(key.Lookup) is not { } lookup
+                || KeyParameter(lookup) is not { } parameter)
+            {
+                unforwarded.Add(key);
+                continue;
+            }
+
+            var calls = new List<ForwardedCall>();
+            if (!new FlowEvaluator(_run, _memo, _analysisMemo).Forward(lookup, parameter, calls))
+            {
+                unforwarded.Add(key);
+            }
+
+            // A call reaching several lookups is one lookup of its key, in every type they read.
+            foreach (var call in calls)
+            {
+                if (SemanticCallsiteReader.Read(call.Call, call.Call.Arguments, call.KeyOrdinal) is not { } site || _run.ProjectOf(call.Compilation) is not { } caller)
+                {
+                    continue;
+                }
+
+                var entry = (caller.Path, site.Key.Location);
+                if (!byCall.TryGetValue(entry, out var known))
+                {
+                    known = (site with { Arguments = LocalizerArguments.Unknown, IsFormatString = false }, []);
+                    byCall[entry] = known;
+                }
+
+                known.Values.AddRange(call.Values);
+            }
+        }
+
+        var byProject = byCall
+            .GroupBy(entry => entry.Key.Project, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                IReadOnlyList<LocalizerLookup> (group) => [.. group.Select(entry => Settled(entry.Value.Site, entry.Value.Values))],
+                StringComparer.OrdinalIgnoreCase);
+
+        return new ForwardedLookups(byProject, unforwarded);
+    }
+
+    private static LocalizerLookup Settled(LocalizerLookup site, List<FlowValue> values)
+    {
+        var (origins, gaps) = Settle(values);
+
+        return site with { Origins = origins, Gaps = gaps };
+    }
+
+    // Locales group into the types they read, and every other value is where a path ended.
+    private static (LocaleOrigin[] Origins, LocaleGap[] Gaps) Settle(IReadOnlyList<FlowValue> values)
+    {
         var origins = values
             .OfType<FlowValue.Locale>()
             .GroupBy(locale => (SymbolKey.Of(locale.Type), locale.IsApproximate, locale.Evidence, locale.Hint))
@@ -94,7 +162,24 @@ public sealed class LocaleFlow
             .Distinct()
             .ToArray();
 
-        return lookup with { Receiver = null, Origins = origins, Gaps = gaps };
+        return (origins, gaps);
+    }
+
+    // The parameter a lookup writes as its key, its first argument.
+    private static IParameterSymbol? KeyParameter(IOperation lookup)
+    {
+        IOperation? key = lookup switch
+        {
+            IPropertyReferenceOperation indexer => indexer.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Value,
+            IInvocationOperation invocation => invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Value,
+            _ => null,
+        };
+        while (key is IConversionOperation conversion)
+        {
+            key = conversion.Operand;
+        }
+
+        return (key as IParameterReferenceOperation)?.Parameter;
     }
 
     // A lambda or a local function runs as part of the member holding it.

@@ -677,6 +677,37 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
+    public async Task Should_check_a_key_a_lookup_takes_from_a_parameter_at_the_calls_writing_it()
+    {
+        // Arrange — one call writes a key the file leaves out, and another writes its key as an expression.
+        using var directory = new TempDirectory();
+        var project = directory.Write(Path.Combine("Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var source = directory.Write(Path.Combine("Widgets", "Widget.cs"), """
+            using Forma.Framework.Localization;
+
+            namespace Scratch;
+
+            public sealed class Widget(IStringLocale<Widget> locale)
+            {
+                private string Label(string key) => locale[key].Value;
+
+                public string Show(object column) => Label("Tomorrow") + Label(column.ToString()!);
+            }
+            """);
+        directory.Write(Path.Combine("Widgets", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.ReferencedFiles("Scratch", source), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal([LintingCodes.MissingLocalization.Id, LintingCodes.KeyNotAnalysed.Id], result.Diagnostics.Select(diagnostic => diagnostic.Code.Id).Order(StringComparer.Ordinal)),
+            () => Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == LintingCodes.MissingLocalization && diagnostic.Line == 9 && diagnostic.Message.StartsWith("'Tomorrow' has no entry", StringComparison.Ordinal)),
+            () => Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == LintingCodes.KeyNotAnalysed && diagnostic.Line == 7 && diagnostic.Message.Contains("the parameter 'key'", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public async Task Should_report_a_key_left_out_of_the_files_of_the_assembly_declaring_the_type()
     {
         // Arrange — the lookup sits in one project and reads a type the other declares, whose files the runtime reads.

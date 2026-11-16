@@ -11,6 +11,9 @@ public sealed record LocalizerLookups(
     IReadOnlyList<FileLinePositionSpan> UnreadableKeys,
     IReadOnlyList<FileLinePositionSpan> InterpolatedKeys)
 {
+    /// <summary>The lookups taking their key from a parameter of their own method, whose calls write the key.</summary>
+    public IReadOnlyList<ForwardedKey> ForwardedKeys { get; init; } = [];
+
     /// <summary>A tree that looks nothing up.</summary>
     public static LocalizerLookups Empty { get; } = new([], [], []);
 }

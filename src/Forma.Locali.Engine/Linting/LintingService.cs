@@ -156,10 +156,20 @@ public sealed class LintingService(
         // A type's entries are read from its own assembly's project, so every project's files are resolved before any rule reads them.
         var localizations = RunLocalizations.Resolve(_localeFormat.RuntimeFormat, projects.All, target.LocalizationFilesOf, packs, builtAssemblies);
 
+        // A key passed through a parameter is checked at each call writing it, in the project holding the call, and is left unread where
+        // a call writes it otherwise.
+        var forwarded = flow.Forward([.. linted.SelectMany(entry => entry.Sources.ForwardedKeys.Select(key => (entry.Project, key)))]);
+        IReadOnlyList<LocalizerLookup> Forwarded(LoadedProject project)
+        {
+            return [.. forwarded.ByProject.GetValueOrDefault(project.Path, []).Where(site => wanted.Contains(site.Key.Location.Path))];
+        }
+
+        diagnostics.AddRange(_sources.Lint([.. linted.SelectMany(entry => Forwarded(entry.Project))], [.. forwarded.Unforwarded.Where(key => wanted.Contains(key.Key.Path))]));
+
         var resolved = new List<LocalizerLookup>();
         foreach (var (project, sources) in linted)
         {
-            var callsites = flow.Resolve(project, sources.Callsites);
+            IReadOnlyList<LocalizerLookup> callsites = [.. flow.Resolve(project, sources.Callsites), .. Forwarded(project)];
             resolved.AddRange(callsites);
             diagnostics.AddRange(sources.Diagnostics);
             diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), callsites, packs, localizations));

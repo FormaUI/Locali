@@ -59,6 +59,7 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         var lookups = new List<LocalizerLookup>();
         var unreadable = new List<FileLinePositionSpan>();
         var interpolated = new List<FileLinePositionSpan>();
+        var forwarded = new List<ForwardedKey>();
 
         foreach (var node in Candidates(compilation, tree))
         {
@@ -80,7 +81,12 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
             else if (!lookup.UsesStringLocalizer
                 && !LocalizerContract.InsideLocalizer(model.GetEnclosingSymbol(node.SpanStart), contract))
             {
-                if (SemanticCallsiteReader.InterpolatedKey(lookup.Arguments, lookup.KeyOrdinal) is { } key)
+                // A key passed through a parameter is the calls' to write, which are read once every project of the run is loaded.
+                if (SemanticCallsiteReader.ForwardedKey(operation, lookup.Arguments, lookup.KeyOrdinal) is { } forwardedKey)
+                {
+                    forwarded.Add(forwardedKey);
+                }
+                else if (SemanticCallsiteReader.InterpolatedKey(lookup.Arguments, lookup.KeyOrdinal) is { } key)
                 {
                     interpolated.Add(key);
                 }
@@ -91,7 +97,7 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
             }
         }
 
-        return new LocalizerLookups(lookups, unreadable, interpolated);
+        return new LocalizerLookups(lookups, unreadable, interpolated) { ForwardedKeys = forwarded };
     }
 
     // LocalizableText.For passes the values its params parameter gathers on as a lookup does, and what it returns is text carried as

@@ -72,4 +72,19 @@ public static class LocaleFlowTestFactory
 
         return (resolved, flow.GetDiagnostics());
     }
+
+    /// <summary>The lookups the keys a compilation's callsites take from parameters make at the calls writing them, over a run holding it and the other compilations given, each a project of its own.</summary>
+    /// <param name="compilation">The compilation whose callsites are read.</param>
+    /// <param name="others">The other compilations of the run.</param>
+    public static ForwardedLookups Forward(Compilation compilation, params IReadOnlyList<Compilation> others)
+    {
+        ArgumentNullException.ThrowIfNull(compilation);
+        ArgumentNullException.ThrowIfNull(others);
+
+        var project = new LoadedProject("Scratch.csproj", compilation, false, false);
+        LoadedProject[] projects = [project, .. others.Select((other, index) => new LoadedProject($"Other{index}.csproj", other, false, false))];
+        (LoadedProject, ForwardedKey)[] keys = [.. projects.SelectMany(each => each.Compilation!.SyntaxTrees.SelectMany(tree => new SemanticCallsiteFinder().Find(each.Compilation!, tree).ForwardedKeys).Select(key => (each, key)))];
+
+        return new LocaleFlow(projects, []).Forward(keys);
+    }
 }

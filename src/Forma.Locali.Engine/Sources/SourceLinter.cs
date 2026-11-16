@@ -61,7 +61,26 @@ public sealed class SourceLinter(
         diagnostics.AddRange(lookups.UnreadableKeys.Select(Unreadable));
         diagnostics.AddRange(lookups.InterpolatedKeys.Select(Interpolated));
 
-        return new SourceLintResult(diagnostics, lookups.Lookups);
+        return new SourceLintResult(diagnostics, lookups.Lookups) { ForwardedKeys = lookups.ForwardedKeys };
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<LintingDiagnostic> Lint(IReadOnlyList<LocalizerLookup> forwarded, IReadOnlyList<ForwardedKey> unforwarded)
+    {
+        ArgumentNullException.ThrowIfNull(forwarded);
+        ArgumentNullException.ThrowIfNull(unforwarded);
+
+        return
+        [
+            .. forwarded.SelectMany(Check),
+            .. unforwarded.Select(key => new LintingDiagnostic(
+                key.Key.Path,
+                key.Key.StartLinePosition.Line + 1,
+                key.Key.StartLinePosition.Character + 1,
+                LintingCodes.KeyNotAnalysed.DefaultSeverity,
+                LintingCodes.KeyNotAnalysed,
+                $"The lookup's key is the parameter '{key.Parameter}', which a call writes as an expression or passes from outside the run, so no rule could check what it reads.")),
+        ];
     }
 
     // Naming the blind spot keeps a run from reading as complete coverage when part of it was unreadable.
@@ -98,10 +117,14 @@ public sealed class SourceLinter(
             .Select(tree => finder.Find(compilation, tree))
             .ToArray();
 
+        // A forwarded key is kept whichever file holds it, since a call in a file the run named may write it.
         return new LocalizerLookups(
             [.. found.SelectMany(lookups => lookups.Lookups).Where(site => Wanted(site.Key.Location, files))],
             [.. found.SelectMany(lookups => lookups.UnreadableKeys).Where(location => Wanted(location, files))],
-            [.. found.SelectMany(lookups => lookups.InterpolatedKeys).Where(location => Wanted(location, files))]);
+            [.. found.SelectMany(lookups => lookups.InterpolatedKeys).Where(location => Wanted(location, files))])
+        {
+            ForwardedKeys = [.. found.SelectMany(lookups => lookups.ForwardedKeys)],
+        };
     }
 
     // A project compiles whole because binding needs it, so only the files the run named are reported on.

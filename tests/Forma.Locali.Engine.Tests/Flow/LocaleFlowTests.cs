@@ -1994,6 +1994,209 @@ public sealed class LocaleFlowTests
         Assert.DoesNotContain(sites, site => site.Key.Text == "Checkout");
     }
 
+    [Fact]
+    public void Should_check_the_key_each_call_writes_where_a_lookup_takes_it_from_a_parameter()
+    {
+        // Act
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Label(string key) => locale[key].Value;
+
+                public string Show() => Label("Today");
+            }
+            """);
+
+        // Assert
+        var site = Assert.Single(Assert.Single(forwarded.ByProject).Value);
+        Assert.Multiple(
+            () => Assert.Equal("Today", site.Key.Text),
+            () => Assert.Equal("Page", Assert.Single(site.Origins).Type.Name),
+            () => Assert.Equal(LocalizerArguments.Unknown, site.Arguments),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_hold_each_calls_key_to_the_type_that_call_binds()
+    {
+        // Act — two calls pass different types to one method, and neither's key is read in the other's.
+        var forwarded = Forward("""
+            internal static class Labels
+            {
+                public static LocalizableText Label<TSource>(string key) => LocalizableText.For<TSource>(key);
+            }
+
+            public sealed class Page
+            {
+                public LocalizableText Show() => Labels.Label<Page>("Page's");
+            }
+
+            public sealed class Panel
+            {
+                public LocalizableText Show() => Labels.Label<Panel>("Panel's");
+            }
+            """);
+
+        // Assert
+        var sites = Assert.Single(forwarded.ByProject).Value;
+        Assert.Multiple(
+            () => Assert.Equal("Page", Assert.Single(Single(sites, "Page's").Origins).Type.Name),
+            () => Assert.Equal("Panel", Assert.Single(Single(sites, "Panel's").Origins).Type.Name));
+    }
+
+    [Fact]
+    public void Should_follow_a_key_a_method_passes_on_to_another()
+    {
+        // Act
+        var forwarded = Forward("""
+            internal static class Labels
+            {
+                public static LocalizableText Outer<TSource>(string key) => Inner<TSource>(key);
+
+                private static LocalizableText Inner<TSource>(string key) => LocalizableText.For<TSource>(key);
+            }
+
+            public sealed class Page
+            {
+                public LocalizableText Show() => Labels.Outer<Page>("Today");
+            }
+            """);
+
+        // Assert
+        var site = Assert.Single(Assert.Single(forwarded.ByProject).Value);
+        Assert.Multiple(
+            () => Assert.Equal("Today", site.Key.Text),
+            () => Assert.Equal("Page", Assert.Single(site.Origins).Type.Name),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_leave_a_key_unread_where_a_call_writes_it_as_an_expression()
+    {
+        // Act — the call writing text is still checked.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Label(string key) => locale[key].Value;
+
+                public string Show(object column) => Label("Today") + Label(column.ToString()!);
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("Today", Assert.Single(Assert.Single(forwarded.ByProject).Value).Key.Text),
+            () => Assert.Equal("key", Assert.Single(forwarded.Unforwarded).Parameter));
+    }
+
+    [Fact]
+    public void Should_leave_unread_a_key_no_call_of_the_run_writes()
+    {
+        // Act
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Label(string key) => locale[key].Value;
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(forwarded.ByProject),
+            () => Assert.Single(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_leave_unread_a_key_a_librarys_consumers_may_write()
+    {
+        // Act — the run's own call is checked, while calls outside it write keys it never sees.
+        var forwarded = Forward("""
+            public static class Labels
+            {
+                public static LocalizableText Label<TSource>(string key) => LocalizableText.For<TSource>(key);
+            }
+
+            internal sealed class Page
+            {
+                public LocalizableText Show() => Labels.Label<Page>("Today");
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("Today", Assert.Single(Assert.Single(forwarded.ByProject).Value).Key.Text),
+            () => Assert.Single(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_leave_unforwarded_a_key_a_lookup_takes_only_under_a_condition()
+    {
+        // Act — an empty key is never looked up, so the call writing it reads nothing.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string key) => string.IsNullOrEmpty(key) ? string.Empty : locale[key].Value;
+
+                public string Show() => Text("");
+            }
+            """);
+
+        // Assert
+        Assert.Empty(forwarded.ByProject);
+    }
+
+    [Fact]
+    public void Should_leave_unforwarded_a_key_its_method_writes_before_the_lookup()
+    {
+        // Act — the lookup reads the trimmed text, not the text the call wrote.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string key)
+                {
+                    key = key.Trim();
+
+                    return locale[key].Value;
+                }
+
+                public string Show() => Text(" Today ");
+            }
+            """);
+
+        // Assert
+        Assert.Empty(forwarded.ByProject);
+    }
+
+    [Fact]
+    public void Should_leave_out_a_call_whose_receiver_runs_an_override()
+    {
+        // Act — the override never reaches the lookup, so the key it is given is not looked up.
+        var forwarded = Forward("""
+            public class Base(IStringLocale<Base> locale)
+            {
+                public virtual string Label(string key) => locale[key].Value;
+            }
+
+            public sealed class Derived(IStringLocale<Base> locale) : Base(locale)
+            {
+                public override string Label(string key) => key;
+            }
+
+            public sealed class Page
+            {
+                public string Show()
+                {
+                    Base item = new Derived(default!);
+
+                    return item.Label("Today");
+                }
+            }
+            """);
+
+        // Assert
+        Assert.Empty(forwarded.ByProject);
+    }
+
     private const string Usings = """
         using System;
 
@@ -2061,6 +2264,9 @@ public sealed class LocaleFlowTests
 
         return LocaleFlowTestFactory.Resolve(CompilationTestFactory.Referenced(namespaced));
     }
+
+    private static ForwardedLookups Forward(string declarations)
+        => LocaleFlowTestFactory.Forward(CompilationTestFactory.Referenced($"{Usings}namespace Scratch;\n\n{declarations}"));
 
     private static LocalizerLookup Single(IReadOnlyList<LocalizerLookup> sites, string key)
         => Assert.Single(sites, site => site.Key.Text == key);

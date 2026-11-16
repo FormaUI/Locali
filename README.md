@@ -189,6 +189,16 @@ semantic path: its key is read in the entries of its type argument, and the valu
 parameter gathers are counted as a lookup's are, whether the runtime is a package or a project
 of the run.
 
+A key a lookup takes from a parameter of its own method, `string Label(string key) => L[key]`,
+is the calls' to write: each call the run makes to the method that writes the key as text is a
+lookup of that text, at the call, read in the type the lookup's locale is when that call reaches
+it, so two calls passing different types to one method are each held to their own. A call
+passing the key on from a parameter of its own is followed to its own calls in turn. The key is
+reported as an expression where a call writes it otherwise, or where calls the run cannot see
+may write it: through a delegate, a base or an interface method, or from outside a library, and
+where the method reaches the lookup only on some paths or writes the parameter first, so a
+call's text may not be what it reads.
+
 A lookup through Microsoft's `IStringLocalizer`, written as `localizer["Checkout"]` with a
 literal key, is a lookup of Forma's where the run has Forma's adapter answer it: its product
 code calls `AddFormaStringLocalizerAdapter` ahead of any call registering Microsoft's

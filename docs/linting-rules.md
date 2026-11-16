@@ -662,6 +662,20 @@ LocalizableText.For<SectionMenu>("{Count} results today", 12)     // right: one 
 LocalizableText.For<SectionMenu>("{Count} results today", 12, 3)  // LOC0201: one hole, two values
 ```
 
+A key a lookup takes from a parameter of its own method, `string Label(string key) => L[key]`,
+is the calls' to write: each call the run makes to the method that writes the key as text is a
+lookup of that text, at the call, read in the type the lookup's locale is when that call reaches
+it, so two calls passing different types to one method are each held to their own. A call
+passing the key on from a parameter of its own is followed to its own calls in turn. The key is
+reported as an expression where a call writes it otherwise, or where calls the run cannot see
+may write it: through a delegate, a base or an interface method, or from outside a library. The values such a call passes are left
+uncounted, since the method may fill the holes itself:
+
+```csharp
+LocalizableText Title(string key) => LocalizableText.For<SectionMenu>(key);
+Title("Results")                                                  // checked: "Results" in SectionMenu's entries
+```
+
 Values pair to a key's distinct holes by position, in the order the holes first appear, and a
 plural expression's bracketed argument names a value the way a brace hole does:
 
@@ -765,8 +779,9 @@ type. The instances are the lookup's own type, unless it is abstract, and every 
 project derived from it that keeps the member holding the lookup as it is. So `L["Details
 columns"]` in a component deriving from `FormaComponentBase` is held to the component's own
 files wherever Forma comes from, and a helper reading a locale its callers pass is held to each
-caller's type. The message names the path the type was reached through, and the hint where a
-hint alone supplied it.
+caller's type. A key the lookup takes from a parameter is held, at each call writing it as text,
+to the type the lookup reads when that call reaches it. The message names the path the type was
+reached through, and the hint where a hint alone supplied it.
 
 A lookup through Microsoft's `IStringLocalizer<T>` with a literal key is held to `T`'s entries
 where the run has Forma's adapter answer it: its product code calls
@@ -803,7 +818,12 @@ what it does not declare; or the run did not name the project's files.
 
 ### LOC0208 — A lookup writes its key as an expression
 
-**Reports.** `L[column.ToString()]`: a key only the run knows.
+**Reports.** `L[column.ToString()]`: a key only the run knows. A key the lookup takes from a
+parameter of its own method is reported where a call writes it as an expression, or where calls
+the run cannot see may write it: the method is passed as a delegate, is virtual, implements an
+interface, or is a public method of a library, which its consumers call; or where a call's text
+may not be what the lookup reads: the method reaches the lookup only on some paths, under a
+condition, in a loop or a lambda, or past a short circuit, or writes the parameter first.
 
 **Why it matters.** No rule can judge the key and no coverage check can count it; leaving it
 silent would let a run read as complete when part of it was never looked at.
@@ -812,7 +832,8 @@ silent would let a run read as complete when part of it was never looked at.
 rule reads.
 
 **Silent where.** The lookup sits inside a type that implements `IStringLocale`, which forwards
-the key its own caller wrote.
+the key its own caller wrote; or the key is a parameter every call reaching the lookup writes as
+text, which is checked at those calls instead.
 
 ### LOC0209 — A key with holes and no words
 

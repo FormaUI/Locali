@@ -10,6 +10,11 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 - Breaking: `[LocaleKey]` is no longer read. A call to `LocalizableText.For<TSource>` is a lookup of its key in
   `TSource`'s entries because it is the runtime's own, read alike whether the runtime is a package or a project of the
   run, and a method of another type named `For` is not.
+- A key a lookup takes from a parameter of its own method is checked at each call the run makes to the method that
+  writes it as text, held to the type the lookup reads when that call reaches it and followed through calls passing it
+  on, so a helper such as `string Label(string key) => L[key]` or a wrapper of `LocalizableText.For` needs no marking.
+  LOC0208 reports it where a call writes it otherwise, where calls the run cannot see may write it, or where a call's
+  text may not be what the lookup reads, as under a condition.
 
 ## `1.0.0-preview.20`
 
