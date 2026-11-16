@@ -24,6 +24,7 @@ public static class ProjectLinterTestFactory
             new AmbiguousNameChecker(),
             new CultureInAnotherCaseChecker(),
             new SecondCultureInNameChecker(),
+            new CultureOutsideSatelliteChecker(),
             new LocalePackAssemblyChecker(),
             new LocaleSourceChecker(lintingConfiguration ?? new LintingConfiguration(Path.GetTempPath()), LocaleFormatTestFactory.Json),
             new CultureInRootNamespaceChecker(),

@@ -1,5 +1,7 @@
 namespace Forma.Locali.Projects;
 
+using Forma.Framework.Localization.Files;
+
 using Microsoft.CodeAnalysis;
 
 /// <summary>A project loaded far enough to analyse, and what the load could not do.</summary>
@@ -10,7 +12,7 @@ using Microsoft.CodeAnalysis;
 /// <param name="RootNamespace">The root the project embeds its resources under, or null when it declares none.</param>
 /// <param name="EmbeddedResourceNames">The name the build embeds each file under, keyed by the file's full path, or null when its items were not read, in which case every locale file beneath it is taken as embedded under the name the build would give it.</param>
 /// <param name="IsLocalePack">Whether the project declares <c>IsLocalePack</c>, making it a locale pack: an assembly of nothing but locale files for other assemblies' types.</param>
-/// <param name="SatelliteFiles">The full path of every embedded file the build moves into a satellite assembly, or null when its items were not read.</param>
+/// <param name="SatelliteCultures">The culture of the satellite assembly the build moves each such embedded file into, keyed by the file's full path, or null when its items were not read.</param>
 public sealed record LoadedProject(
     string Path,
     Compilation? Compilation,
@@ -19,4 +21,22 @@ public sealed record LoadedProject(
     string? RootNamespace = null,
     IReadOnlyDictionary<string, string>? EmbeddedResourceNames = null,
     bool IsLocalePack = false,
-    IReadOnlySet<string>? SatelliteFiles = null);
+    IReadOnlyDictionary<string, string>? SatelliteCultures = null)
+{
+    /// <summary>The culture the name a satellite assembly holds a file under gives it where that is not the satellite's culture, so the runtime reads the file under no name, or null where the runtime reads it.</summary>
+    /// <param name="fullPath">The file, as a full path.</param>
+    public string? GetCultureOutsideSatellite(string fullPath)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(fullPath);
+
+        if (SatelliteCultures?.GetValueOrDefault(fullPath) is not { } satelliteCulture || EmbeddedResourceNames?.GetValueOrDefault(fullPath) is not { } name)
+        {
+            return null;
+        }
+
+        // A satellite's file is read for the first culture its name holds, folders and dots alike separating its parts.
+        var nameCulture = name[..^System.IO.Path.GetExtension(name).Length].Split('.', '/').FirstOrDefault(part => LocaleFileNames.IsCulture(part));
+
+        return nameCulture is not null && nameCulture != satelliteCulture ? nameCulture : null;
+    }
+}

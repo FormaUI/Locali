@@ -51,7 +51,8 @@ public static class ProjectLocaleFiles
             string name;
             if (project.EmbeddedResourceNames is { } resourceNames)
             {
-                if (!resourceNames.TryGetValue(fullPath, out var resourceName))
+                // A satellite holding a file under another culture's name lists it in no culture.
+                if (!resourceNames.TryGetValue(fullPath, out var resourceName) || project.GetCultureOutsideSatellite(fullPath) is not null)
                 {
                     continue;
                 }

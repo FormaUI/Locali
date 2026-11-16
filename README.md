@@ -225,6 +225,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0121 | Warning | An application's file has a name that reads both in its own namespace and as another assembly's, and a type of each reads one of its sections |
 | LOC0122 | Warning | A part of a locale file's name is a culture written in another case than .NET names it, and names no type |
 | LOC0123 | Warning | A part of a locale file's name is a culture other than the file's own, and names no type |
+| LOC0124 | Error | A satellite assembly holds a locale file under a name whose culture is not the satellite's |
 | LOC0200 | Error | An expression reads a name nothing supplies |
 | LOC0201 | Error | The value count does not match the key's distinct holes |
 | LOC0202 | Error | An expression naming no argument is given no value |

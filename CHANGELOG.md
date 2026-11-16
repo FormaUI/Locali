@@ -22,6 +22,9 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 - An application with no `.locale.json` has its files for other assemblies read beneath the root namespace its build
   records on `LocaleApplicationAttribute`, as `Forma.Framework.Localization` reads them, rather than beneath its name,
   so where the two differ, LOC0112, LOC0120 and LOC0121 hold such a file to the other assembly's types.
+- A file a satellite assembly holds under a name whose culture is not the satellite's is left unread, as
+  `Forma.Framework.Localization` lists it in no culture, where it was read for the culture its name gives it, and
+  LOC0124 reports it, as an error, since none of its entries is ever read.
 
 ## `1.0.0-preview.16`
 

@@ -36,6 +36,7 @@ public sealed class CultureInRootNamespaceChecker : IProjectRuleChecker
         var misread = context.LocalizationFiles
             .Select(Path.GetFullPath)
             .Where(path => resourceNames.TryGetValue(path, out var name)
+                && project.GetCultureOutsideSatellite(path) is null
                 && name.Length > rootNamespace.Length
                 && name[rootNamespace.Length] is '/' or '.'
                 && name.StartsWith(rootNamespace, StringComparison.Ordinal)

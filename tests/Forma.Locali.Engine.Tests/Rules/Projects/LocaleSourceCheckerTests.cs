@@ -42,6 +42,22 @@ public sealed class LocaleSourceCheckerTests
     }
 
     [Fact]
+    public void Should_leave_a_satellites_file_held_under_another_cultures_name_alone()
+    {
+        // Arrange — the 'he' satellite holds the file under a name whose culture is 'es', so the runtime reads it from nowhere.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "**": ["embedded"] } }""");
+        var file = directory.Write(Path.Combine(".locales", "es", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var project = Project(directory, embedded: [file], satellite: [file]);
+
+        // Act
+        var diagnostics = Check(project, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_report_a_hosts_file_where_the_configuration_allows_none()
     {
         // Arrange
@@ -311,7 +327,7 @@ public sealed class LocaleSourceCheckerTests
             false,
             false,
             EmbeddedResourceNames: Names(directory, [.. embedded]),
-            SatelliteFiles: satellite?.Select(Path.GetFullPath).ToHashSet(StringComparer.OrdinalIgnoreCase));
+            SatelliteCultures: satellite?.ToDictionary(Path.GetFullPath, _ => "he", StringComparer.OrdinalIgnoreCase));
 
     private static LoadedProject HostingProject(TempDirectory directory, string embeddedFile)
         => new(

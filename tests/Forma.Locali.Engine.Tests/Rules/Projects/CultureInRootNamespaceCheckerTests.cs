@@ -40,6 +40,24 @@ public sealed class CultureInRootNamespaceCheckerTests
     }
 
     [Fact]
+    public void Should_leave_a_file_a_satellite_holds_under_another_cultures_name_alone()
+    {
+        // Arrange — the 'he' satellite holds the file under a name whose culture is 'my', so the runtime reads it from nowhere.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Components", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var project = Project(directory, "Contoso.my.Widgets", rootNamespace: null, file) with
+        {
+            SatelliteCultures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [Path.GetFullPath(file)] = "he" },
+        };
+
+        // Act
+        var diagnostics = Check(project, file);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_read_a_name_without_the_folder_of_locale_files_its_config_names()
     {
         // Arrange — with '.strings' left out of the name, the runtime reads 'my' as the file's culture.

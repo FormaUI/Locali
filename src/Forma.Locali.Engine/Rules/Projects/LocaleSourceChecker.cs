@@ -91,7 +91,13 @@ public sealed class LocaleSourceChecker(ILintingConfiguration lintingConfigurati
 
         if (project.EmbeddedResourceNames!.ContainsKey(fullPath))
         {
-            return project.SatelliteFiles?.Contains(fullPath) == true ? LocaleSources.Satellite : LocaleSources.Embedded;
+            // A satellite's file held under another culture's name is read from nowhere, which LOC0124 reports.
+            if (project.GetCultureOutsideSatellite(fullPath) is not null)
+            {
+                return null;
+            }
+
+            return project.SatelliteCultures?.ContainsKey(fullPath) == true ? LocaleSources.Satellite : LocaleSources.Embedded;
         }
 
         return fullPath.StartsWith(hostFolder, StringComparison.OrdinalIgnoreCase) ? LocaleSources.Host : null;

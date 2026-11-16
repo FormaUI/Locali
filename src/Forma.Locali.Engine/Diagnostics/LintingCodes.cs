@@ -40,6 +40,7 @@ public static class LintingCodes
             AmbiguousName,
             CultureInAnotherCase,
             SecondCultureInName,
+            CultureOutsideSatellite,
             UnsuppliedPluralArgument,
             ValueCountMismatch,
             SoleArgumentExpected,
@@ -241,6 +242,12 @@ public static class LintingCodes
         "LOC0123",
         LintingSeverity.Warning,
         "A part of a locale file's name is a culture other than the one the name gives the file, and names no type, so the runtime reads it as part of the name the file stands for, which no type reads.");
+
+    /// <summary>A satellite assembly holds a locale file under a name whose culture is not the satellite's.</summary>
+    public static LintingCode CultureOutsideSatellite { get; } = new(
+        "LOC0124",
+        LintingSeverity.Error,
+        "A satellite assembly holds a locale file under a name whose culture is not the satellite's, so the runtime reads none of its entries.");
 
     /// <summary>An expression names an argument the lookup never supplies.</summary>
     public static LintingCode UnsuppliedPluralArgument { get; } = new(

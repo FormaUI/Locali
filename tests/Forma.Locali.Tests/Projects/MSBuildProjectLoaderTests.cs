@@ -60,6 +60,34 @@ public sealed class MSBuildProjectLoaderTests
     }
 
     [Fact]
+    public async Task Should_leave_a_file_a_satellite_holds_under_another_cultures_name_unread()
+    {
+        // Arrange — the SDK moves the file into the 'he' satellite for the culture its file name ends in, under a name whose culture is 'es'.
+        using var directory = new TempDirectory();
+        var project = directory.Write("Contoso.Widgets.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+              </PropertyGroup>
+              <ItemGroup>
+                <EmbeddedResource Include=".locales\es\Gadget.he.json" LogicalName="Contoso.Widgets/.locales/es/Gadget.he.json" />
+              </ItemGroup>
+            </Project>
+            """);
+        directory.Write("Widget.cs", "namespace Contoso.Widgets; public sealed class Widget;");
+        directory.Write(Path.Combine(".locales", "es", "Gadget.he.json"), LocalizationFileFakeData.ForCulture("es", "Today", "Hoy"));
+
+        // Act
+        var (_, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", project);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Contains(LintingCodes.CultureOutsideSatellite.Id, output, StringComparison.Ordinal),
+            () => Assert.DoesNotContain(LintingCodes.SecondCultureInName.Id, output, StringComparison.Ordinal),
+            () => Assert.DoesNotContain(LintingCodes.UnreachableLocalization.Id, output, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Should_load_a_locale_pack_as_a_pack_rather_than_as_the_owner_of_its_files()
     {
         // Arrange

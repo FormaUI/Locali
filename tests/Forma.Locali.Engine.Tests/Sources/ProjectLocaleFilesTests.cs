@@ -234,6 +234,28 @@ public sealed class ProjectLocaleFilesTests
     }
 
     [Fact]
+    public void Should_skip_a_file_a_satellite_holds_under_another_cultures_name()
+    {
+        // Arrange — the 'he' satellite holds the file under a name whose culture is 'es', which no culture's reading lists.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine(".locales", "es", "Widget.he.json"), LocalizationFileFakeData.ForCulture("es", "Today", "Hoy"));
+        var fullPath = Path.GetFullPath(file);
+        var project = new LoadedProject(
+            Path.Combine(directory.Root, "Scratch.csproj"),
+            Compile("namespace Scratch;"),
+            false,
+            false,
+            EmbeddedResourceNames: new Dictionary<string, string> { [fullPath] = "Scratch/.locales/es/Widget.he.json" },
+            SatelliteCultures: new Dictionary<string, string> { [fullPath] = "he" });
+
+        // Act
+        var resolved = ProjectLocaleFiles.Resolve(LocaleFormatTestFactory.Json.RuntimeFormat, project, [file])!;
+
+        // Assert
+        Assert.Empty(resolved.Files);
+    }
+
+    [Fact]
     public void Should_read_a_file_an_application_embeds_for_another_assembly_as_its_own_too()
     {
         // Arrange — the build embeds every locale file alike, and the assembly's own source reads each.

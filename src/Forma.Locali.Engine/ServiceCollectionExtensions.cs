@@ -63,6 +63,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IProjectRuleChecker, AmbiguousNameChecker>();
         services.AddSingleton<IProjectRuleChecker, CultureInAnotherCaseChecker>();
         services.AddSingleton<IProjectRuleChecker, SecondCultureInNameChecker>();
+        services.AddSingleton<IProjectRuleChecker, CultureOutsideSatelliteChecker>();
         services.AddSingleton<IProjectRuleChecker, LocalePackAssemblyChecker>();
         services.AddSingleton<IProjectRuleChecker, LocaleSourceChecker>();
         services.AddSingleton<IProjectRuleChecker, CultureInRootNamespaceChecker>();

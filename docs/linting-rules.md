@@ -171,8 +171,9 @@ itself.
 **Silent where.** No `localeSources` line matches the file, since the policy is the
 repository's to declare; the file is not named for a culture; the project's items could not be
 read, so whether it embeds the file cannot be told; or the project neither embeds the file nor
-keeps it in its host folder, so the runtime never reads it and no source answers for it. It is
-a warning because the file loads.
+keeps it in its host folder, or a satellite assembly holds it under a name whose culture is not
+the satellite's, which LOC0124 reports, so the runtime never reads it and no source answers for
+it. It is a warning because the file loads.
 
 ### LOC0026 — A `.locali.json` the run does not read
 
@@ -205,10 +206,12 @@ language for every reader of the culture its files were written in.
 place the name can change.
 
 **Silent where.** The part is a culture in another case, `He`, which .NET does not name; the
-project embeds no locale file under the root namespace, or its items could not be read; the
-project did not compile; the project is a locale pack, whose files are embedded under their paths
-alone; or the assembly's name holds the culture and the root namespace another name, since the
-files the name misreads are then an application's or a pack's, and LOC0024 reports a pack's.
+project embeds no locale file under the root namespace, or its items could not be read; every
+file it embeds there is one a satellite assembly holds under a name whose culture is not the
+satellite's, which the runtime never reads and LOC0124 reports; the project did not compile; the
+project is a locale pack, whose files are embedded under their paths alone; or the assembly's
+name holds the culture and the root namespace another name, since the files the name misreads
+are then an application's or a pack's, and LOC0024 reports a pack's.
 
 ## Locale files (LOC0100–LOC0199)
 
@@ -538,7 +541,28 @@ repeating the file's own culture is that culture again, so `.locales/es/es.json`
 **Silent where.** The part names a type, a namespace or an assembly the run knows, which the
 runtime reads as part of a name on purpose; the file is an application's read for an assembly
 whose types are out of reach; the project does not embed the file, or its items could not be
-read; or the project did not compile, so its types cannot be told.
+read; a satellite assembly holds the file under a name whose culture is not the satellite's, so
+the runtime never reads it, which LOC0124 reports; or the project did not compile, so its types
+cannot be told.
+
+### LOC0124 — A satellite's file named for another culture
+
+**Reports.** A locale file the build moves into a satellite assembly, which the SDK does for an
+`EmbeddedResource` item whose file name ends in a culture and that does not set
+`WithCulture="false"`, under a name whose first culture is not the satellite's, as the `he`
+satellite holds `.locales/es/Widget.he.json` under `Contoso.Widgets/.locales/es/Widget.he.json`.
+It is reported at the file, naming the satellite's culture, the name and the culture it gives.
+
+**Why it matters.** The runtime reads a satellite's file for the satellite's culture, and lists
+one whose name holds another culture in no culture at all, so none of its entries is ever read
+and every lookup it was written for renders in the source language.
+
+**What fixes it.** Let the localization package embed the file, which keeps it in the assembly
+under its path, or give the item a `LogicalName` holding the satellite's culture, or none.
+
+**Silent where.** The name holds the satellite's culture, or none, which the runtime reads the
+satellite's culture into; the build keeps the file in the assembly itself; or the project's items
+could not be read.
 
 ## Callsites (LOC0200–LOC0299)
 

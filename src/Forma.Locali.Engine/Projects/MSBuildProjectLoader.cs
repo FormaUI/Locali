@@ -285,7 +285,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             ? null
             : CompilerCommandLine.Compile(project.Arguments, Path.GetDirectoryName(project.Path)!, standIns, language.Name, cancellationToken);
 
-        return Read(project.Path, language, compilation, project.RootNamespace, project.Resources?.Names, project.Resources?.SatelliteFiles, project.IsLocalePack, cancellationToken);
+        return Read(project.Path, language, compilation, project.RootNamespace, project.Resources?.Names, project.Resources?.SatelliteCultures, project.IsLocalePack, cancellationToken);
     }
 
     private static LoadedProject Read(
@@ -294,37 +294,37 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         Compilation? compilation,
         string? rootNamespace,
         IReadOnlyDictionary<string, string>? resourceNames,
-        IReadOnlySet<string>? satelliteFiles,
+        IReadOnlyDictionary<string, string>? satelliteCultures,
         bool isLocalePack,
         CancellationToken cancellationToken)
     {
         var markup = HasMarkup(path, language);
         if (compilation is null)
         {
-            return new LoadedProject(path, null, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
+            return new LoadedProject(path, null, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack, satelliteCultures);
         }
 
         // Razor generates C# alone, so no other language's project has generated sources to look for.
         if (language.Name != LanguageNames.CSharp)
         {
-            return new LoadedProject(path, compilation, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
+            return new LoadedProject(path, compilation, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack, satelliteCultures);
         }
 
         // The generator ran with the compilation, in the compiler it was built against, which needs nothing on disk.
         if (compilation.SyntaxTrees.Any(tree => tree.FilePath.EndsWith(RazorSuffix, StringComparison.OrdinalIgnoreCase)))
         {
-            return new LoadedProject(path, compilation, HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
+            return new LoadedProject(path, compilation, HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack, satelliteCultures);
         }
 
         var emitted = Emitted(Path.GetDirectoryName(path)!);
         if (emitted.Count == 0)
         {
-            return new LoadedProject(path, compilation, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
+            return new LoadedProject(path, compilation, HasGeneratedSources: false, markup, rootNamespace, resourceNames, isLocalePack, satelliteCultures);
         }
 
         var parseOptions = compilation.SyntaxTrees.FirstOrDefault()?.Options as CSharpParseOptions;
 
-        return new LoadedProject(path, compilation.AddSyntaxTrees(Parse(emitted, parseOptions, cancellationToken)), HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack, satelliteFiles);
+        return new LoadedProject(path, compilation.AddSyntaxTrees(Parse(emitted, parseOptions, cancellationToken)), HasGeneratedSources: true, markup, rootNamespace, resourceNames, isLocalePack, satelliteCultures);
     }
 
     // Razor markup compiles to C#, so under any other language it is not the project's to lint.
@@ -337,30 +337,30 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
     private static EmbeddedResources GetResources(ProjectInstance instance)
     {
         var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var satelliteFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var satelliteCultures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in instance.GetItems("EmbeddedResource"))
         {
             var fullPath = Path.GetFullPath(item.GetMetadataValue("FullPath"));
-            names[fullPath] = GetResourceName(item, out var isSatellite);
-            if (isSatellite)
+            names[fullPath] = GetResourceName(item, out var satelliteCulture);
+            if (satelliteCulture is not null)
             {
-                satelliteFiles.Add(fullPath);
+                satelliteCultures[fullPath] = satelliteCulture;
             }
         }
 
-        return new EmbeddedResources(names, satelliteFiles);
+        return new EmbeddedResources(names, satelliteCultures);
     }
 
     // A file the SDK moves into a satellite assembly is named there without its culture, which the runtime reads back in just before
     // the extension; one its item named keeps the culture its name holds.
-    private static string GetResourceName(ProjectItemInstance item, out bool isSatellite)
+    private static string GetResourceName(ProjectItemInstance item, out string? satelliteCulture)
     {
         var logicalName = item.GetMetadataValue("LogicalName");
         var name = logicalName.Length > 0 ? logicalName : item.GetMetadataValue("ManifestResourceName");
         var culture = item.GetMetadataValue("Culture");
 
-        isSatellite = culture.Length > 0 && !item.GetMetadataValue("WithCulture").Equals("false", StringComparison.OrdinalIgnoreCase);
-        if (!isSatellite)
+        satelliteCulture = culture.Length > 0 && !item.GetMetadataValue("WithCulture").Equals("false", StringComparison.OrdinalIgnoreCase) ? culture : null;
+        if (satelliteCulture is null)
         {
             return name;
         }
@@ -438,5 +438,5 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
     // The language as Roslyn names it, and the build item its compiler's arguments come back under.
     private sealed record ProjectLanguage(string Name, string ArgumentsItem);
 
-    private sealed record EmbeddedResources(IReadOnlyDictionary<string, string> Names, IReadOnlySet<string> SatelliteFiles);
+    private sealed record EmbeddedResources(IReadOnlyDictionary<string, string> Names, IReadOnlyDictionary<string, string> SatelliteCultures);
 }
