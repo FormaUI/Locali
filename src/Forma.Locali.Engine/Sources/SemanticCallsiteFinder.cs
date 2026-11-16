@@ -34,9 +34,12 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 
     // The operation tree is what the compiler bound, in the same shape for every language it reads, so the
     // walk reads it rather than the syntax; an indexer and a default property are one operation there.
-    private static BoundLookup? Lookup(IOperation operation, INamedTypeSymbol contract, INamedTypeSymbol? generic)
+    private static BoundLookup? Lookup(IOperation operation, INamedTypeSymbol contract, INamedTypeSymbol? generic, StringLocalizerTypes stringLocalizer)
         => operation switch
         {
+            IPropertyReferenceOperation { Arguments.Length: > 0 } indexer
+                when stringLocalizer.Contract is { } localizer && LocalizerContract.Implements(indexer.Property.ContainingType, localizer)
+                => new(indexer.Arguments, 0, (stringLocalizer.Generic is not null && LocalizerContract.ResourceOf(indexer.Instance?.Type, stringLocalizer.Generic) is { } resource ? [new LocaleOrigin(resource, $"IStringLocalizer<{resource.Name}>")] : [], null), KeyedMethod: null, UsesStringLocalizer: true),
             IPropertyReferenceOperation { Arguments.Length: > 0 } indexer
                 when LocalizerContract.Implements(indexer.Property.ContainingType, contract)
                 => new(indexer.Arguments, 0, Resources(indexer, indexer.Instance, generic), KeyedMethod: null),
@@ -52,6 +55,7 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
     {
         var model = compilation.GetSemanticModel(tree);
         var generic = compilation.GetTypeByMetadataName(LocalizerContract.GenericMetadataName);
+        var stringLocalizer = new StringLocalizerTypes(compilation.GetTypeByMetadataName(LocalizerContract.StringLocalizerMetadataName), compilation.GetTypeByMetadataName(LocalizerContract.StringLocalizerGenericMetadataName));
         var lookups = new List<LocalizerLookup>();
         var unreadable = new List<FileLinePositionSpan>();
         var interpolated = new List<FileLinePositionSpan>();
@@ -61,18 +65,20 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
             // A lookup is read at the node its operation stands on, so a node inside it does not read it again.
             if (model.GetOperation(node) is not { } operation
                 || operation.Syntax != node
-                || Lookup(operation, contract, generic) is not { } lookup)
+                || Lookup(operation, contract, generic, stringLocalizer) is not { } lookup)
             {
                 continue;
             }
 
             if (SemanticCallsiteReader.Read(operation, lookup.Arguments, lookup.KeyOrdinal) is { } site)
             {
-                var resolved = site with { Origins = lookup.Resources.Origins, Receiver = lookup.Resources.Receiver };
+                var resolved = site with { Origins = lookup.Resources.Origins, Receiver = lookup.Resources.Receiver, UsesStringLocalizer = lookup.UsesStringLocalizer };
 
                 lookups.Add(lookup.KeyedMethod is { } method ? Keyed(resolved, method, lookup.KeyOrdinal) : resolved);
             }
-            else if (!LocalizerContract.InsideLocalizer(model.GetEnclosingSymbol(node.SpanStart), contract)
+            // Microsoft's localizer reads its key as its own contract defines, so only a literal one is read for an entry.
+            else if (!lookup.UsesStringLocalizer
+                && !LocalizerContract.InsideLocalizer(model.GetEnclosingSymbol(node.SpanStart), contract)
                 && !SemanticCallsiteReader.ForwardsKey(lookup.Arguments, lookup.KeyOrdinal))
             {
                 if (SemanticCallsiteReader.InterpolatedKey(lookup.Arguments, lookup.KeyOrdinal) is { } key)
@@ -151,5 +157,9 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         ImmutableArray<IArgumentOperation> Arguments,
         int KeyOrdinal,
         (IReadOnlyList<LocaleOrigin> Origins, SyntaxNode? Receiver) Resources,
-        IMethodSymbol? KeyedMethod);
+        IMethodSymbol? KeyedMethod,
+        bool UsesStringLocalizer = false);
+
+    // Microsoft's localizer and its generic form, where the compilation binds them.
+    private readonly record struct StringLocalizerTypes(INamedTypeSymbol? Contract, INamedTypeSymbol? Generic);
 }

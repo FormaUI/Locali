@@ -23,10 +23,14 @@ internal sealed class FlowRun
     private readonly ConcurrentDictionary<Compilation, Lazy<ILookup<SymbolKey, INamedTypeSymbol>>> _derived = new(ReferenceEqualityComparer.Instance);
     private readonly ConcurrentDictionary<SyntaxTree, SemanticModel> _models = new();
     private const string ServiceCollectionName = "IServiceCollection";
+    private const string AdapterNamespace = "Forma.Framework.Localization.StringLocalizerAdapter";
+    private const string AdapterRegistration = "AddFormaStringLocalizerAdapter";
+    private const string LocalizationSuffix = "Localization";
 
     private static readonly string[] RegistrationNames = ["Add", "TryAdd", "Replace", "Decorate", "Scoped", "Singleton", "Transient", "Describe"];
 
     private readonly ConcurrentDictionary<SymbolKey, Lazy<IReadOnlyList<INamedTypeSymbol?>>> _registrations = new();
+    private readonly Lazy<bool> _isStringLocalizerAdapted;
 
     /// <summary>Reads the run's projects.</summary>
     /// <param name="projects">Every project the run loaded.</param>
@@ -46,6 +50,7 @@ internal sealed class FlowRun
 
         Compilations = [.. _projects.Keys];
         Hints = new LocaleMemberHints(Compilations, hints);
+        _isStringLocalizerAdapted = new(ReadStringLocalizerAdapted);
     }
 
     /// <summary>The compilation of every project of the run, ordered by the project's path.</summary>
@@ -53,6 +58,10 @@ internal sealed class FlowRun
 
     /// <summary>The member hints the run applies.</summary>
     public LocaleMemberHints Hints { get; }
+
+    /// <summary>Whether Forma's adapter answers Microsoft's string localizer across the run: its product code registers the adapter, ahead of any of Microsoft's localization, and registers neither contract in the adapter's place.</summary>
+    public bool IsStringLocalizerAdapted
+        => _isStringLocalizerAdapted.Value;
 
     /// <summary>The semantic model of a tree, made once and shared, so a member bound for one lookup is bound for every other.</summary>
     /// <param name="compilation">The compilation holding the tree.</param>
@@ -339,6 +348,70 @@ internal sealed class FlowRun
 
         return registrations;
     }
+
+    // The adapter and Microsoft's localization, AddLocalization and AddViewLocalization among its calls, each register the factory only
+    // where nothing is registered yet, so a Microsoft call answers in the adapter's place unless the adapter registered first, before it
+    // in the same block; and the application registering either contract itself answers in place of both.
+    private bool ReadStringLocalizerAdapted()
+    {
+        var adapters = new List<IOperation>();
+        var microsofts = new List<IOperation>();
+        foreach (var compilation in Compilations.Where(compilation => !IsTest(compilation)))
+        {
+            var comparison = compilation.Language == LanguageNames.VisualBasic ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            foreach (var tree in compilation.SyntaxTrees)
+            {
+                foreach (var token in tree.GetRoot().DescendantTokens())
+                {
+                    if (!string.Equals(token.ValueText, AdapterRegistration, comparison) && !token.ValueText.EndsWith(LocalizationSuffix, comparison)
+                        || CallAbove(ModelOf(compilation, tree), token) is not IInvocationOperation { TargetMethod: var method } invocation)
+                    {
+                        continue;
+                    }
+
+                    var containingNamespace = method.ContainingNamespace?.ToDisplayString();
+                    if (method.Name == AdapterRegistration && containingNamespace == AdapterNamespace)
+                    {
+                        adapters.Add(invocation);
+                    }
+                    else if (method.Name.EndsWith(LocalizationSuffix, StringComparison.Ordinal) && containingNamespace?.StartsWith("Microsoft.", StringComparison.Ordinal) == true)
+                    {
+                        microsofts.Add(invocation);
+                    }
+                }
+            }
+        }
+
+        return adapters.Count > 0
+            && microsofts.All(microsoft => adapters.Any(adapter => RunsBefore(adapter, microsoft)))
+            && Answers("Microsoft.Extensions.Localization.IStringLocalizerFactory", implementation => implementation.ContainingAssembly?.Name == AdapterNamespace)
+            && Answers("Microsoft.Extensions.Localization.IStringLocalizer`1", implementation => implementation.MetadataName == "StringLocalizer`1" && implementation.ContainingNamespace?.ToDisplayString() == "Microsoft.Extensions.Localization");
+    }
+
+    // Whether one call's statement comes before another's in the same block, which runs them in that order.
+    private static bool RunsBefore(IOperation earlier, IOperation later)
+        => Statement(earlier) is { Parent: IBlockOperation block } first
+            && Statement(later) is { Parent: IBlockOperation laterBlock } second
+            && block.Syntax == laterBlock.Syntax
+            && first.Syntax.SpanStart < second.Syntax.SpanStart;
+
+    private static IOperation? Statement(IOperation operation)
+    {
+        for (var current = operation; current.Parent is { } parent; current = parent)
+        {
+            if (parent is IBlockOperation)
+            {
+                return current;
+            }
+        }
+
+        return null;
+    }
+
+    // Whether every registration the run's product code writes for a contract is one the adapter makes.
+    private bool Answers(string contractMetadataName, Func<INamedTypeSymbol, bool> isAdapters)
+        => Compilations.Select(compilation => compilation.GetTypeByMetadataName(contractMetadataName)).FirstOrDefault(found => found is not null) is not { } contract
+            || ReadRegistrations(contract).All(implementation => implementation is not null && isAdapters(implementation));
 
     // The call the service's name is written in: the nearest creation or invocation above it.
     private static IOperation? RegistrationAbove(SemanticModel model, SyntaxToken token)

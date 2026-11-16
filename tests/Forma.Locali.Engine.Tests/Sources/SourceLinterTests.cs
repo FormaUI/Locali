@@ -99,6 +99,34 @@ public sealed class SourceLinterTests
     }
 
     [Fact]
+    public void Should_leave_a_lookup_through_Microsofts_localizer_to_the_entry_check_alone()
+    {
+        // Arrange — the localizer fills a composite key with string.Format, which no rule of Forma's reads, and a key it writes as an
+        // expression is its own contract's.
+        var compilation = CompilationTestFactory.Referenced(StringLocalizerFakeData.Declarations + """
+            namespace Scratch
+            {
+                public sealed class Checkout(Microsoft.Extensions.Localization.IStringLocalizer<Checkout> localizer)
+                {
+                    public string Total(decimal amount) => localizer["Total: {0:C}", amount].Value;
+
+                    public string Stored(int count) => localizer[$"Stored {count}."].Value;
+
+                    public string Column(string column) => localizer[column].Value;
+                }
+            }
+            """);
+
+        // Act
+        var result = Result(compilation);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(result.Diagnostics),
+            () => Assert.True(Assert.Single(result.Callsites).UsesStringLocalizer));
+    }
+
+    [Fact]
     public void Should_leave_a_key_written_as_a_literal_alone()
     {
         // Act

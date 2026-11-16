@@ -772,6 +772,13 @@ component's own files wherever Forma comes from, and a helper reading a locale i
 is held to each caller's type. The message names the path the type was reached through, and the
 hint where a hint alone supplied it.
 
+A lookup through Microsoft's `IStringLocalizer<T>` with a literal key is held to `T`'s entries
+where the run has Forma's adapter answer it: its product code calls
+`AddFormaStringLocalizerAdapter` ahead of any call registering Microsoft's localization,
+`AddLocalization` or `AddViewLocalization` among them, in the same block, and registers neither
+localizer contract itself. No other rule reads such a lookup, since the localizer fills a
+composite key with `string.Format`.
+
 **Why it matters.** Falling back to the key is exactly what the runtime is defined to do, so the
 string renders in the source language and every other rule stays green; adding
 `L["Details columns"]` to a component whose `he` and `es` files exist leaves both behind without
@@ -793,9 +800,10 @@ own handed the service collection, or declared outside the run's projects; the t
 reaches are alternatives it cannot pair with the lookup, as both sides of a conditional, several
 returns, or a value a constructor or a later write may replace; the type member a hint names
 returns nothing the walk can read, which LOC0214 reports; a type derived from the lookup's own
-overrides the member holding the lookup, so its instances never run it; a parent culture
-answers, since `es-419` reads `es` for what it does not declare; or the run did not name the
-project's files.
+overrides the member holding the lookup, so its instances never run it; the lookup goes through
+Microsoft's `IStringLocalizer` where the run does not have Forma's adapter answer it, so it
+reads the localizer's own resources; a parent culture answers, since `es-419` reads `es` for
+what it does not declare; or the run did not name the project's files.
 
 ### LOC0208 — A lookup writes its key as an expression
 

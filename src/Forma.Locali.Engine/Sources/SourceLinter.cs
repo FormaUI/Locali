@@ -50,8 +50,10 @@ public sealed class SourceLinter(
 
         var lookups = Walk(compilation, files, cancellationToken);
 
-        // Each site parses its own key, so the rules run as wide as the walk that found them.
+        // Each site parses its own key, so the rules run as wide as the walk that found them; a lookup through Microsoft's localizer
+        // reads its key by that contract, which the rules do not read.
         diagnostics.AddRange(lookups.Lookups
+            .Where(site => !site.UsesStringLocalizer)
             .AsParallel()
             .WithCancellation(cancellationToken)
             .SelectMany(Check));

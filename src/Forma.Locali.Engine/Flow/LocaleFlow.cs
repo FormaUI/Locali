@@ -45,7 +45,14 @@ public sealed class LocaleFlow
             return lookups;
         }
 
-        return [.. lookups.AsParallel().AsOrdered().Select(lookup => lookup.Receiver is null ? lookup : Resolve(compilation, lookup))];
+        // A lookup through Microsoft's localizer reads Forma's entries only where the run has Forma's adapter answer it.
+        var isStringLocalizerAdapted = lookups.Any(lookup => lookup.UsesStringLocalizer) && _run.IsStringLocalizerAdapted;
+
+        return [.. lookups
+            .Where(lookup => !lookup.UsesStringLocalizer || isStringLocalizerAdapted)
+            .AsParallel()
+            .AsOrdered()
+            .Select(lookup => lookup.Receiver is null ? lookup : Resolve(compilation, lookup))];
     }
 
     private LocalizerLookup Resolve(Compilation compilation, LocalizerLookup lookup)

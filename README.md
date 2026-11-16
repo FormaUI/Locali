@@ -182,6 +182,15 @@ the entries of the method's one type argument, and its values are counted where 
 parameter follows the key, as a lookup's are. A key a method passes on from a `[LocaleKey]`
 parameter of its own is checked where that method is called.
 
+A lookup through Microsoft's `IStringLocalizer`, written as `localizer["Checkout"]` with a
+literal key, is a lookup of Forma's where the run has Forma's adapter answer it: its product
+code calls `AddFormaStringLocalizerAdapter` ahead of any call registering Microsoft's
+localization, `AddLocalization` or `AddViewLocalization` among them, in the same block, since
+whichever registers first answers, and registers neither localizer contract itself. Its key is
+held to the entries of the type `IStringLocalizer<T>` names, and to nothing else, since the
+localizer fills a composite key, `Total: {0:C}`, with `string.Format`, which no rule of Forma's
+reads; elsewhere the localizer reads its own resources and the lookup is left alone.
+
 A lookup's type is found on the semantic path by following its receiver back to where the
 localization runtime decided it: a locale the factory the host registers creates for a type,
 reached through `GetStringLocaleFactory()` or an injected `IStringLocaleFactory`, a value typed

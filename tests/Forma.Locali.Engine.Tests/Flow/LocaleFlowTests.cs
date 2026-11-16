@@ -1808,6 +1808,156 @@ public sealed class LocaleFlowTests
             () => Assert.Empty(diagnostics));
     }
 
+    [Fact]
+    public void Should_hold_a_lookup_through_Microsofts_localizer_to_its_type_where_Formas_adapter_answers_it()
+    {
+        // Act
+        var site = Single(Resolve(StringLocalizerFakeData.Declarations + """
+            namespace Scratch
+            {
+                public static class Host
+                {
+                    public static void Register(IServiceCollection services) => Forma.Framework.Localization.StringLocalizerAdapter.ServiceCollectionExtensions.AddFormaStringLocalizerAdapter(services);
+                }
+
+                public sealed class Checkout(Microsoft.Extensions.Localization.IStringLocalizer<Checkout> localizer)
+                {
+                    public string Title => localizer["Checkout"].Value;
+                }
+            """), "Checkout");
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.True(site.UsesStringLocalizer),
+            () => Assert.Equal("Checkout", Assert.Single(site.Origins).Type.Name));
+    }
+
+    [Fact]
+    public void Should_leave_out_a_lookup_through_Microsofts_localizer_where_the_run_never_registers_Formas_adapter()
+    {
+        // Act — Microsoft's localizer reads its own resources unless the adapter answers it.
+        var sites = Resolve(StringLocalizerFakeData.Declarations + """
+            namespace Scratch
+            {
+                public sealed class Checkout(Microsoft.Extensions.Localization.IStringLocalizer<Checkout> localizer)
+                {
+                    public string Title => localizer["Checkout"].Value;
+                }
+            """);
+
+        // Assert
+        Assert.DoesNotContain(sites, site => site.Key.Text == "Checkout");
+    }
+
+    [Fact]
+    public void Should_leave_out_a_lookup_through_Microsofts_localizer_where_Microsofts_localization_is_registered_first()
+    {
+        // Act — the adapter registers only where nothing is registered yet, so Microsoft's localization registered first answers.
+        var sites = Resolve(StringLocalizerFakeData.Declarations + """
+            namespace Scratch
+            {
+                public static class Host
+                {
+                    public static void Register(IServiceCollection services)
+                    {
+                        services.AddLocalization();
+                        Forma.Framework.Localization.StringLocalizerAdapter.ServiceCollectionExtensions.AddFormaStringLocalizerAdapter(services);
+                    }
+                }
+
+                public sealed class Checkout(Microsoft.Extensions.Localization.IStringLocalizer<Checkout> localizer)
+                {
+                    public string Title => localizer["Checkout"].Value;
+                }
+            """);
+
+        // Assert
+        Assert.DoesNotContain(sites, site => site.Key.Text == "Checkout");
+    }
+
+    [Fact]
+    public void Should_leave_out_a_lookup_through_Microsofts_localizer_where_view_localization_registers_Microsofts_first()
+    {
+        // Act — view localization registers Microsoft's localization of its own.
+        var sites = Resolve(StringLocalizerFakeData.Declarations + """
+            namespace Scratch
+            {
+                public static class Host
+                {
+                    public static void Register(IServiceCollection services)
+                    {
+                        services.AddViewLocalization();
+                        Forma.Framework.Localization.StringLocalizerAdapter.ServiceCollectionExtensions.AddFormaStringLocalizerAdapter(services);
+                    }
+                }
+
+                public sealed class Checkout(Microsoft.Extensions.Localization.IStringLocalizer<Checkout> localizer)
+                {
+                    public string Title => localizer["Checkout"].Value;
+                }
+            """);
+
+        // Assert
+        Assert.DoesNotContain(sites, site => site.Key.Text == "Checkout");
+    }
+
+    [Fact]
+    public void Should_hold_a_lookup_through_Microsofts_localizer_to_its_type_where_Formas_adapter_registers_before_Microsofts_localization()
+    {
+        // Act — Microsoft's localization registers only where nothing is registered yet, so the adapter registered first answers.
+        var site = Single(Resolve(StringLocalizerFakeData.Declarations + """
+            namespace Scratch
+            {
+                public static class Host
+                {
+                    public static void Register(IServiceCollection services)
+                    {
+                        Forma.Framework.Localization.StringLocalizerAdapter.ServiceCollectionExtensions.AddFormaStringLocalizerAdapter(services);
+                        services.AddViewLocalization();
+                    }
+                }
+
+                public sealed class Checkout(Microsoft.Extensions.Localization.IStringLocalizer<Checkout> localizer)
+                {
+                    public string Title => localizer["Checkout"].Value;
+                }
+            """), "Checkout");
+
+        // Assert
+        Assert.Equal("Checkout", Assert.Single(site.Origins).Type.Name);
+    }
+
+    [Fact]
+    public void Should_leave_out_a_lookup_through_Microsofts_localizer_where_the_application_registers_its_own_factory()
+    {
+        // Act
+        var sites = Resolve(StringLocalizerFakeData.Declarations + """
+            namespace Scratch
+            {
+                public sealed class Factory : Microsoft.Extensions.Localization.IStringLocalizerFactory
+                {
+                    public Microsoft.Extensions.Localization.IStringLocalizer Create(Type resourceSource) => throw new NotSupportedException();
+                }
+
+                public static class Host
+                {
+                    public static void Register(IServiceCollection services)
+                    {
+                        services.AddSingleton<Microsoft.Extensions.Localization.IStringLocalizerFactory, Factory>();
+                        Forma.Framework.Localization.StringLocalizerAdapter.ServiceCollectionExtensions.AddFormaStringLocalizerAdapter(services);
+                    }
+                }
+
+                public sealed class Checkout(Microsoft.Extensions.Localization.IStringLocalizer<Checkout> localizer)
+                {
+                    public string Title => localizer["Checkout"].Value;
+                }
+            """);
+
+        // Assert
+        Assert.DoesNotContain(sites, site => site.Key.Text == "Checkout");
+    }
+
     private const string Usings = """
         using System;
 

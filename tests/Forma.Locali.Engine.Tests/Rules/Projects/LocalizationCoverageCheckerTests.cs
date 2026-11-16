@@ -344,6 +344,38 @@ public sealed class LocalizationCoverageCheckerTests
             () => Assert.Contains(diagnostics, diagnostic => diagnostic.Message.Contains("'Scratch.Gadget'", StringComparison.Ordinal)));
     }
 
+    [Fact]
+    public void Should_report_a_key_a_lookup_through_Microsofts_localizer_leaves_out()
+    {
+        // Arrange — the run has Forma's adapter answer the localizer, which then reads the type's Forma entries.
+        using var directory = new TempDirectory();
+        var file = directory.Write(HebrewFile, LocalizationFileFakeData.Valid);
+        var compilation = CompilationTestFactory.Referenced(StringLocalizerFakeData.Declarations + """
+            namespace Scratch
+            {
+                public static class Host
+                {
+                    public static void Register(Microsoft.Extensions.DependencyInjection.IServiceCollection services)
+                        => Forma.Framework.Localization.StringLocalizerAdapter.ServiceCollectionExtensions.AddFormaStringLocalizerAdapter(services);
+                }
+
+                public sealed class Widget(Microsoft.Extensions.Localization.IStringLocalizer<Widget> localizer)
+                {
+                    public string Show() => localizer["Tomorrow"].Value;
+                }
+            }
+            """);
+
+        // Act
+        var diagnostics = Check(new LoadedProject(Path.Combine(directory.Root, "Scratch.csproj"), compilation, false, false), file);
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MissingLocalization, diagnostic.Code),
+            () => Assert.Contains("the type the lookup reads through IStringLocalizer<Widget>", diagnostic.Message, StringComparison.Ordinal));
+    }
+
     // The project's callsites as the source linter finds them, each followed to its types as a run does.
     private static IReadOnlyList<LintingDiagnostic> Check(LoadedProject project, params string[] localizationFiles)
     {

@@ -21,4 +21,7 @@ public sealed record LocalizerLookup(
 
     /// <summary>The lookup's node, whose receiver the flow follows to its type once every project of the run is loaded, or null once its types are settled.</summary>
     public SyntaxNode? Receiver { get; init; }
+
+    /// <summary>Whether the lookup goes through Microsoft's <c>IStringLocalizer</c>, which Forma's adapter answers from its type's entries, where only whether the key has an entry is checked, since a composite key is filled by <c>string.Format</c>.</summary>
+    public bool UsesStringLocalizer { get; init; }
 }
