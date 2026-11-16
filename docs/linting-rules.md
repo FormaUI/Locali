@@ -760,17 +760,18 @@ A lookup's type is found by following its receiver back to where the runtime dec
 locale the registered factory creates for a type, a value typed `IStringLocale<T>`, followed
 further where a type of the run derives from `T`, since a locale for it may stand behind one for
 `T`, or a `[LocaleKey]` method's type argument, through locals, fields, properties, parameters
-at each call the run makes, constructors, lambdas, local functions, delegates, lazy values,
-virtual calls on each type the instance can be, `base.` calls to the member they name, and
-services to the one implementation the run's product code registers. Where the walk reaches no
-type, a hint in the linting configuration may relate a member to the type member its locale is
-read for, read as each type of instance overrides it: `typeof(X)` names `X`, and `GetType()` the
-instance's own type. The instances are the lookup's own type, unless it is abstract, and every
-type of its project derived from it that keeps the member holding the lookup as it is. So
-`L["Details columns"]` in a component deriving from `FormaComponentBase` is held to the
-component's own files wherever Forma comes from, and a helper reading a locale its callers pass
-is held to each caller's type. The message names the path the type was reached through, and the
-hint where a hint alone supplied it.
+at each call the run makes, or as the container passes them to a constructor no code calls,
+constructors, lambdas, local functions, delegates, lazy values, virtual calls on each type the
+instance can be, `base.` calls to the member they name, and services to the one implementation
+the run's product code registers. Where the walk reaches no type, a hint in the linting
+configuration may relate a member to the type member its locale is read for, read as each type
+of instance overrides it: `typeof(X)` names `X`, and `GetType()` the instance's own type. The
+instances are the lookup's own type, unless it is abstract, and every type of its project
+derived from it that keeps the member holding the lookup as it is. So `L["Details columns"]` in
+a component deriving from `FormaComponentBase` is held to the component's own files wherever
+Forma comes from, and a helper reading a locale its callers pass is held to each caller's type.
+The message names the path the type was reached through, and the hint where a hint alone
+supplied it.
 
 A lookup through Microsoft's `IStringLocalizer<T>` with a literal key is held to `T`'s entries
 where the run has Forma's adapter answer it: its product code calls

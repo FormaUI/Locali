@@ -12,12 +12,13 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   held to that project's files, a type sharing its full name with one of another assembly is held to its own, and a
   type no project of the run builds is left alone. An application's own files for that assembly still answer.
 - LOC0207 finds a lookup's type by following its locale back to where `Forma.Framework.Localization` decided it, through
-  locals, fields, properties, parameters at each call the run makes, constructors, lambdas, local functions, delegates,
-  lazy values and calls to the implementation the run registers, so a helper or a model given a locale by its callers,
-  and a component whose base reaches the registered factory through a context, are held to their types' files. A value
-  typed `IStringLocale<T>` is followed further where a type of the run derives from `T`, since the contract is
-  covariant. A locale from a factory the code builds itself, a service registered in a way the flow cannot read, and
-  alternatives the flow cannot pair with the lookup are left unchecked.
+  locals, fields, properties, parameters at each call the run makes or as the container passes them to a constructor no
+  code calls, constructors, lambdas, local functions, delegates, lazy values and calls to the implementation the run
+  registers, so a helper or a model given a locale by its callers, and a component whose base reaches the registered
+  factory through a context, are held to their types' files. A value typed `IStringLocale<T>` is followed further where
+  a type of the run derives from `T`, since the contract is covariant. A locale from a factory the code builds itself, a
+  service registered in a way the flow cannot read, and alternatives the flow cannot pair with the lookup are left
+  unchecked.
 - Hints state what the linter cannot read in the code: `localeMembers` relates a member's locale to the type a member of
   the same instance returns. An application writes them under `hints` in `.locali.json`; a library keeps them in a
   `.locali-hints.json` at its project's root, read by every run building it, and ships it at its package's root, read

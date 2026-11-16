@@ -565,6 +565,42 @@ public sealed class LocaleFlowTests
     }
 
     [Fact]
+    public void Should_name_the_type_the_factory_the_container_passes_a_constructor_no_code_calls_creates_a_locale_for()
+    {
+        // Act — nothing of the run creates the service, so the container does, passing the factory it registers.
+        var site = Single(Resolve("""
+            internal sealed class Texts(IStringLocaleFactory localeFactory)
+            {
+                private IStringLocale L { get; } = localeFactory.Create(typeof(Texts));
+
+                public string Show() => L["Today"].Value;
+            }
+            """), "Today");
+
+        // Assert
+        Assert.Equal("Texts", Assert.Single(site.Origins).Type.Name);
+    }
+
+    [Fact]
+    public void Should_name_no_type_through_a_constructor_a_librarys_consumers_may_call()
+    {
+        // Act — code outside the run may pass a factory of its own.
+        var site = Single(Resolve("""
+            public sealed class Texts(IStringLocaleFactory localeFactory)
+            {
+                private IStringLocale L { get; } = localeFactory.Create(typeof(Texts));
+
+                public string Show() => L["Today"].Value;
+            }
+            """), "Today");
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(site.Origins),
+            () => Assert.Contains(site.Gaps, gap => gap.Kind == LocaleGapKind.ExternalCallers));
+    }
+
+    [Fact]
     public void Should_name_the_type_the_registered_factory_creates_a_locale_for()
     {
         // Act

@@ -205,15 +205,16 @@ reached through `GetStringLocaleFactory()` or an injected `IStringLocaleFactory`
 `IStringLocale<T>`, followed further where a type of the run derives from `T`, since a locale
 for it may stand behind one for `T`, or a `[LocaleKey]` method's type argument. The walk goes
 back through locals assigned once, fields and properties as each object was given them,
-parameters through every call the run makes to their method, constructors, lambdas, local
-functions, delegates and lazy values, virtual calls on each type the instance can be, `base.`
-calls to the member they name, and services to the one implementation the run's product code
-registers, so `L["Details columns"]` in a component is held to the component's own files however
-its base reaches the factory. Where the walk cannot follow a value, such as a type chosen at run
-time, a factory the code builds itself, or a service registered in a way the walk cannot read,
-the path ends and the lookup is held to no type along it; alternatives the walk cannot pair with
-the lookup, such as both sides of a conditional, whether locales, objects holding them, or
-delegates returning them, are never held to it for certain.
+parameters through every call the run makes to their method, or as the container passes them to
+a constructor no code calls, constructors, lambdas, local functions, delegates and lazy values,
+virtual calls on each type the instance can be, `base.` calls to the member they name, and
+services to the one implementation the run's product code registers, so `L["Details columns"]`
+in a component is held to the component's own files however its base reaches the factory. Where
+the walk cannot follow a value, such as a type chosen at run time, a factory the code builds
+itself, or a service registered in a way the walk cannot read, the path ends and the lookup is
+held to no type along it; alternatives the walk cannot pair with the lookup, such as both sides
+of a conditional, whether locales, objects holding them, or delegates returning them, are never
+held to it for certain.
 
 What the walk cannot read, a hint states: a member whose locale is read for the type another
 member of the same instance returns, as `FormaComponentBase.L` is for `LocaleSourceType`. The

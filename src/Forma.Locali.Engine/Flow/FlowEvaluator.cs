@@ -389,6 +389,12 @@ internal sealed class FlowEvaluator(
                 }
             }
 
+            // A constructor no code of the run calls, nor any outside it, is the container's to call, with what its registrations give.
+            if (values.Count == 0 && method.MethodKind == MethodKind.Constructor)
+            {
+                values.AddRange(Injected(parameter.Type, parameter));
+            }
+
             if (values.Count == 0)
             {
                 values.Add(new FlowValue.Gap(LocaleGapKind.ExternalCallers, $"no call to {Name(method)}"));
