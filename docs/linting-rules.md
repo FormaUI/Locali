@@ -707,13 +707,14 @@ read; the walk from the lookup reaches no type, as where a type is chosen at run
 comes from a factory the code builds itself or a string-named one, a local is assigned more than
 once or by a deconstruction, a field is written where the walk cannot pair the write with the
 object read, or a service has no one implementation the walk can read, as where it is registered
-twice, as an instance, through a factory creating no one type, or declared outside the run's
-projects; the types the walk reaches are alternatives it cannot pair with the lookup, as both
-sides of a conditional, several returns, or a value a constructor or a later write may replace;
-the property `[LocaleSource]` names returns nothing the walk can read, which LOC0214 reports; a
-type derived from the lookup's own overrides the member holding the lookup, so its instances
-never run it; a parent culture answers, since `es-419` reads `es` for what it does not declare;
-or the run did not name the project's files.
+twice, as an instance, through a factory creating no one type, or by a call of the application's
+own handed the service collection, or declared outside the run's projects; the types the walk
+reaches are alternatives it cannot pair with the lookup, as both sides of a conditional, several
+returns, or a value a constructor or a later write may replace; the property `[LocaleSource]`
+names returns nothing the walk can read, which LOC0214 reports; a type derived from the lookup's
+own overrides the member holding the lookup, so its instances never run it; a parent culture
+answers, since `es-419` reads `es` for what it does not declare; or the run did not name the
+project's files.
 
 ### LOC0208 — A lookup writes its key as an expression
 

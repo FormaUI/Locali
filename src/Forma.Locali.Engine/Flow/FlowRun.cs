@@ -14,16 +14,18 @@ using VisualBasic = Microsoft.CodeAnalysis.VisualBasic.Syntax;
 internal sealed class FlowRun
 {
     private const string DependencyInjectionNamespace = "Microsoft.Extensions.DependencyInjection";
-    private const string ServiceDescriptorMetadataName = "Microsoft.Extensions.DependencyInjection.ServiceDescriptor";
+    private const string ServiceDescriptorName = "ServiceDescriptor";
 
     private readonly Dictionary<Compilation, LoadedProject> _projects = [with(ReferenceEqualityComparer.Instance)];
     private readonly ConcurrentDictionary<(Compilation Compilation, string Name), IReadOnlyList<IOperation>> _callsByName = new();
     private readonly ConcurrentDictionary<Compilation, Lazy<ILookup<SymbolKey, IOperation>>> _creations = new(ReferenceEqualityComparer.Instance);
     private readonly ConcurrentDictionary<Compilation, Lazy<ILookup<SymbolKey, INamedTypeSymbol>>> _derived = new(ReferenceEqualityComparer.Instance);
     private readonly ConcurrentDictionary<SyntaxTree, SemanticModel> _models = new();
+    private const string ServiceCollectionName = "IServiceCollection";
+
     private static readonly string[] RegistrationNames = ["Add", "TryAdd", "Replace", "Decorate", "Scoped", "Singleton", "Transient", "Describe"];
 
-    private readonly Lazy<Registrations> _registrations;
+    private readonly ConcurrentDictionary<SymbolKey, Lazy<IReadOnlyList<INamedTypeSymbol?>>> _registrations = new();
 
     /// <summary>Reads the run's projects.</summary>
     /// <param name="projects">Every project the run loaded.</param>
@@ -43,7 +45,6 @@ internal sealed class FlowRun
 
         Compilations = [.. _projects.Keys];
         TypeMemberOf = typeMemberOf;
-        _registrations = new(ReadRegistrations);
     }
 
     /// <summary>The compilation of every project of the run, ordered by the project's path.</summary>
@@ -157,14 +158,13 @@ internal sealed class FlowRun
         ArgumentNullException.ThrowIfNull(service);
 
         implementation = service;
-        var registrations = _registrations.Value;
-        if (!registrations.IsComplete || !Compilations.Any(compilation => compilation.AssemblyName == service.ContainingAssembly?.Name))
+        if (!Compilations.Any(compilation => compilation.AssemblyName == service.ContainingAssembly?.Name))
         {
             return false;
         }
 
-        var registered = registrations.ByService[SymbolKey.Of(service)].ToArray();
-        if (registered.Length == 0 || registered.Any(candidate => candidate is null))
+        var registered = _registrations.GetOrAdd(SymbolKey.Of(service.OriginalDefinition), static (_, entry) => new(() => entry.Run.ReadRegistrations(entry.Service)), (Run: this, Service: service.OriginalDefinition)).Value;
+        if (registered.Count == 0 || registered.Any(candidate => candidate is null))
         {
             return false;
         }
@@ -286,62 +286,93 @@ internal sealed class FlowRun
         return creations.ToLookup(entry => entry.Key, entry => entry.Operation);
     }
 
-    // A registration names a service and what implements it: two type arguments, two `typeof` arguments, or one type argument with a
-    // factory or an instance. A call naming a service the flow cannot decode, a replacement, a keyed registration or an instance it
-    // cannot type among them, leaves that service's implementation unknown, and one naming a type parameter leaves every service's
-    // unknown. Test projects register fakes, so only product code is read.
-    private Registrations ReadRegistrations()
+    // A registration names its service where it is written: as a type argument or a `typeof` of one of the container's own
+    // registrations, or of a descriptor. Each call written around the service's name is read: a registration or a descriptor names
+    // what implements it, or leaves that unknown where it passes an instance or a factory the flow cannot type, and any other call
+    // handed the service collection may register it as anything. Test projects register fakes, so only product code is read.
+    private List<INamedTypeSymbol?> ReadRegistrations(INamedTypeSymbol service)
     {
-        var registrations = new List<(SymbolKey Service, INamedTypeSymbol? Implementation)>();
-        var isComplete = true;
+        var key = SymbolKey.Of(service);
+        var registrations = new List<INamedTypeSymbol?>();
 
         foreach (var compilation in Compilations.Where(compilation => !IsTest(compilation)))
         {
-            foreach (var constructor in compilation.GetTypeByMetadataName(ServiceDescriptorMetadataName)?.InstanceConstructors ?? [])
-            {
-                foreach (var descriptor in CallsOf(constructor, compilation).OfType<IObjectCreationOperation>())
-                {
-                    var typeOfs = descriptor.Arguments.Select(argument => Unwrap(argument.Value)).OfType<ITypeOfOperation>().ToArray();
-                    if (typeOfs is [{ TypeOperand: INamedTypeSymbol described }, ..])
-                    {
-                        registrations.Add((SymbolKey.Of(described.OriginalDefinition), typeOfs is [_, { TypeOperand: INamedTypeSymbol implementation }] ? implementation.OriginalDefinition : null));
-                    }
-                    else
-                    {
-                        isComplete = false;
-                    }
-                }
-            }
-
             var comparison = compilation.Language == LanguageNames.VisualBasic ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
             foreach (var tree in compilation.SyntaxTrees)
             {
-                var model = ModelOf(compilation, tree);
+                var read = new HashSet<SyntaxNode>();
                 foreach (var token in tree.GetRoot().DescendantTokens())
                 {
-                    if (!RegistrationNames.Any(prefix => token.ValueText.StartsWith(prefix, comparison))
-                        || CallAbove(model, token) is not IInvocationOperation invocation
-                        || invocation.TargetMethod.ContainingNamespace?.ToDisplayString().StartsWith(DependencyInjectionNamespace, StringComparison.Ordinal) != true)
+                    if (!string.Equals(token.ValueText, service.Name, comparison)
+                        || RegistrationAbove(ModelOf(compilation, tree), token) is not { } call
+                        || !read.Add(call.Syntax))
                     {
                         continue;
                     }
 
-                    switch (Service(invocation))
+                    switch (call)
                     {
-                        case INamedTypeSymbol service:
-                            var isKeyed = invocation.TargetMethod.Name.Contains("Keyed", StringComparison.Ordinal);
-                            registrations.Add((SymbolKey.Of(service), isKeyed ? null : Implementation(invocation, service)));
+                        case IObjectCreationOperation descriptor:
+                            var typeOfs = descriptor.Arguments.Select(argument => Unwrap(argument.Value)).OfType<ITypeOfOperation>().ToArray();
+                            if (typeOfs is [{ TypeOperand: INamedTypeSymbol described }, ..] && SymbolKey.Of(described.OriginalDefinition).Equals(key))
+                            {
+                                registrations.Add(typeOfs is [_, { TypeOperand: INamedTypeSymbol implementation }] ? implementation.OriginalDefinition : null);
+                            }
+
                             break;
-                        case ITypeParameterSymbol:
-                            isComplete = false;
+                        case IInvocationOperation invocation when IsContainerRegistration(invocation, comparison):
+                            if (Service(invocation) is INamedTypeSymbol registered && SymbolKey.Of(registered).Equals(key))
+                            {
+                                var isKeyed = invocation.TargetMethod.Name.Contains("Keyed", StringComparison.Ordinal);
+                                registrations.Add(isKeyed ? null : Implementation(invocation, registered));
+                            }
+
+                            break;
+                        case IInvocationOperation invocation when TouchesServiceCollection(invocation):
+                            registrations.Add(null);
                             break;
                     }
                 }
             }
         }
 
-        return new Registrations(registrations.ToLookup(entry => entry.Service, entry => entry.Implementation), isComplete);
+        return registrations;
     }
+
+    // The call the service's name is written in: the nearest creation or invocation above it.
+    private static IOperation? RegistrationAbove(SemanticModel model, SyntaxToken token)
+    {
+        for (var (node, level) = (token.Parent, 0); node is not null && level < 6; node = node.Parent, level++)
+        {
+            switch (model.GetOperation(node))
+            {
+                case IObjectCreationOperation { Type: INamedTypeSymbol type } creation:
+                    return IsServiceDescriptor(type) ? creation : null;
+                case IInvocationOperation invocation:
+                    return invocation;
+            }
+        }
+
+        return null;
+    }
+
+    // The container's own registrations: its collection's extensions, and the descriptors it builds.
+    private static bool IsContainerRegistration(IInvocationOperation invocation, StringComparison comparison)
+        => invocation.TargetMethod.ContainingNamespace?.ToDisplayString().StartsWith(DependencyInjectionNamespace, StringComparison.Ordinal) == true
+            && RegistrationNames.Any(prefix => invocation.TargetMethod.Name.StartsWith(prefix, comparison));
+
+    private static bool TouchesServiceCollection(IInvocationOperation invocation)
+        => IsServiceCollection(invocation.Instance?.Type) || invocation.Arguments.Any(argument => IsServiceCollection(argument.Value.Type));
+
+    private static bool IsServiceCollection(ITypeSymbol? type)
+        => type is not null
+            && (IsCollectionInterface(type) || type.AllInterfaces.Any(IsCollectionInterface));
+
+    private static bool IsCollectionInterface(ITypeSymbol type)
+        => type.Name == ServiceCollectionName && type.ContainingNamespace?.ToDisplayString() == DependencyInjectionNamespace;
+
+    private static bool IsServiceDescriptor(INamedTypeSymbol type)
+        => type.Name == ServiceDescriptorName && type.ContainingNamespace?.ToDisplayString() == DependencyInjectionNamespace;
 
     // The service a registration names, by its first type argument or its first `typeof`.
     private static ITypeSymbol? Service(IInvocationOperation invocation)
@@ -400,9 +431,6 @@ internal sealed class FlowRun
 
         return types is [var single] ? single : null;
     }
-
-    // What the run registers, by service, and whether every registration could be read for its service.
-    private sealed record Registrations(ILookup<SymbolKey, INamedTypeSymbol?> ByService, bool IsComplete);
 
     private static IOperation Unwrap(IOperation operation)
         => operation switch

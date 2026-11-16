@@ -1130,6 +1130,57 @@ public sealed class LocaleFlowTests
     }
 
     [Fact]
+    public void Should_name_no_type_through_a_service_a_descriptor_made_in_another_method_registers()
+    {
+        // Act — the descriptor names its service where it is created, wherever it is handed to the collection.
+        var site = Single(Resolve(ComponentModel + """
+            public sealed class OtherContextFactory : IContextFactory
+            {
+                public Context Create(Type componentType, Func<Type> localeSourceType) => throw new NotSupportedException();
+            }
+
+            public static class Host
+            {
+                public static void Replace(IServiceCollection services) => services.Add(Make());
+
+                private static ServiceDescriptor Make() => new(typeof(IContextFactory), typeof(OtherContextFactory), ServiceLifetime.Scoped);
+            }
+
+            public sealed class Widget : FormaLike
+            {
+                public string Show() => L["Widget's"].Value;
+            }
+            """), "Widget's");
+
+        // Assert
+        Assert.Empty(site.Origins);
+    }
+
+    [Fact]
+    public void Should_name_no_type_through_a_service_a_helper_handed_the_collection_registers()
+    {
+        // Act — a helper of the application's own registers the service it is given however it likes.
+        var site = Single(Resolve(ComponentModel + """
+            public static class Host
+            {
+                public static void Replace(IServiceCollection services) => Register<IContextFactory>(services);
+
+                private static void Register<TService>(IServiceCollection services)
+                    where TService : class
+                    => throw new NotSupportedException();
+            }
+
+            public sealed class Widget : FormaLike
+            {
+                public string Show() => L["Widget's"].Value;
+            }
+            """), "Widget's");
+
+        // Assert
+        Assert.Empty(site.Origins);
+    }
+
+    [Fact]
     public void Should_name_the_type_the_registration_of_an_injected_class_names()
     {
         // Act — the class asked for is a service, and the registration chooses the class that answers it.
