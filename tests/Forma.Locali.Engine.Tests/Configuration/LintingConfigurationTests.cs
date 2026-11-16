@@ -324,4 +324,141 @@ public sealed class LintingConfigurationTests
         // Assert
         Assert.Empty(configuration.GetDiagnostics());
     }
+    [Fact]
+    public void Should_read_the_configurations_own_hints_where_they_are_written()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(LintingConfiguration.FileName, """
+            {
+              "hints": {
+                "localeMembers": [
+                  { "assembly": "Contoso", "type": "Contoso.Component", "member": "L", "typeMember": "LocaleSourceType" }
+                ]
+              }
+            }
+            """);
+
+        // Act
+        var hints = new LintingConfiguration(directory.Root).ReadHints([], NoPackages);
+
+        // Assert
+        var hint = Assert.Single(hints.LocaleMembers);
+        Assert.Multiple(
+            () => Assert.Equal("Contoso.Component.L", hint.MemberName),
+            () => Assert.Equal((LintingConfiguration.FileName, 4), (Path.GetFileName(hint.Path), hint.Line)),
+            () => Assert.Empty(hints.Diagnostics));
+    }
+
+    [Fact]
+    public void Should_read_the_hints_a_project_of_the_run_carries_with_no_configuration_at_all()
+    {
+        // Arrange — a library's hints describe its own code, so a run building it reads them unasked.
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Widgets", LocaleHintsFile.FileName), HintsFile);
+
+        // Act
+        var hints = new LintingConfiguration(directory.Root).ReadHints([Path.Combine(directory.Root, "Widgets")], NoPackages);
+
+        // Assert
+        var hint = Assert.Single(hints.LocaleMembers);
+        Assert.Multiple(
+            () => Assert.Equal(Path.GetFullPath(file), Path.GetFullPath(hint.Path)),
+            () => Assert.Empty(hints.Diagnostics));
+    }
+
+    [Fact]
+    public void Should_report_a_hints_file_that_does_not_follow_its_shape_in_that_file()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Widgets", LocaleHintsFile.FileName), """{ "localeMembers": [{ "assembly": "Contoso" }] }""");
+
+        // Act
+        var hints = new LintingConfiguration(directory.Root).ReadHints([Path.Combine(directory.Root, "Widgets")], NoPackages);
+
+        // Assert
+        var diagnostic = Assert.Single(hints.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MalformedConfiguration, diagnostic.Code),
+            () => Assert.Equal(Path.GetFullPath(file), Path.GetFullPath(diagnostic.Path)),
+            () => Assert.Empty(hints.LocaleMembers));
+    }
+
+    [Fact]
+    public void Should_read_the_hints_a_package_carries_where_the_run_restored_it()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var root = Path.Combine(directory.Root, "packages", "contoso.widgets", "1.0.0");
+        var file = directory.Write(Path.Combine("packages", "contoso.widgets", "1.0.0", LocaleHintsFile.FileName), HintsFile);
+        directory.Write(LintingConfiguration.FileName, """{ "hints": { "packages": ["Contoso.Widgets"] } }""");
+
+        // Act
+        var hints = new LintingConfiguration(directory.Root).ReadHints([], new Dictionary<string, IReadOnlyCollection<string>> { ["Contoso.Widgets"] = [root] });
+
+        // Assert
+        var hint = Assert.Single(hints.LocaleMembers);
+        Assert.Multiple(
+            () => Assert.Equal(Path.GetFullPath(file), Path.GetFullPath(hint.Path)),
+            () => Assert.Empty(hints.Diagnostics));
+    }
+
+    [Fact]
+    public void Should_leave_a_packages_hints_unread_where_the_configuration_names_no_package()
+    {
+        // Arrange — a package's hints apply only where the run's configuration asks for them.
+        using var directory = new TempDirectory();
+        var root = Path.Combine(directory.Root, "packages", "contoso.widgets", "1.0.0");
+        directory.Write(Path.Combine("packages", "contoso.widgets", "1.0.0", LocaleHintsFile.FileName), HintsFile);
+
+        // Act
+        var hints = new LintingConfiguration(directory.Root).ReadHints([], new Dictionary<string, IReadOnlyCollection<string>> { ["Contoso.Widgets"] = [root] });
+
+        // Assert
+        Assert.Empty(hints.LocaleMembers);
+    }
+
+    [Fact]
+    public void Should_report_a_package_no_project_of_the_run_references_as_supplying_nothing()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(LintingConfiguration.FileName, """{ "hints": { "packages": ["Contoso.Widgets"] } }""");
+
+        // Act
+        var hints = new LintingConfiguration(directory.Root).ReadHints([], NoPackages);
+
+        // Assert
+        Assert.Equal(LintingCodes.StaleConfigurationEntry, Assert.Single(hints.Diagnostics).Code);
+    }
+
+    [Fact]
+    public void Should_report_a_package_that_carries_no_hints()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var root = Path.Combine(directory.Root, "packages", "contoso.widgets", "1.0.0");
+        Directory.CreateDirectory(root);
+        directory.Write(LintingConfiguration.FileName, """{ "hints": { "packages": ["Contoso.Widgets"] } }""");
+
+        // Act
+        var hints = new LintingConfiguration(directory.Root).ReadHints([], new Dictionary<string, IReadOnlyCollection<string>> { ["Contoso.Widgets"] = [root] });
+
+        // Assert
+        var diagnostic = Assert.Single(hints.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.InvalidHint, diagnostic.Code),
+            () => Assert.Equal($"'Contoso.Widgets' carries no .locali-hints.json at '{root}', so it supplies no hints.", diagnostic.Message));
+    }
+
+    private static readonly IReadOnlyDictionary<string, IReadOnlyCollection<string>> NoPackages = new Dictionary<string, IReadOnlyCollection<string>>();
+
+    private const string HintsFile = """
+        {
+          "localeMembers": [
+            { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Component", "member": "L", "typeMember": "LocaleSourceType" }
+          ]
+        }
+        """;
 }

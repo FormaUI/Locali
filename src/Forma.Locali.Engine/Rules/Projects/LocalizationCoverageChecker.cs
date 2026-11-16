@@ -4,6 +4,7 @@ using System.Globalization;
 
 using Forma.Framework.Localization.Files;
 using Forma.Locali.Diagnostics;
+using Forma.Locali.Flow;
 using Forma.Locali.Sources;
 
 using Microsoft.CodeAnalysis;
@@ -38,8 +39,10 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
             var key = LocalizationSchema.Unescape(site.Key.Text);
 
             // An origin reached through alternatives the flow could not pair with the lookup may not be the type it reads.
-            foreach (var resource in site.Origins.Where(origin => !origin.IsApproximate).Select(origin => origin.Type).Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default))
+            foreach (var origin in site.Origins.Where(origin => !origin.IsApproximate).DistinctBy(origin => origin.Type, SymbolEqualityComparer.Default))
             {
+                var resource = origin.Type;
+
                 // A type's entries are its own assembly's, and a type no project of the run builds has none the run can read.
                 if (context.GetOwnerLocalization(resource) is not { } owner)
                 {
@@ -66,11 +69,17 @@ public sealed class LocalizationCoverageChecker : IProjectRuleChecker
                     context.Report(
                         Code,
                         site,
-                        $"'{site.Key.Text}' has no entry in '{filePath}', which localizes '{typeName}' in '{culture.Name}', so it renders in the source language there.");
+                        $"'{site.Key.Text}' has no entry in '{filePath}', which localizes '{typeName}' in '{culture.Name}', the type the lookup reads through {origin.Root}{HintClause(site, origin)}, so it renders in the source language there.");
                 }
             }
         }
     }
+
+    // A type only a hint supplied names that hint, so a finding that rests on an assumption can be traced to it.
+    private static string HintClause(LocalizerLookup site, LocaleOrigin origin)
+        => origin is { Evidence: LocaleEvidence.Hint, Hint: { } hint }
+            ? $" by the hint at '{FormatFilePath(site.Key.Location.Path, hint.Path)}:{hint.Line}'"
+            : string.Empty;
 
     // Every culture's file can carry the same name, so a file is named by where it sits from the callsite's folder.
     private static string FormatFilePath(string callsitePath, string filePath)

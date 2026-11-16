@@ -85,7 +85,7 @@ public sealed class LocaleFlowTests
     }
 
     [Fact]
-    public void Should_name_the_type_behind_a_conditional_access_to_a_member_carrying_LocaleSource()
+    public void Should_name_the_type_behind_a_conditional_access_to_a_hinted_member()
     {
         // Act
         var site = Assert.Single(FindThroughComponent("""
@@ -280,7 +280,7 @@ public sealed class LocaleFlowTests
         var compilation = ReferencingMetadataOf(ComponentLibrary());
 
         // Act
-        var site = Assert.Single(LocaleFlowTestFactory.Resolve(compilation));
+        var site = Assert.Single(LocaleFlowTestFactory.Resolve([LibraryHint], compilation));
 
         // Assert
         var gap = Assert.Single(site.Gaps);
@@ -298,7 +298,7 @@ public sealed class LocaleFlowTests
         var compilation = ReferencingMetadataOf(components);
 
         // Act
-        var site = Assert.Single(LocaleFlowTestFactory.Resolve(compilation, components));
+        var site = Assert.Single(LocaleFlowTestFactory.Resolve([LibraryHint], compilation, components));
 
         // Assert
         Assert.Equal("Widget", Assert.Single(site.Origins).Type.Name);
@@ -1575,6 +1575,239 @@ public sealed class LocaleFlowTests
         Assert.Empty(site.Origins);
     }
 
+    [Fact]
+    public void Should_rest_a_type_only_a_hint_supplies_on_that_hint()
+    {
+        // Act — the component's locale is opaque to the flow, so the type is the hint's alone.
+        var site = Assert.Single(FindThroughComponent("""
+            public sealed class Widget : Component
+            {
+                public void Show() => _ = L["Today"];
+            }
+            """));
+
+        // Assert
+        var origin = Assert.Single(site.Origins);
+        Assert.Multiple(
+            () => Assert.Equal("Widget", origin.Type.Name),
+            () => Assert.Equal(LocaleEvidence.Hint, origin.Evidence),
+            () => Assert.Equal(ComponentHint, origin.Hint));
+    }
+
+    [Fact]
+    public void Should_verify_a_hint_the_flow_reaches_the_same_type_for()
+    {
+        // Act
+        var (sites, diagnostics) = LocaleFlowTestFactory.Run([LocaleFlowTestFactory.Hint("Scratch", "Scratch.FormaLike", typeMember: "LocaleSourceType")], CompilationTestFactory.Referenced(Usings + ComponentModel + """
+            public sealed class Widget : FormaLike
+            {
+                public string Show() => L["Widget's"].Value;
+            }
+            }
+            """));
+
+        // Assert
+        var origin = Assert.Single(Single(sites, "Widget's").Origins);
+        Assert.Multiple(
+            () => Assert.Equal("Widget", origin.Type.Name),
+            () => Assert.Equal(LocaleEvidence.VerifiedHint, origin.Evidence),
+            () => Assert.Empty(diagnostics));
+    }
+
+    [Fact]
+    public void Should_report_a_hint_the_flow_contradicts_and_check_the_flows_type()
+    {
+        // Act — the member reads a fixed type, while the hint relates it to the instance's own.
+        var (sites, diagnostics) = LocaleFlowTestFactory.Run([ComponentHint], CompilationTestFactory.Referenced(Usings + """
+            namespace Scratch;
+
+            public abstract class Component(IServiceProvider services)
+            {
+                protected virtual Type LocalizationSourceType => GetType();
+
+                protected IStringLocale L => services.GetStringLocaleFactory().Create(typeof(Panel));
+            }
+
+            public sealed class Panel;
+
+            public sealed class Widget(IServiceProvider services) : Component(services)
+            {
+                public string Show() => L["Today"].Value;
+            }
+            """));
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+        var origin = Assert.Single(Single(sites, "Today").Origins);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.ConflictingHint, diagnostic.Code),
+            () => Assert.Equal(
+                "The hint relating 'Scratch.Component.L' to 'LocalizationSourceType' reads 'Widget' for 'Widget', where the flow reaches 'Panel', so the flow's type is checked.",
+                diagnostic.Message),
+            () => Assert.Equal("Panel", origin.Type.Name),
+            () => Assert.Equal(LocaleEvidence.Analysis, origin.Evidence));
+    }
+
+    [Fact]
+    public void Should_leave_a_member_overriding_a_hinted_one_to_the_flow()
+    {
+        // Act — the hint is written for the base's declaration, which the override replaces.
+        var (sites, diagnostics) = LocaleFlowTestFactory.Run([ComponentHint], CompilationTestFactory.Referenced(Usings + """
+            namespace Scratch;
+
+            public abstract class Component
+            {
+                protected virtual Type LocalizationSourceType => GetType();
+
+                protected virtual IStringLocale L => default!;
+
+                public string Show() => L["Today"].Value;
+            }
+
+            public sealed class Panel;
+
+            public sealed class Widget(IServiceProvider services) : Component
+            {
+                protected override IStringLocale L => services.GetStringLocaleFactory().Create(typeof(Panel));
+
+                public string Own() => L["Own"].Value;
+            }
+            """));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("Panel", Assert.Single(Single(sites, "Today").Origins).Type.Name),
+            () => Assert.Equal("Panel", Assert.Single(Single(sites, "Own").Origins).Type.Name),
+            () => Assert.Empty(diagnostics));
+    }
+
+    [Fact]
+    public void Should_not_let_two_hints_verify_one_another()
+    {
+        // Act — each member reads the other, so only the hints say what either reads.
+        var site = Assert.Single(LocaleFlowTestFactory.Resolve(
+            [ComponentHint, LocaleFlowTestFactory.Hint("Scratch", "Scratch.Component", member: "M")],
+            CompilationTestFactory.Referenced(Usings + """
+                namespace Scratch;
+
+                public abstract class Component
+                {
+                    protected virtual Type LocalizationSourceType => GetType();
+
+                    protected IStringLocale L => M;
+
+                    protected IStringLocale M => L;
+                }
+
+                public sealed class Widget : Component
+                {
+                    public void Show() => _ = L["Today"];
+                }
+                """)));
+
+        // Assert
+        Assert.Equal(LocaleEvidence.Hint, Assert.Single(site.Origins).Evidence);
+    }
+
+    [Fact]
+    public void Should_report_a_hint_naming_a_type_its_assembly_does_not_declare()
+    {
+        // Act
+        var (_, diagnostics) = LocaleFlowTestFactory.Run([LocaleFlowTestFactory.Hint("Scratch", "Scratch.Missing")], ComponentCompilation());
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.InvalidHint, diagnostic.Code),
+            () => Assert.Equal(LintingSeverity.Error, diagnostic.Severity),
+            () => Assert.Equal("'Scratch.Missing' is not a type 'Scratch' declares, so the hint relates nothing.", diagnostic.Message));
+    }
+
+    [Fact]
+    public void Should_report_a_hint_naming_a_member_that_returns_no_locale()
+    {
+        // Act
+        var (_, diagnostics) = LocaleFlowTestFactory.Run([LocaleFlowTestFactory.Hint("Scratch", "Scratch.Component", member: "LocalizationSourceType")], ComponentCompilation());
+
+        // Assert
+        Assert.Equal(LintingCodes.InvalidHint, Assert.Single(diagnostics).Code);
+    }
+
+    [Fact]
+    public void Should_report_a_hint_naming_an_abstract_member()
+    {
+        // Act — every instance reads an override, a declaration of its own.
+        var (_, diagnostics) = LocaleFlowTestFactory.Run([ComponentHint], CompilationTestFactory.Referenced(Usings + """
+            namespace Scratch;
+
+            public abstract class Component
+            {
+                protected virtual Type LocalizationSourceType => GetType();
+
+                protected abstract IStringLocale L { get; }
+            }
+
+            public sealed class Widget : Component
+            {
+                protected override IStringLocale L => default!;
+
+                public void Show() => _ = L["Today"];
+            }
+            """));
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.InvalidHint, diagnostic.Code),
+            () => Assert.Equal("'L' of 'Scratch.Component' is abstract, so an instance reads an override the hint was not written for, and the hint relates nothing.", diagnostic.Message));
+    }
+
+    [Fact]
+    public void Should_report_a_hint_naming_a_type_member_that_returns_no_type()
+    {
+        // Act
+        var (_, diagnostics) = LocaleFlowTestFactory.Run([LocaleFlowTestFactory.Hint("Scratch", "Scratch.Component", typeMember: "L")], ComponentCompilation());
+
+        // Assert
+        Assert.Equal(LintingCodes.InvalidHint, Assert.Single(diagnostics).Code);
+    }
+
+    [Fact]
+    public void Should_report_a_hint_naming_an_assembly_the_run_neither_builds_nor_references_as_applying_to_nothing()
+    {
+        // Act
+        var (_, diagnostics) = LocaleFlowTestFactory.Run([LocaleFlowTestFactory.Hint("Contoso.Missing", "Contoso.Missing.Component")], ComponentCompilation());
+
+        // Assert
+        Assert.Equal(LintingCodes.StaleConfigurationEntry, Assert.Single(diagnostics).Code);
+    }
+
+    [Fact]
+    public void Should_report_two_hints_relating_one_member_to_different_type_members_and_apply_neither()
+    {
+        // Act
+        var (sites, diagnostics) = LocaleFlowTestFactory.Run(
+            [ComponentHint, LocaleFlowTestFactory.Hint("Scratch", "Scratch.Component", typeMember: "OtherType", line: 2)],
+            ComponentCompilation("protected Type OtherType => typeof(Widget);"));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal([LintingCodes.ConflictingHint, LintingCodes.ConflictingHint], diagnostics.Select(diagnostic => diagnostic.Code)),
+            () => Assert.Empty(Assert.Single(sites).Origins));
+    }
+
+    [Fact]
+    public void Should_apply_one_hint_written_twice()
+    {
+        // Act — a package's hints and the application's own may both relate the member, alike.
+        var (sites, diagnostics) = LocaleFlowTestFactory.Run([ComponentHint, LocaleFlowTestFactory.Hint("Scratch", "Scratch.Component", line: 2)], ComponentCompilation());
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("Widget", Assert.Single(Assert.Single(sites).Origins).Type.Name),
+            () => Assert.Empty(diagnostics));
+    }
+
     private const string Usings = """
         using System;
 
@@ -1651,10 +1884,37 @@ public sealed class LocaleFlowTests
         {
             protected virtual Type LocalizationSourceType => GetType();
 
-            [LocaleSource(nameof(LocalizationSourceType))]
             protected IStringLocale L => default!;
         }
         """;
+
+    // The component's locale is opaque to the flow, so the hint relating it to the type member is what names its type.
+    private static readonly LocaleMemberHint ComponentHint = LocaleFlowTestFactory.Hint("Scratch", "Scratch.Component");
+
+    private static readonly LocaleMemberHint LibraryHint = LocaleFlowTestFactory.Hint("Contoso.Components", "Contoso.Components.Component");
+
+    private static Compilation ComponentCompilation(string members = "")
+        => CompilationTestFactory.Referenced($$"""
+            using System;
+
+            using Forma.Framework.Localization;
+
+            namespace Scratch;
+
+            public abstract class Component
+            {
+                protected virtual Type LocalizationSourceType => GetType();
+
+                protected IStringLocale L => default!;
+
+                {{members}}
+            }
+
+            public sealed class Widget : Component
+            {
+                public void Show() => _ = L["Today"];
+            }
+            """);
 
     private static Compilation ComponentLibrary()
         => CompilationTestFactory.Referenced($$"""
@@ -1691,7 +1951,7 @@ public sealed class LocaleFlowTests
             {{declarations}}
             """);
 
-        return LocaleFlowTestFactory.Resolve(compilation);
+        return LocaleFlowTestFactory.Resolve([ComponentHint], compilation);
     }
 
     private static IReadOnlyList<LocalizerLookup> FindVisualBasicThroughComponent(string declarations)
@@ -1708,7 +1968,6 @@ public sealed class LocaleFlowTests
                             Return Me.GetType()
                         End Get
                     End Property
-                    <LocaleSource(NameOf(LocalizationSourceType))>
                     Protected ReadOnly Property L As IStringLocale
                         Get
                             Return Nothing
@@ -1720,6 +1979,6 @@ public sealed class LocaleFlowTests
             End Namespace
             """);
 
-        return LocaleFlowTestFactory.Resolve(compilation);
+        return LocaleFlowTestFactory.Resolve([ComponentHint], compilation);
     }
 }

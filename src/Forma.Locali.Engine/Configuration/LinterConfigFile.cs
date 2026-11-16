@@ -11,8 +11,11 @@ public sealed class LinterConfigFile
     private const string IgnoreDiagnosticsKey = "ignoreDiagnostics";
     private const string ExcludeFilesKey = "excludeFiles";
     private const string LocaleSourcesKey = "localeSources";
+    private const string HintsKey = "hints";
+    private const string HintPackagesKey = "packages";
 
-    private static readonly JsonReaderOptions ReaderOptions = new()
+    /// <summary>How a configuration file and a hints file are read: comments and trailing commas allowed.</summary>
+    internal static readonly JsonReaderOptions ReaderOptions = new()
     {
         AllowTrailingCommas = true,
         CommentHandling = JsonCommentHandling.Skip,
@@ -24,6 +27,7 @@ public sealed class LinterConfigFile
         IReadOnlyList<ConfigIgnoreDiagnostic> ignoreDiagnostics,
         IReadOnlyList<ConfigExcludeFile> excludeFiles,
         IReadOnlyList<ConfigLocaleSource> localeSources,
+        Hints hints,
         IReadOnlyList<ConfigMalformedValue> malformedValues)
     {
         Path = path;
@@ -31,6 +35,8 @@ public sealed class LinterConfigFile
         IgnoreDiagnostics = ignoreDiagnostics;
         ExcludeFiles = excludeFiles;
         LocaleSources = localeSources;
+        LocaleMembers = hints.LocaleMembers;
+        HintPackages = hints.Packages;
         MalformedValues = malformedValues;
     }
 
@@ -49,6 +55,12 @@ public sealed class LinterConfigFile
     /// <summary>Every line of the file's <c>localeSources</c> entry, in the order written.</summary>
     public IReadOnlyList<ConfigLocaleSource> LocaleSources { get; }
 
+    /// <summary>Every item of the <c>localeMembers</c> list of the file's <c>hints</c> entry, in the order written.</summary>
+    public IReadOnlyList<ConfigLocaleMember> LocaleMembers { get; }
+
+    /// <summary>Every package whose hints the <c>packages</c> list of the file's <c>hints</c> entry imports, in the order written.</summary>
+    public IReadOnlyList<ConfigHintPackage> HintPackages { get; }
+
     /// <summary>Every value in the file that does not follow the shape it is read for.</summary>
     public IReadOnlyList<ConfigMalformedValue> MalformedValues { get; }
 
@@ -65,15 +77,12 @@ public sealed class LinterConfigFile
         document = null;
         error = null;
 
-        // A byte order mark would offset every position that follows it, so it leaves before anything is measured.
-        var utf8 = content.Length >= 3 && content[0] == 0xEF && content[1] == 0xBB && content[2] == 0xBF
-            ? content[3..]
-            : content;
-
+        var utf8 = WithoutByteOrderMark(content);
         var ignoreDiagnostics = new List<ConfigIgnoreDiagnostic>();
         var excludeFiles = new List<ConfigExcludeFile>();
         var malformedValues = new List<ConfigMalformedValue>();
         var localeSources = new List<ConfigLocaleSource>();
+        var hints = new Hints();
 
         try
         {
@@ -85,7 +94,7 @@ public sealed class LinterConfigFile
                 return false;
             }
 
-            ReadRoot(ref reader, ignoreDiagnostics, excludeFiles, localeSources, malformedValues);
+            ReadRoot(ref reader, ignoreDiagnostics, excludeFiles, localeSources, hints, malformedValues);
         }
         catch (JsonException exception)
         {
@@ -94,7 +103,7 @@ public sealed class LinterConfigFile
             return false;
         }
 
-        document = new LinterConfigFile(path, new TextMap(utf8), ignoreDiagnostics, excludeFiles, localeSources, malformedValues);
+        document = new LinterConfigFile(path, new TextMap(utf8), ignoreDiagnostics, excludeFiles, localeSources, hints, malformedValues);
 
         return true;
     }
@@ -112,7 +121,13 @@ public sealed class LinterConfigFile
         return new LintingDiagnostic(Path, line, column, code.DefaultSeverity, code, message);
     }
 
-    private static void ReadRoot(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnostic> ignoreDiagnostics, List<ConfigExcludeFile> excludeFiles, List<ConfigLocaleSource> localeSources, List<ConfigMalformedValue> malformedValues)
+    // A byte order mark would offset every position that follows it, so it leaves before anything is measured.
+    internal static byte[] WithoutByteOrderMark(byte[] content)
+        => content.Length >= 3 && content[0] == 0xEF && content[1] == 0xBB && content[2] == 0xBF
+            ? content[3..]
+            : content;
+
+    private static void ReadRoot(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnostic> ignoreDiagnostics, List<ConfigExcludeFile> excludeFiles, List<ConfigLocaleSource> localeSources, Hints hints, List<ConfigMalformedValue> malformedValues)
     {
         while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
         {
@@ -135,6 +150,9 @@ public sealed class LinterConfigFile
                 case LocaleSourcesKey:
                     ReadLocaleSources(ref reader, localeSources, malformedValues);
                     break;
+                case HintsKey:
+                    ReadHints(ref reader, hints, malformedValues);
+                    break;
                 default:
                     malformedValues.Add(new ConfigMalformedValue(nameOffset, $"'{name}' is not an entry this file defines; it reads {FormatKeys()}."));
                     reader.Skip();
@@ -144,7 +162,67 @@ public sealed class LinterConfigFile
     }
 
     private static string FormatKeys()
-        => string.Join(", ", new[] { IgnoreDiagnosticsKey, ExcludeFilesKey, LocaleSourcesKey }.Select(key => $"'{key}'"));
+        => string.Join(", ", new[] { IgnoreDiagnosticsKey, ExcludeFilesKey, LocaleSourcesKey, HintsKey }.Select(key => $"'{key}'"));
+
+    private static void ReadHints(ref Utf8JsonReader reader, Hints hints, List<ConfigMalformedValue> malformedValues)
+    {
+        if (reader.TokenType != JsonTokenType.StartObject)
+        {
+            malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{HintsKey}' is not an object; it holds '{LocaleHintsFile.LocaleMembersKey}' and '{HintPackagesKey}'."));
+            reader.Skip();
+
+            return;
+        }
+
+        while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
+        {
+            var nameOffset = (int)reader.TokenStartIndex;
+            var name = reader.GetString() ?? string.Empty;
+
+            if (!reader.Read())
+            {
+                return;
+            }
+
+            switch (name)
+            {
+                case LocaleHintsFile.LocaleMembersKey:
+                    LocaleHintsFile.ReadLocaleMembers(ref reader, hints.LocaleMembers, malformedValues);
+                    break;
+                case HintPackagesKey:
+                    ReadPackages(ref reader, hints.Packages, malformedValues);
+                    break;
+                default:
+                    malformedValues.Add(new ConfigMalformedValue(nameOffset, $"'{name}' is not an entry '{HintsKey}' defines; it reads '{LocaleHintsFile.LocaleMembersKey}' and '{HintPackagesKey}'."));
+                    reader.Skip();
+                    break;
+            }
+        }
+    }
+
+    private static void ReadPackages(ref Utf8JsonReader reader, List<ConfigHintPackage> packages, List<ConfigMalformedValue> malformedValues)
+    {
+        if (reader.TokenType != JsonTokenType.StartArray)
+        {
+            malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{HintPackagesKey}' is not a list of text; it lists package identifiers."));
+            reader.Skip();
+
+            return;
+        }
+
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+        {
+            if (reader.TokenType == JsonTokenType.String && reader.GetString() is { Length: > 0 } id)
+            {
+                packages.Add(new ConfigHintPackage(id, (int)reader.TokenStartIndex));
+            }
+            else
+            {
+                malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, "a package identifier is not text naming one."));
+                reader.Skip();
+            }
+        }
+    }
 
     private static void ReadIgnoreDiagnostics(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnostic> ignoreDiagnostics, List<ConfigMalformedValue> malformedValues)
     {
@@ -281,5 +359,13 @@ public sealed class LinterConfigFile
                 reader.Skip();
             }
         }
+    }
+
+    // The two lists of a hints entry, filled as the entry is read.
+    private sealed class Hints
+    {
+        public List<ConfigLocaleMember> LocaleMembers { get; } = [];
+
+        public List<ConfigHintPackage> Packages { get; } = [];
     }
 }

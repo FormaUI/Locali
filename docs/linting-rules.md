@@ -27,7 +27,18 @@ of its own into.
   "ignoreDiagnostics": {
     "**/Forma.Blazor.Showcase/**/LocalizationPage.razor": ["LOC0207"]
   },
-  "excludeFiles": ["*/Fixtures/*"]
+  "excludeFiles": ["*/Fixtures/*"],
+  "hints": {
+    "localeMembers": [
+      {
+        "assembly": "Forma.Blazor",
+        "type": "Forma.Blazor.Components.FormaComponentBase",
+        "member": "L",
+        "typeMember": "LocaleSourceType"
+      }
+    ],
+    "packages": ["FormaUI.NET-Blazor"]
+  }
 }
 ```
 
@@ -53,10 +64,37 @@ whether its entries may come from a pack; a file naming no project of the run is
 it sits. LOC0025 reports a file from a place its line does not allow, and LOC0021 a line that is
 the last match for no file.
 
+`hints` states what the linter cannot read in the code, and changes nothing the runtime does.
+`localeMembers` lists members whose locale is read for the type another member of the same
+instance returns: the assembly and the type's full metadata name, ``FormaInputBase`1`` for a
+generic, declaring the member; `member`, the property returning `IStringLocale`; and
+`typeMember`, the property returning `Type`, on that type or one it derives from. A hint is
+written for that one declaration: a member overriding or hiding it is a declaration of its own,
+read by the flow alone, while an instance that keeps it reads the type member as its own type
+overrides it, in source or in the compiled code of the assembly the build runs, so
+`typeof(Panel)` names `Panel` and `GetType()` the instance's own type. `packages` names packages
+whose hints the run reads.
+
+A library keeps the hints for its own members in a `.locali-hints.json` at its project's root,
+an object holding a `localeMembers` list, and ships it at its package's root: `<None
+Include=".locali-hints.json" Pack="true" PackagePath="" />`. A run building the library reads it
+for each project of the run, unasked, so the hints are held to the code they describe; an
+application reads the copy a package carries where its `.locali.json` names the package in
+`packages`, from where each project of the run restored the version it references. A
+repository's `.locali.json` never travels with its packages.
+
+The flow follows a hinted member without any hint first, so no hint vouches for itself or
+another. Where it reaches the member's type on its own, the hint is verified when it reads the
+same type and set aside, which LOC0029 reports, when it reads another; where it reaches none, as
+over a compiled library, the hint's type is the one read, and a finding resting on it names the
+hint. LOC0028 reports a hint naming what is not there, LOC0029 two hints relating one member to
+different type members, which leaves it to neither, and LOC0021 a hint naming an assembly the
+run neither builds nor references, or a package no project of the run references.
+
 ### LOC0020 — The linting configuration cannot be read
 
-**Reports.** A `.locali.json` that is not readable JSON, does not follow its shape, or names a
-rule this linter does not define, in either list.
+**Reports.** A `.locali.json` or a `.locali-hints.json` that is not readable JSON or does not
+follow its shape, or a `.locali.json` naming a rule this linter does not define, in either list.
 
 **Why it matters.** A typo in a rule identifier would silence nothing and say nothing; the file
 is refused instead. The rule over `.locali.json` itself can never be named in its own
@@ -67,8 +105,10 @@ is refused instead. The rule over `.locali.json` itself can never be named in it
 ### LOC0021 — An entry applied to nothing
 
 **Reports.** A glob in `ignoreDiagnostics` or `excludeFiles` that matched no file the run
-reached, or a `localeSources` line that is the last match for no locale file the run reached,
-because none matches it or a later line claims every file it matches.
+reached, a `localeSources` line that is the last match for no locale file the run reached,
+because none matches it or a later line claims every file it matches, a hint naming an assembly
+no project of the run builds or references, or a package in `hints` no project of the run
+references.
 
 **Why it matters.** A file moved out of the tree is exactly when its exceptions go stale, and an
 exception that names nothing sits unnoticed until it excuses the wrong file. A `localeSources`
@@ -224,6 +264,45 @@ Its culture is read as the runtime reads it, from the project's folder down: the
 its name, folders included, that is a culture written exactly as .NET names it, and a part
 repeating it is that culture again rather than part of the name. A locale file opens with
 `$localization`, then `$shared` where it carries one, then its entries and sections.
+
+### LOC0028 — A hint names what is not there
+
+**Reports.** A hint whose type is not one its assembly declares, whose member is not a property
+of that type returning `IStringLocale` or is abstract, so every instance reads an override or an
+implementation the hint was not written for, or whose type member is not a property of that
+type, or of one it derives from, returning `Type`; or a package `packages` names that carries no
+`.locali-hints.json`. It is reported where the hint or the package is written.
+
+**Why it matters.** A hint naming nothing relates nothing, and the lookups it was written for go
+unchecked without a word, which is exactly what a typo in a member's name or a renamed type
+would do.
+
+**What fixes it.** Correct the name the message quotes, from the type's full metadata name in
+the assembly that declares it; ship the library's `.locali-hints.json` in its package, or drop
+the package from `packages`.
+
+**Silent where.** The hint names an assembly the run neither builds nor references, which
+LOC0021 reports, since the hint may be written for a run that does.
+
+### LOC0029 — A hint disagrees
+
+**Reports.** Two hints relating one member to different type members, at each; or a hint the
+flow contradicts: where the flow, followed without hints, reaches one type for the member's
+locale on an instance, and the type member the hint names reads another, once per hint, naming
+both and the instance.
+
+**Why it matters.** A run over the library's source checks the flow's type, but a run that
+cannot follow the flow, as one over the compiled library in an application, has the hint alone,
+and would hold every lookup through the member to the wrong type's files. Two disagreeing hints
+leave the member to neither, so its lookups go unchecked.
+
+**What fixes it.** Relate the member to the type member its locale is really read for, or delete
+the hint the code no longer follows.
+
+**Silent where.** The flow reaches no type on its own, or the type member tells none, since
+nothing then contradicts the hint; the instance overrides the hinted member, whose override the
+hint was not written for; or hints repeat one relationship, as a package's and an application's
+may.
 
 ### LOC0100 — Not readable JSON
 
@@ -683,13 +762,15 @@ further where a type of the run derives from `T`, since a locale for it may stan
 `T`, or a `[LocaleKey]` method's type argument, through locals, fields, properties, parameters
 at each call the run makes, constructors, lambdas, local functions, delegates, lazy values,
 virtual calls on each type the instance can be, `base.` calls to the member they name, and
-services to the one implementation the run's product code registers. A member carrying
-`[LocaleSource]` reads the type the member it names returns, as each type of instance overrides
-it: `typeof(X)` names `X`, and `GetType()` the instance's own type. The instances are the
-lookup's own type, unless it is abstract, and every type of its project derived from it that
-keeps the member holding the lookup as it is. So `L["Details columns"]` in a component deriving
-from `FormaComponentBase` is held to the component's own files wherever Forma comes from, and a
-helper reading a locale its callers pass is held to each caller's type.
+services to the one implementation the run's product code registers. Where the walk reaches no
+type, a hint in the linting configuration may relate a member to the type member its locale is
+read for, read as each type of instance overrides it: `typeof(X)` names `X`, and `GetType()` the
+instance's own type. The instances are the lookup's own type, unless it is abstract, and every
+type of its project derived from it that keeps the member holding the lookup as it is. So
+`L["Details columns"]` in a component deriving from `FormaComponentBase` is held to the
+component's own files wherever Forma comes from, and a helper reading a locale its callers pass
+is held to each caller's type. The message names the path the type was reached through, and the
+hint where a hint alone supplied it.
 
 **Why it matters.** Falling back to the key is exactly what the runtime is defined to do, so the
 string renders in the source language and every other rule stays green; adding
@@ -710,9 +791,9 @@ object read, or a service has no one implementation the walk can read, as where 
 twice, as an instance, through a factory creating no one type, or by a call of the application's
 own handed the service collection, or declared outside the run's projects; the types the walk
 reaches are alternatives it cannot pair with the lookup, as both sides of a conditional, several
-returns, or a value a constructor or a later write may replace; the property `[LocaleSource]`
-names returns nothing the walk can read, which LOC0214 reports; a type derived from the lookup's
-own overrides the member holding the lookup, so its instances never run it; a parent culture
+returns, or a value a constructor or a later write may replace; the type member a hint names
+returns nothing the walk can read, which LOC0214 reports; a type derived from the lookup's own
+overrides the member holding the lookup, so its instances never run it; a parent culture
 answers, since `es-419` reads `es` for what it does not declare; or the run did not name the
 project's files.
 
@@ -786,24 +867,24 @@ cannot follow. Without a bound compilation, only the lookup written as the unnam
 `format`-named first argument is certain. A call through `[LocaleKey]` is never read as format
 text, since what its method returns is its own.
 
-### LOC0214 — A lookup's type through `[LocaleSource]` could not be read
+### LOC0214 — A lookup's type through a hinted member could not be read
 
-**Reports.** A lookup through a member carrying `[LocaleSource]` on the instance its code runs
-on, where the property the attribute names, as a type of instance reads it, has a getter that
+**Reports.** A lookup through a member a hint relates to a type member, where the flow reaches
+no type on its own and the type member, as a type of instance reads it, has a getter that
 returns no `typeof` of a type or `GetType()` of the instance that could be read, once per lookup
-and property, naming the types of instance it was left unread for:
-`protected override Type LocaleSourceType => _source;`. A getter is read in source, in another
-project of the run's source, or in the compiled code of the assembly the build runs, where it
-returns one of the two in one straight run.
+and type member, naming the types of instance it was left unread for: `protected override Type
+LocaleSourceType => _source;`. A getter is read in source, in another project of the run's
+source, or in the compiled code of the assembly the build runs, where it returns one of the two
+in one straight run.
 
 **Why it matters.** LOC0207 holds the key to the type the getter names; where no reading tells
 the type, the key goes unchecked, and leaving that silent would let a run read as complete when
 part of it was never looked at.
 
-**What fixes it.** Return the type as `typeof(X)`, or the instance's own as `GetType()`, from the
-getter; or, where the type is chosen at run time, accept the key unchecked.
+**What fixes it.** Return the type as `typeof(X)`, or the instance's own as `GetType()`, from
+the getter; or, where the type is chosen at run time, accept the key unchecked.
 
 **Silent where.** The project is localized in no culture, by its own files or a pack, so no key
-of it could be checked; the lookup goes through the generic `IStringLocale<T>`, through a member
-carrying no `[LocaleSource]`, or through another instance than the one its code runs on, which
-LOC0207 leaves alone.
+of it could be checked; the flow reaches the member's type without the hint; the lookup goes
+through the generic `IStringLocale<T>`, through a member no hint names, or through another
+instance than the one its code runs on, which LOC0207 leaves alone.

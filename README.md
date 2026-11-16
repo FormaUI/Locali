@@ -117,10 +117,11 @@ walking up to the nearest `.csproj` or `.vbproj`.
 
 `--exclude` is what makes a test tree lintable: a fixture that is malformed on purpose reports
 what it exists to prove. A `.locali.json` file's `excludeFiles` entry does the same without a
-flag on every invocation, its `ignoreDiagnostics` entry leaves a named file out of named
-rules, and its `localeSources` entry says where each part of the tree keeps its entries.
-A run reads one such file, the nearest at or above the path it was given; [Rules](docs/linting-rules.md)
-describes all three entries under the linting configuration.
+flag on every invocation, its `ignoreDiagnostics` entry leaves a named file out of named rules,
+its `localeSources` entry says where each part of the tree keeps its entries, and its `hints`
+entry tells the linter what it cannot read in the code, such as the member a compiled library's
+locale is read for. A run reads one such file, the nearest at or above the path it was given;
+[Rules](docs/linting-rules.md) describes all four entries under the linting configuration.
 
 `--severity` decides what counts as a finding. An error is something the runtime will get wrong;
 a warning is something worth changing that still loads.
@@ -191,13 +192,21 @@ parameters through every call the run makes to their method, constructors, lambd
 functions, delegates and lazy values, virtual calls on each type the instance can be, `base.`
 calls to the member they name, and services to the one implementation the run's product code
 registers, so `L["Details columns"]` in a component is held to the component's own files however
-its base reaches the factory. A member carrying `[LocaleSource]` reads the type the member it
-names returns, as each type of instance overrides it, in source or in the compiled code of the
-assembly the build runs. Where the walk cannot follow a value, such as a type chosen at run
+its base reaches the factory. Where the walk cannot follow a value, such as a type chosen at run
 time, a factory the code builds itself, or a service registered in a way the walk cannot read,
 the path ends and the lookup is held to no type along it; alternatives the walk cannot pair with
 the lookup, such as both sides of a conditional, whether locales, objects holding them, or
 delegates returning them, are never held to it for certain.
+
+What the walk cannot read, a hint states: a member whose locale is read for the type another
+member of the same instance returns, as `FormaComponentBase.L` is for `LocaleSourceType`. The
+walk still runs first, without hints, and a hint is verified where it reaches the same type, set
+aside and reported where it reaches another, and used where it reaches none, as over a compiled
+library, where the type member's getter is read in the compiled code of the assembly the build
+runs. An application writes its own hints in `.locali.json`; a library keeps its hints in a
+`.locali-hints.json` at its project's root, which a run building the library reads and holds to
+its code, and ships it at its package's root, where an application reads it by naming the
+package. Nothing is written into the code.
 
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no
@@ -222,6 +231,8 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0025 | Warning | A locale file comes from a source its `localeSources` line does not allow, a pack's file held to the line over the project it localizes |
 | LOC0026 | Warning | A `.locali.json` sits beneath the path the run was given, other than the one the run reads |
 | LOC0027 | Warning | A part of the root namespace a project's locale files are embedded under, the assembly's name unless the project names another, is a culture |
+| LOC0028 | Error | A hint names a type, a member or a package that is not there or not of the kind the hint reads |
+| LOC0029 | Error | A hint disagrees with another written for the same member, or with the type the flow reaches on its own |
 | LOC0100 | Error | The file is not readable JSON |
 | LOC0101 | Error | The file carries no `$localization` entry |
 | LOC0102 | Warning | The metadata entry is not the file's first property |
@@ -260,7 +271,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0211 | Error | A lookup writes its key as an interpolated string with holes |
 | LOC0212 | Error | A lookup writes a key shaped like a reserved entry |
 | LOC0213 | Error | A lookup supplies `string.Format`'s format text |
-| LOC0214 | Warning | A lookup's type through `[LocaleSource]` could not be read |
+| LOC0214 | Warning | A lookup's type through a hinted member could not be read |
 
 ## Contributing
 
@@ -273,7 +284,7 @@ root namespace `Forma.Locali`, so a folder's namespace is the same in either pro
 | Project | Folder | Holds |
 |---------|--------|-------|
 | Engine | `Cli/` | Target resolution, the options a run takes, the shared glob matcher |
-| Engine | `Configuration/` | Reading `.locali.json` into the linting configuration a run applies, and `.locale.json` for the runtime's rule |
+| Engine | `Configuration/` | Reading `.locali.json` into the linting configuration a run applies, with the hints it states and imports, and `.locale.json` for the runtime's rule |
 | Engine | `Diagnostics/` | `LintingCode`, the `LintingCodes` catalogue, `LintingDiagnostic` |
 | Engine | `Documents/` | The locale format, `ILocaleFormat`, and its JSON implementation, which reads a locale file into ordered entries with offsets |
 | Engine | `Linting/` | The services that drive file and schema linting |
@@ -282,7 +293,7 @@ root namespace `Forma.Locali`, so a folder's namespace is the same in either pro
 | Engine | `Rules/Files/` | Rules over a locale file |
 | Engine | `Rules/Sources/` | Rules over a callsite |
 | Engine | `Rules/Projects/` | Rules over a project's locale files read whole |
-| Engine | `Flow/` | Following a lookup's locale back to where the runtime decided its type, across the projects of a run |
+| Engine | `Flow/` | Following a lookup's locale back to where the runtime decided its type, across the projects of a run, and holding hints to it |
 | Engine | `Sources/` | Finding callsites, and resolving a project's locale files, the locale packs carrying files for it, and the assemblies of the run an application's files are read for, for the project rules |
 | Tool | `Cli/` | Argument parsing and exit codes |
 | Tool | `Projects/` | Binding Roslyn to the SDK's copy |

@@ -17,6 +17,8 @@ public static class LintingCodes
             DisallowedLocaleSource,
             UnreadConfiguration,
             CultureInRootNamespace,
+            InvalidHint,
+            ConflictingHint,
             InvalidJson,
             MissingMarker,
             MarkerNotFirst,
@@ -105,6 +107,18 @@ public static class LintingCodes
         "LOC0027",
         LintingSeverity.Warning,
         "A part of the root namespace a project's locale files are embedded under is a culture, which the runtime reads as the culture of every file embedded under it.");
+
+    /// <summary>A hint names a type, a member or a package that is not there or not of the kind the hint reads.</summary>
+    public static LintingCode InvalidHint { get; } = new(
+        "LOC0028",
+        LintingSeverity.Error,
+        "A hint names a type, a member or a package that is not there or not of the kind the hint reads, so it relates nothing and the lookups it was written for go unchecked.");
+
+    /// <summary>A hint disagrees with another written for the same member, or with the type the flow reaches on its own.</summary>
+    public static LintingCode ConflictingHint { get; } = new(
+        "LOC0029",
+        LintingSeverity.Error,
+        "A hint disagrees with another written for the same member, or with the type the flow reaches on its own, so it is set aside, and a run that cannot follow the flow, as one over the compiled library, would hold lookups to the wrong type.");
 
     /// <summary>The file is not readable JSON.</summary>
     public static LintingCode InvalidJson { get; } = new(
@@ -334,9 +348,9 @@ public static class LintingCodes
         LintingSeverity.Error,
         "A lookup supplies string.Format's format text, which reads its own '{0}' rather than the runtime's holes, and throws once a text names one.");
 
-    /// <summary>A lookup goes through a member carrying [LocaleSource] whose named property's getter tells no type that could be read.</summary>
+    /// <summary>A lookup goes through a member a hint relates to a type member whose getter tells no type that could be read.</summary>
     public static LintingCode UnreadLocaleSource { get; } = new(
         "LOC0214",
         LintingSeverity.Warning,
-        "A lookup goes through a member carrying [LocaleSource] whose named property's getter tells no type that could be read, so its key went unchecked.");
+        "A lookup goes through a member a hint relates to a type member whose getter tells no type that could be read, so its key went unchecked.");
 }

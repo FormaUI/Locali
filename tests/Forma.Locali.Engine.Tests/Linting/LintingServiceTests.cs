@@ -517,6 +517,15 @@ public sealed class LintingServiceTests
             }
             """);
         directory.Write(Path.Combine("Widgets", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        directory.Write(".locali.json", """
+            {
+              "hints": {
+                "localeMembers": [
+                  { "assembly": "Contoso.Components", "type": "Contoso.Components.Component", "member": "L", "typeMember": "LocalizationSourceType" }
+                ]
+              }
+            }
+            """);
         var components = CompilationTestFactory.Referenced("""
             using System;
 
@@ -528,7 +537,6 @@ public sealed class LintingServiceTests
             {
                 protected virtual Type LocalizationSourceType => GetType();
 
-                [LocaleSource(nameof(LocalizationSourceType))]
                 protected IStringLocale L => default!;
             }
             """).WithAssemblyName("Contoso.Components");
@@ -544,7 +552,87 @@ public sealed class LintingServiceTests
             () => Assert.Equal(LintingCodes.MissingLocalization, diagnostic.Code),
             () => Assert.Equal(source, diagnostic.Path),
             () => Assert.Contains("'Tomorrow' has no entry", diagnostic.Message, StringComparison.Ordinal),
-            () => Assert.Contains("'Scratch.Widget'", diagnostic.Message, StringComparison.Ordinal));
+            () => Assert.Contains("'Scratch.Widget'", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains($"by the hint at '{Path.Combine("..", ".locali.json")}:4'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_read_the_hints_a_project_of_the_run_carries_for_its_own_members()
+    {
+        // Arrange — the library states its member's relationship beside its project, and the lookup in another project reads it.
+        using var directory = new TempDirectory();
+        var componentsProject = directory.Write(Path.Combine("Components", "Contoso.Components.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("Components", ".locali-hints.json"), """
+            {
+              "localeMembers": [
+                { "assembly": "Contoso.Components", "type": "Contoso.Components.Component", "member": "L", "typeMember": "LocalizationSourceType" }
+              ]
+            }
+            """);
+        var project = directory.Write(Path.Combine("Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var source = directory.Write(Path.Combine("Widgets", "Widget.cs"), """
+            namespace Scratch;
+
+            public sealed class Widget : Contoso.Components.Component
+            {
+                public void Show() => _ = L["Tomorrow"];
+            }
+            """);
+        directory.Write(Path.Combine("Widgets", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var components = CompilationTestFactory.Referenced("""
+            using System;
+
+            using Forma.Framework.Localization;
+
+            namespace Contoso.Components;
+
+            public abstract class Component
+            {
+                protected virtual Type LocalizationSourceType => GetType();
+
+                protected IStringLocale L => default!;
+            }
+            """).WithAssemblyName("Contoso.Components");
+        var compilation = CompilationTestFactory.ReferencedFiles("Scratch", source).AddReferences(CompilationTestFactory.MetadataOf(components));
+        var loader = new StubProjectLoader(new LoadedProject(project, compilation, false, false), new LoadedProject(componentsProject, components, false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.MissingLocalization, diagnostic.Code),
+            () => Assert.Contains("'Scratch.Widget'", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Contains($"by the hint at '{Path.Combine("..", "Components", ".locali-hints.json")}:3'", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_report_a_hint_naming_a_type_its_assembly_does_not_declare_where_it_is_written()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var (widgets, widgetsProject) = WidgetsProject(directory, LocalizationFileFakeData.Valid);
+        var configuration = directory.Write(".locali.json", """
+            {
+              "hints": {
+                "localeMembers": [
+                  { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Missing", "member": "L", "typeMember": "LocaleSourceType" }
+                ]
+              }
+            }
+            """);
+        var loader = new StubProjectLoader(widgetsProject);
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.InvalidHint, diagnostic.Code),
+            () => Assert.Equal(configuration, diagnostic.Path),
+            () => Assert.Equal(4, diagnostic.Line));
     }
 
     [Fact]

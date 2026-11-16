@@ -147,8 +147,10 @@ public sealed class LintingService(
         var packs = LocalePackFiles.ResolveAll(_localeFormat.RuntimeFormat, projects, target.LocalizationFilesOf);
         var builtAssemblies = BuiltAssemblies.ResolveAll(projects);
 
-        // A lookup's locale is followed across the projects of the run, so its types wait for every project as well.
-        var flow = new LocaleFlow(projects.All, LocaleFlow.ReadLocaleSourceAttribute);
+        // A lookup's locale is followed across the projects of the run, so its types wait for every project as well, with the hints
+        // each project carries and those of the packages the configuration names, found where the run's projects restored them.
+        var hints = _lintingConfiguration.ReadHints(ProjectFolders(projects.All), PackageRoots(projects.All));
+        var flow = new LocaleFlow(projects.All, hints.LocaleMembers);
 
         // A type's entries are read from its own assembly's project, so every project's files are resolved before any rule reads them.
         var localizations = RunLocalizations.Resolve(_localeFormat.RuntimeFormat, projects.All, target.LocalizationFilesOf, packs, builtAssemblies);
@@ -159,6 +161,21 @@ public sealed class LintingService(
             diagnostics.AddRange(_projects.Lint(project, target.LocalizationFilesOf(project.Path), flow.Resolve(project, sources.Callsites), packs, localizations));
         }
 
+        diagnostics.AddRange(hints.Diagnostics);
+        diagnostics.AddRange(flow.GetDiagnostics());
+
         return diagnostics;
     }
+
+    private static string[] ProjectFolders(IReadOnlyList<LoadedProject> projects)
+        => [.. projects.Select(project => Path.GetDirectoryName(Path.GetFullPath(project.Path))!).Distinct(StringComparer.OrdinalIgnoreCase)];
+
+    private static Dictionary<string, IReadOnlyCollection<string>> PackageRoots(IReadOnlyList<LoadedProject> projects)
+        => projects
+            .SelectMany(project => project.PackageRoots)
+            .GroupBy(root => root.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                package => package.Key,
+                IReadOnlyCollection<string> (package) => [.. package.Select(root => root.Value).Distinct(StringComparer.OrdinalIgnoreCase)],
+                StringComparer.OrdinalIgnoreCase);
 }

@@ -2,6 +2,7 @@ namespace Forma.Locali.Flow;
 
 using System.Collections.Concurrent;
 
+using Forma.Locali.Configuration;
 using Forma.Locali.Sources;
 
 using Microsoft.CodeAnalysis;
@@ -13,7 +14,11 @@ using VisualBasic = Microsoft.CodeAnalysis.VisualBasic.Syntax;
 /// <summary>Follows a value back through the code to where it was made: through locals, fields, properties, parameters, calls, lambdas and lazy values; one walk per lookup.</summary>
 /// <param name="run">What the flow reads across the run.</param>
 /// <param name="memo">The answers earlier walks completed, shared across lookups.</param>
-internal sealed class FlowEvaluator(FlowRun run, ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> memo)
+/// <param name="analysisMemo">The answers earlier walks completed without hints, shared across lookups.</param>
+internal sealed class FlowEvaluator(
+    FlowRun run,
+    ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> memo,
+    ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> analysisMemo)
 {
     private const int MaxDepth = 24;
     private const string LocaleFactoryMetadataName = "Forma.Framework.Localization.IStringLocaleFactory";
@@ -25,8 +30,15 @@ internal sealed class FlowEvaluator(FlowRun run, ConcurrentDictionary<(SymbolKey
 
     private readonly FlowRun _run = run ?? throw new ArgumentNullException(nameof(run));
     private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> _memo = memo ?? throw new ArgumentNullException(nameof(memo));
+    private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> _analysisMemo = analysisMemo ?? throw new ArgumentNullException(nameof(analysisMemo));
     private readonly HashSet<(SymbolKey Member, SymbolKey? Instance, int Arguments)> _following = [];
     private readonly Dictionary<FlowValue.Allocated, Dictionary<SymbolKey, FlowFrame>> _constructorsRun = [with(ReferenceEqualityComparer.Instance)];
+
+    // How deep the walk is in following a hinted member without its hint, where no hint applies and answers are kept apart.
+    private int _verifying;
+
+    private ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> Memo
+        => _verifying > 0 ? _analysisMemo : _memo;
 
     /// <summary>What an operation's value can be in a frame.</summary>
     /// <param name="operation">The operation.</param>
@@ -113,7 +125,7 @@ internal sealed class FlowEvaluator(FlowRun run, ConcurrentDictionary<(SymbolKey
         var memoKey = (SymbolKey.Of(method), instanceKey);
         var memoizable = frame.Arguments.Count == 0 && frame.TypeArguments.Count == 0 && (frame.This is null or FlowValue.Instance)
             && method.MethodKind is not (MethodKind.LocalFunction or MethodKind.AnonymousFunction);
-        if (memoizable && _memo.TryGetValue(memoKey, out var known))
+        if (memoizable && Memo.TryGetValue(memoKey, out var known))
         {
             return known;
         }
@@ -150,7 +162,7 @@ internal sealed class FlowEvaluator(FlowRun run, ConcurrentDictionary<(SymbolKey
             IReadOnlyList<FlowValue> result = returns.Length > 1 ? Approximate(values) : values;
             if (memoizable && !result.Any(IsCutShort))
             {
-                _memo.TryAdd(memoKey, result);
+                Memo.TryAdd(memoKey, result);
             }
 
             return result;
@@ -332,7 +344,7 @@ internal sealed class FlowEvaluator(FlowRun run, ConcurrentDictionary<(SymbolKey
     private IReadOnlyList<FlowValue> Callers(IMethodSymbol method, IParameterSymbol parameter, FlowFrame frame)
     {
         var memoKey = (SymbolKey.Of(parameter), (SymbolKey?)null);
-        if (_memo.TryGetValue(memoKey, out var known))
+        if (Memo.TryGetValue(memoKey, out var known))
         {
             return known;
         }
@@ -384,7 +396,7 @@ internal sealed class FlowEvaluator(FlowRun run, ConcurrentDictionary<(SymbolKey
 
             if (!values.Any(IsCutShort))
             {
-                _memo.TryAdd(memoKey, values);
+                Memo.TryAdd(memoKey, values);
             }
 
             return values;
@@ -429,14 +441,77 @@ internal sealed class FlowEvaluator(FlowRun run, ConcurrentDictionary<(SymbolKey
                 : [Pass(receiver, property)])];
         }
 
-        if (_run.TypeMemberOf(property) is { } typeMemberName)
+        if (_verifying == 0 && _run.Hints.Of(property) is { } hint)
         {
             return [.. (reference.Instance is null ? [frame.This ?? new FlowValue.Gap(LocaleGapKind.Unsupported, property.Name)] : receivers)
-                .SelectMany(receiver => From(receiver, RelatedLocale(property, typeMemberName, receiver, frame)))];
+                .SelectMany(receiver => From(receiver, Hinted(property, hint, reference.Instance, receiver, frame)))];
         }
 
         return EvaluateMember(property, reference.Instance, frame, receivers);
     }
+
+    // A hint is held to the flow, followed without hints so that none vouches for itself or another: where the flow reaches the type
+    // on its own the hint is verified or set aside, and elsewhere the type the hint relates the member to is the one read.
+    private IReadOnlyList<FlowValue> Hinted(IPropertySymbol property, LocaleMemberHint hint, IOperation? instance, FlowValue receiver, FlowFrame frame)
+    {
+        if (receiver is not (FlowValue.Instance or FlowValue.Allocated))
+        {
+            return [Pass(receiver, property)];
+        }
+
+        // An instance overriding the member reads its own declaration, which the hint was not written for.
+        var instanceType = receiver is FlowValue.Instance known ? known.Type : ((FlowValue.Allocated)receiver).Type;
+        if (!IsBaseReference(instance) && !SymbolKey.Of(MostDerived(instanceType, property).OriginalDefinition).Equals(SymbolKey.Of(property.OriginalDefinition)))
+        {
+            return EvaluateMember(property, instance, frame, [receiver]);
+        }
+
+        IReadOnlyList<FlowValue> analysed;
+        _verifying++;
+        try
+        {
+            analysed = EvaluateMember(property, instance, frame, [receiver]);
+        }
+        finally
+        {
+            _verifying--;
+        }
+
+        var related = RelatedLocale(property, hint.TypeMember, receiver, frame);
+        if (!IsSettled(analysed))
+        {
+            return Supplied(related, LocaleEvidence.Hint, hint);
+        }
+
+        if (!IsSettled(related))
+        {
+            return analysed;
+        }
+
+        if (!TypesOf(analysed).SetEquals(TypesOf(related)))
+        {
+            _run.Hints.Contradict(
+                hint,
+                $"The hint relating '{hint.MemberName}' to '{hint.TypeMember}' reads '{TypeNames(related)}' for '{instanceType.Name}', where the flow reaches '{TypeNames(analysed)}', so the flow's type is checked.");
+
+            return analysed;
+        }
+
+        return Supplied(analysed, LocaleEvidence.VerifiedHint, hint);
+    }
+
+    // Locales of one certain type each, with nothing cut short or left unread among them.
+    private static bool IsSettled(IReadOnlyList<FlowValue> values)
+        => values.Count > 0 && values.All(value => value is FlowValue.Locale { IsApproximate: false });
+
+    private static HashSet<SymbolKey> TypesOf(IReadOnlyList<FlowValue> values)
+        => [.. values.OfType<FlowValue.Locale>().Select(locale => SymbolKey.Of(locale.Type))];
+
+    private static string TypeNames(IReadOnlyList<FlowValue> values)
+        => string.Join("', '", values.OfType<FlowValue.Locale>().Select(locale => locale.Type.Name).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
+
+    private static IReadOnlyList<FlowValue> Supplied(IReadOnlyList<FlowValue> values, LocaleEvidence evidence, LocaleMemberHint hint)
+        => [.. values.Select(value => value is FlowValue.Locale locale ? locale with { Evidence = evidence, Hint = hint } : value)];
 
     // A relationship says the member's locale is read for the type another member of the same instance returns.
     private IReadOnlyList<FlowValue> RelatedLocale(IPropertySymbol member, string typeMemberName, FlowValue receiver, FlowFrame frame)

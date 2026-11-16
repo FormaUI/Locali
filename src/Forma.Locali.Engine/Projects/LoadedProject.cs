@@ -29,6 +29,9 @@ public sealed record LoadedProject(
     /// <summary>Whether the project declares <c>IsTestProject</c>, whose calls and registrations never speak for product code.</summary>
     public bool IsTestProject { get; init; }
 
+    /// <summary>The folder each package the project compiles against was restored into, by the package's identifier.</summary>
+    public IReadOnlyDictionary<string, string> PackageRoots { get; init; } = new Dictionary<string, string>();
+
     /// <summary>The culture the name a satellite assembly holds a file under gives it where that is not the satellite's culture, so the runtime reads the file under no name, or null where the runtime reads it.</summary>
     /// <param name="fullPath">The file, as a full path.</param>
     public string? GetCultureOutsideSatellite(string fullPath)

@@ -18,6 +18,16 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   typed `IStringLocale<T>` is followed further where a type of the run derives from `T`, since the contract is
   covariant. A locale from a factory the code builds itself, a service registered in a way the flow cannot read, and
   alternatives the flow cannot pair with the lookup are left unchecked.
+- Hints state what the linter cannot read in the code: `localeMembers` relates a member's locale to the type a member of
+  the same instance returns. An application writes them under `hints` in `.locali.json`; a library keeps them in a
+  `.locali-hints.json` at its project's root, read by every run building it, and ships it at its package's root, read
+  where an application's `hints.packages` names the package. The flow is followed without hints first, so a hint is
+  verified where it reaches the same type, set aside where it reaches another, and used where it reaches none, as over a
+  compiled library; LOC0207 names the hint a finding rests on.
+- LOC0028 reports a hint naming a type, a member or a package that is not there or not of the kind the hint reads, and
+  LOC0029 two hints relating one member to different type members, or a hint the flow contradicts.
+- Breaking: `[LocaleSource]` is no longer read; a hint states the relationship it carried, and LOC0214 reports a hinted
+  member whose type member tells no type.
 
 ## `1.0.0-preview.19`
 

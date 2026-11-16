@@ -1,5 +1,7 @@
 namespace Forma.Locali.Flow;
 
+using Forma.Locali.Configuration;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 
@@ -12,7 +14,14 @@ internal abstract record FlowValue
     /// <summary>A locale of a type.</summary>
     /// <param name="Type">The type, by its open definition.</param>
     /// <param name="Root">Where the path to the type began.</param>
-    internal sealed record Locale(INamedTypeSymbol Type, string Root) : FlowValue;
+    internal sealed record Locale(INamedTypeSymbol Type, string Root) : FlowValue
+    {
+        /// <summary>What established the type.</summary>
+        public LocaleEvidence Evidence { get; init; }
+
+        /// <summary>The hint that supplied or verified the type, where one did.</summary>
+        public LocaleMemberHint? Hint { get; init; }
+    }
 
     /// <summary>A type, as a value of <see cref="System.Type"/>.</summary>
     /// <param name="Type">The type, by its open definition.</param>

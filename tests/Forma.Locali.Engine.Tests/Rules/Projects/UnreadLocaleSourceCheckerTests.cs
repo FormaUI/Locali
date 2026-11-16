@@ -26,7 +26,7 @@ public sealed class UnreadLocaleSourceCheckerTests
             () => Assert.Equal(LintingCodes.UnreadLocaleSource, diagnostic.Code),
             () => Assert.Equal(LintingSeverity.Warning, diagnostic.Severity),
             () => Assert.Equal(
-                "'Widget.LocalizationSourceType for Widget' names the type 'Tomorrow' is read in, and its getter returns no typeof or GetType() that could be read, so no rule could check the key there.",
+                "A hint reads the lookup's type from 'Widget.LocalizationSourceType for Widget', whose getter returns no typeof or GetType() that could be read, so no rule could check 'Tomorrow' there.",
                 diagnostic.Message));
     }
 
@@ -88,7 +88,6 @@ public sealed class UnreadLocaleSourceCheckerTests
             {
                 protected virtual Type LocalizationSourceType => GetType();
 
-                [LocaleSource(nameof(LocalizationSourceType))]
                 protected IStringLocale L => default!;
             }
 
@@ -104,6 +103,6 @@ public sealed class UnreadLocaleSourceCheckerTests
             .Lint(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)], TestContext.Current.CancellationToken)
             .Callsites;
 
-        return ProjectLinterTestFactory.Check(new UnreadLocaleSourceChecker(), project, localizationFiles, new LocaleFlow([project], LocaleFlow.ReadLocaleSourceAttribute).Resolve(project, sites));
+        return ProjectLinterTestFactory.Check(new UnreadLocaleSourceChecker(), project, localizationFiles, new LocaleFlow([project], [LocaleFlowTestFactory.Hint("Scratch", "Scratch.Component")]).Resolve(project, sites));
     }
 }

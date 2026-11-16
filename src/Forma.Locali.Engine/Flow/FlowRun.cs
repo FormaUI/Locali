@@ -2,6 +2,7 @@ namespace Forma.Locali.Flow;
 
 using System.Collections.Concurrent;
 
+using Forma.Locali.Configuration;
 using Forma.Locali.Projects;
 
 using Microsoft.CodeAnalysis;
@@ -29,11 +30,11 @@ internal sealed class FlowRun
 
     /// <summary>Reads the run's projects.</summary>
     /// <param name="projects">Every project the run loaded.</param>
-    /// <param name="typeMemberOf">The name of the member naming the type a locale member's locale is read for, or null when no relationship names one.</param>
-    public FlowRun(IReadOnlyList<LoadedProject> projects, Func<ISymbol, string?> typeMemberOf)
+    /// <param name="hints">Every member hint the run's configuration names.</param>
+    public FlowRun(IReadOnlyList<LoadedProject> projects, IReadOnlyList<LocaleMemberHint> hints)
     {
         ArgumentNullException.ThrowIfNull(projects);
-        ArgumentNullException.ThrowIfNull(typeMemberOf);
+        ArgumentNullException.ThrowIfNull(hints);
 
         foreach (var project in projects.OrderBy(project => project.Path, StringComparer.Ordinal))
         {
@@ -44,14 +45,14 @@ internal sealed class FlowRun
         }
 
         Compilations = [.. _projects.Keys];
-        TypeMemberOf = typeMemberOf;
+        Hints = new LocaleMemberHints(Compilations, hints);
     }
 
     /// <summary>The compilation of every project of the run, ordered by the project's path.</summary>
     public IReadOnlyList<Compilation> Compilations { get; }
 
-    /// <summary>The name of the member naming the type a locale member's locale is read for, or null when no relationship names one.</summary>
-    public Func<ISymbol, string?> TypeMemberOf { get; }
+    /// <summary>The member hints the run applies.</summary>
+    public LocaleMemberHints Hints { get; }
 
     /// <summary>The semantic model of a tree, made once and shared, so a member bound for one lookup is bound for every other.</summary>
     /// <param name="compilation">The compilation holding the tree.</param>

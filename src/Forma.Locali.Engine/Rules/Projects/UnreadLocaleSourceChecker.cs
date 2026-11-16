@@ -3,7 +3,7 @@ namespace Forma.Locali.Rules.Projects;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Flow;
 
-/// <summary>Checks that the type a lookup through a member carrying <c>[LocaleSource]</c> reads could be told from the property that attribute names.</summary>
+/// <summary>Checks that the type a lookup through a hinted member reads could be told from the type member the hint relates it to.</summary>
 public sealed class UnreadLocaleSourceChecker : IProjectRuleChecker
 {
     /// <inheritdoc />
@@ -28,7 +28,7 @@ public sealed class UnreadLocaleSourceChecker : IProjectRuleChecker
                 context.Report(
                     Code,
                     site,
-                    $"'{gap.Detail}' names the type '{site.Key.Text}' is read in, and its getter returns no typeof or GetType() that could be read, so no rule could check the key there.");
+                    $"A hint reads the lookup's type from '{gap.Detail}', whose getter returns no typeof or GetType() that could be read, so no rule could check '{site.Key.Text}' there.");
             }
         }
     }

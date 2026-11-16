@@ -1,5 +1,6 @@
 namespace Forma.Locali.Tests.Projects;
 
+using Forma.Framework.Localization;
 using Forma.Locali.Tests.Support.Cli;
 
 public sealed class MSBuildProjectLoaderTests
@@ -289,6 +290,97 @@ public sealed class MSBuildProjectLoaderTests
         Assert.Multiple(
             () => Assert.Equal(1, exitCode),
             () => Assert.Equal(3, output.Split(LintingCodes.UnreachableLocalization.Id).Length - 1));
+    }
+
+    [Fact]
+    public async Task Should_read_the_hints_a_package_carries_where_its_consumer_restored_it()
+    {
+        // Arrange — a library ships the hint for its compiled locale member in its package, and an application compiling against
+        // the package imports it by the package's identifier.
+        using var directory = new TempDirectory();
+        var localization = typeof(IStringLocale).Assembly.Location;
+        var token = TestContext.Current.CancellationToken;
+        Directory.CreateDirectory(Path.Combine(directory.Root, "feed"));
+        directory.Write("nuget.config", """
+            <?xml version="1.0" encoding="utf-8"?>
+            <configuration>
+              <packageSources>
+                <clear />
+                <add key="local" value="feed" />
+              </packageSources>
+            </configuration>
+            """);
+        var library = directory.Write(Path.Combine("Library", "Contoso.Widgets.csproj"), $"""
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net11.0</TargetFramework>
+                <Version>1.0.0</Version>
+              </PropertyGroup>
+              <ItemGroup>
+                <Reference Include="Forma.Framework.Localization" HintPath="{localization}" />
+                <None Include=".locali-hints.json" Pack="true" PackagePath="" />
+              </ItemGroup>
+            </Project>
+            """);
+        directory.Write(Path.Combine("Library", "Component.cs"), """
+            namespace Contoso.Widgets;
+
+            using System;
+
+            using Forma.Framework.Localization;
+
+            public abstract class Component
+            {
+                protected virtual Type LocaleSourceType => GetType();
+
+                protected IStringLocale L => null!;
+            }
+            """);
+        directory.Write(Path.Combine("Library", ".locali-hints.json"), """
+            {
+              "localeMembers": [
+                { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Component", "member": "L", "typeMember": "LocaleSourceType" }
+              ]
+            }
+            """);
+        var application = directory.Write(Path.Combine("App", "Contoso.App.csproj"), $"""
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net11.0</TargetFramework>
+                <RestorePackagesPath>$(MSBuildThisFileDirectory)..\packages</RestorePackagesPath>
+              </PropertyGroup>
+              <ItemGroup>
+                <PackageReference Include="Contoso.Widgets" Version="1.0.0" />
+                <Reference Include="Forma.Framework.Localization" HintPath="{localization}" />
+                <EmbeddedResource Include=".locales\Widget.he.json" WithCulture="false" LogicalName="Contoso.App/.locales/Widget.he.json" />
+              </ItemGroup>
+            </Project>
+            """);
+        directory.Write(Path.Combine("App", "Widget.cs"), """
+            namespace Contoso.App;
+
+            public sealed class Widget : Contoso.Widgets.Component
+            {
+                public string Show() => L["Tomorrow"].Value;
+            }
+            """);
+        directory.Write(Path.Combine("App", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        directory.Write(Path.Combine("App", ".locali.json"), """{ "hints": { "packages": ["Contoso.Widgets"] } }""");
+
+        var packed = await DotnetRunner.RunAsync(directory.Root, token, "pack", library, "--output", "feed");
+        Assert.True(packed.ExitCode == 0, packed.Output);
+        var restored = await DotnetRunner.RunAsync(directory.Root, token, "restore", application);
+        Assert.True(restored.ExitCode == 0, restored.Output);
+
+        // Act
+        var (exitCode, output) = await LocaliToolRunner.RunAsync(token, "--path", application, "--severity", "warning");
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(1, exitCode),
+            () => Assert.Contains(LintingCodes.MissingLocalization.Id, output, StringComparison.Ordinal),
+            () => Assert.Contains("'Tomorrow' has no entry", output, StringComparison.Ordinal),
+            () => Assert.Contains(Path.Combine("contoso.widgets", "1.0.0", ".locali-hints.json") + ":3'", output, StringComparison.Ordinal));
     }
 
     private static string Write(TempDirectory directory)

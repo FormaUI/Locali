@@ -7,6 +7,51 @@ using Forma.Locali.Configuration;
 public sealed class LinterConfigFileTests
 {
     [Fact]
+    public void Should_read_the_hints_entrys_members_and_packages()
+    {
+        // Arrange
+        var document = LinterConfigFileTestFactory.Read("""
+            {
+              "hints": {
+                "localeMembers": [
+                  { "assembly": "Forma.Blazor", "type": "Forma.Blazor.Components.FormaComponentBase", "member": "L", "typeMember": "LocaleSourceType" }
+                ],
+                "packages": ["FormaUI.NET-Blazor"]
+              }
+            }
+            """);
+
+        // Assert
+        var member = Assert.Single(document.LocaleMembers);
+        Assert.Multiple(
+            () => Assert.Equal(("Forma.Blazor", "Forma.Blazor.Components.FormaComponentBase", "L", "LocaleSourceType"), (member.Assembly, member.Type, member.Member, member.TypeMember)),
+            () => Assert.Equal(["FormaUI.NET-Blazor"], document.HintPackages.Select(package => package.Id)),
+            () => Assert.Empty(document.MalformedValues));
+    }
+
+    [Fact]
+    public void Should_flag_a_member_hint_naming_no_type_member()
+    {
+        // Arrange
+        var document = LinterConfigFileTestFactory.Read("""{ "hints": { "localeMembers": [{ "assembly": "Contoso", "type": "Contoso.Component", "member": "L" }] } }""");
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(document.LocaleMembers),
+            () => Assert.Equal("a member names no 'typeMember', so it relates nothing.", Assert.Single(document.MalformedValues).Reason));
+    }
+
+    [Fact]
+    public void Should_flag_an_entry_the_hints_entry_does_not_define()
+    {
+        // Arrange
+        var document = LinterConfigFileTestFactory.Read("""{ "hints": { "members": [] } }""");
+
+        // Assert
+        Assert.StartsWith("'members' is not an entry 'hints' defines", Assert.Single(document.MalformedValues).Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_read_a_globs_codes_with_their_offsets()
     {
         // Arrange

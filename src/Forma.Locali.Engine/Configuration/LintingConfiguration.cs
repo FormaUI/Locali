@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 
 using Forma.Locali.Cli;
 using Forma.Locali.Diagnostics;
+using Forma.Locali.Documents;
 
 /// <summary>The configuration a run applies: the one <c>.locali.json</c> nearest at or above the path the run was given, merged with the globs the command line excludes, holding every entry of the file to having applied to something.</summary>
 public sealed class LintingConfiguration : ILintingConfiguration
@@ -136,6 +137,90 @@ public sealed class LintingConfiguration : ILintingConfiguration
         }
 
         return diagnostics;
+    }
+
+    /// <inheritdoc />
+    public LocaleHints ReadHints(IReadOnlyCollection<string> projectFolders, IReadOnlyDictionary<string, IReadOnlyCollection<string>> packageRoots)
+    {
+        ArgumentNullException.ThrowIfNull(projectFolders);
+        ArgumentNullException.ThrowIfNull(packageRoots);
+
+        var hints = new List<LocaleMemberHint>();
+        var diagnostics = new List<LintingDiagnostic>();
+
+        // A library's hints describe its own code, so a run building it reads them, and the flow holds them to that code.
+        foreach (var folder in projectFolders)
+        {
+            var path = Path.Combine(folder, LocaleHintsFile.FileName);
+            if (File.Exists(path))
+            {
+                Import(path, hints, diagnostics);
+            }
+        }
+
+        if (_file.Value is not { File: { } config })
+        {
+            return new LocaleHints(hints, diagnostics);
+        }
+
+        hints.AddRange(config.LocaleMembers.Select(member => Hint(member, config.Path, config.Map)));
+
+        // A package's hints apply where the configuration names it, read from each version the run's projects restored.
+        foreach (var package in config.HintPackages)
+        {
+            if (!packageRoots.TryGetValue(package.Id, out var roots) || roots.Count == 0)
+            {
+                diagnostics.Add(config.Diagnose(package.Offset, LintingCodes.StaleConfigurationEntry, $"'{package.Id}' is a package no project of the run references, so it supplies no hints."));
+                continue;
+            }
+
+            foreach (var root in roots)
+            {
+                var path = Path.Combine(root, LocaleHintsFile.FileName);
+                if (File.Exists(path))
+                {
+                    Import(path, hints, diagnostics);
+                }
+                else
+                {
+                    diagnostics.Add(config.Diagnose(package.Offset, LintingCodes.InvalidHint, $"'{package.Id}' carries no {LocaleHintsFile.FileName} at '{root}', so it supplies no hints."));
+                }
+            }
+        }
+
+        return new LocaleHints(hints, diagnostics);
+    }
+
+    private static void Import(string path, List<LocaleMemberHint> hints, List<LintingDiagnostic> diagnostics)
+    {
+        byte[] content;
+        try
+        {
+            content = File.ReadAllBytes(path);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            diagnostics.Add(new LintingDiagnostic(path, 1, 1, LintingCodes.MalformedConfiguration.DefaultSeverity, LintingCodes.MalformedConfiguration, $"The hints file could not be read: {exception.Message}"));
+
+            return;
+        }
+
+        if (!LocaleHintsFile.TryRead(path, content, out var file, out var error) || file is null)
+        {
+            diagnostics.Add(new LintingDiagnostic(path, 1, 1, LintingCodes.MalformedConfiguration.DefaultSeverity, LintingCodes.MalformedConfiguration, $"The hints file is not readable JSON: {error}."));
+
+            return;
+        }
+
+        diagnostics.AddRange(file.MalformedValues.Select(malformed => file.Diagnose(malformed.Offset, LintingCodes.MalformedConfiguration, malformed.Reason)));
+        hints.AddRange(file.LocaleMembers.Select(member => Hint(member, file.Path, file.Map)));
+    }
+
+    private static LocaleMemberHint Hint(ConfigLocaleMember member, string path, TextMap map)
+    {
+        var (line, column) = map.Locate(member.Offset);
+
+        return new LocaleMemberHint(member.Assembly, member.Type, member.Member, member.TypeMember, path, line, column);
     }
 
     private static void DiagnoseFile(TrackedFile tracked, List<LintingDiagnostic> diagnostics)

@@ -2,6 +2,8 @@ namespace Forma.Locali.Flow;
 
 using System.Collections.Concurrent;
 
+using Forma.Locali.Configuration;
+using Forma.Locali.Diagnostics;
 using Forma.Locali.Projects;
 using Forma.Locali.Sources;
 
@@ -13,17 +15,22 @@ public sealed class LocaleFlow
 {
     private readonly FlowRun _run;
     private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> _memo = new();
+    private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> _analysisMemo = new();
 
-    /// <summary>Reads the run's projects.</summary>
+    /// <summary>Reads the run's projects and binds the hints its configuration names.</summary>
     /// <param name="projects">Every project the run loaded.</param>
-    /// <param name="typeMemberOf">The name of the member naming the type a locale member's locale is read for, or null when no relationship names one.</param>
-    public LocaleFlow(IReadOnlyList<LoadedProject> projects, Func<ISymbol, string?> typeMemberOf)
+    /// <param name="hints">Every member hint the run's configuration names.</param>
+    public LocaleFlow(IReadOnlyList<LoadedProject> projects, IReadOnlyList<LocaleMemberHint> hints)
     {
         ArgumentNullException.ThrowIfNull(projects);
-        ArgumentNullException.ThrowIfNull(typeMemberOf);
+        ArgumentNullException.ThrowIfNull(hints);
 
-        _run = new FlowRun(projects, typeMemberOf);
+        _run = new FlowRun(projects, hints);
     }
+
+    /// <summary>What is wrong in the hints, and where the flow contradicts one, as far as the lookups resolved so far tell.</summary>
+    public IReadOnlyList<LintingDiagnostic> GetDiagnostics()
+        => _run.Hints.GetDiagnostics();
 
     /// <summary>The lookups a project's callsites made, each with the types its locale reads and the paths that ended before reaching one.</summary>
     /// <param name="project">The project, one of the run's.</param>
@@ -57,7 +64,7 @@ public sealed class LocaleFlow
             return lookup with { Receiver = null, Gaps = [new LocaleGap(LocaleGapKind.Unsupported, node.ToString())] };
         }
 
-        var evaluator = new FlowEvaluator(_run, _memo);
+        var evaluator = new FlowEvaluator(_run, _memo, _analysisMemo);
         var values = evaluator.EntryFrames(compilation, enclosing, 0).SelectMany(frame => evaluator.Evaluate(receiver, frame)).ToArray();
         if (values.Length == 0)
         {
@@ -66,8 +73,8 @@ public sealed class LocaleFlow
 
         var origins = values
             .OfType<FlowValue.Locale>()
-            .GroupBy(locale => (SymbolKey.Of(locale.Type), locale.IsApproximate))
-            .Select(group => new LocaleOrigin(group.First().Type, group.First().Root, group.Key.IsApproximate))
+            .GroupBy(locale => (SymbolKey.Of(locale.Type), locale.IsApproximate, locale.Evidence, locale.Hint))
+            .Select(group => new LocaleOrigin(group.First().Type, group.First().Root, group.Key.IsApproximate, group.Key.Evidence, group.Key.Hint))
             .ToArray();
         var gaps = values
             .Select(value => value switch
@@ -81,18 +88,6 @@ public sealed class LocaleFlow
             .ToArray();
 
         return lookup with { Receiver = null, Origins = origins, Gaps = gaps };
-    }
-
-    /// <summary>The name of the member a <c>[LocaleSource]</c> attribute on a member names, or null when it carries none.</summary>
-    /// <param name="member">The member.</param>
-    public static string? ReadLocaleSourceAttribute(ISymbol member)
-    {
-        ArgumentNullException.ThrowIfNull(member);
-
-        return member.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == LocalizerContract.SourceAttributeMetadataName)
-            is { ConstructorArguments: [{ Value: string name }] }
-            ? name
-            : null;
     }
 
     // A lambda or a local function runs as part of the member holding it.
