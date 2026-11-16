@@ -59,6 +59,7 @@ public static class LintingCodes
             ReformattedLookup,
             UnreadLocaleSource,
             UnresolvedLocale,
+            NotRestored,
         ];
 
     /// <summary>The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define.</summary>
@@ -360,4 +361,10 @@ public static class LintingCodes
         "LOC0215",
         LintingSeverity.Warning,
         "A lookup writes its key in a localized project, but no path from it reaches the type its locale is read for, so whether a culture answers the key went unchecked.");
+
+    /// <summary>A project referencing packages was loaded without its restore output.</summary>
+    public static LintingCode NotRestored { get; } = new(
+        "LOC0216",
+        LintingSeverity.Error,
+        "A project referencing packages was loaded without its restore output, so the types its packages declare went unread and what the rules read through them went unchecked.");
 }

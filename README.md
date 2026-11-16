@@ -300,6 +300,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0213 | Error | A lookup supplies `string.Format`'s format text |
 | LOC0214 | Warning | A lookup's type through a hinted member could not be read |
 | LOC0215 | Warning | A lookup writing its key in a localized project reaches no type its locale is read for |
+| LOC0216 | Error | A project referencing packages was loaded without its restore output |
 
 ## Contributing
 

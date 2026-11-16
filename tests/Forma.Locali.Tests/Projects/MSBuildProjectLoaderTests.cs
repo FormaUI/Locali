@@ -383,6 +383,32 @@ public sealed class MSBuildProjectLoaderTests
             () => Assert.Contains(Path.Combine("contoso.widgets", "1.0.0", ".locali-hints.json") + ":3'", output, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Should_report_a_project_referencing_packages_that_was_never_restored()
+    {
+        // Arrange — the package is never fetched, so the project's assets file is never written.
+        using var directory = new TempDirectory();
+        var project = directory.Write("Contoso.App.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net11.0</TargetFramework>
+              </PropertyGroup>
+              <ItemGroup>
+                <PackageReference Include="Contoso.Widgets" Version="1.0.0" />
+              </ItemGroup>
+            </Project>
+            """);
+        directory.Write("Widget.cs", "namespace Contoso.App; public sealed class Widget;");
+
+        // Act
+        var (exitCode, output) = await LocaliToolRunner.RunAsync(TestContext.Current.CancellationToken, "--path", project);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(1, exitCode),
+            () => Assert.Contains(LintingCodes.NotRestored.Id, output, StringComparison.Ordinal));
+    }
+
     private static string Write(TempDirectory directory)
     {
         directory.Write("Widget.cs", "namespace Scratch; public sealed class Widget;");

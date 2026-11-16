@@ -29,6 +29,9 @@ public sealed record LoadedProject(
     /// <summary>Whether the project declares <c>IsTestProject</c>, whose calls and registrations never speak for product code.</summary>
     public bool IsTestProject { get; init; }
 
+    /// <summary>Whether the project's packages were restored, or it references none; a project loaded without its restore output reads none of the types its packages declare.</summary>
+    public bool IsRestored { get; init; } = true;
+
     /// <summary>The folder each package the project compiles against was restored into, by the package's identifier.</summary>
     public IReadOnlyDictionary<string, string> PackageRoots { get; init; } = new Dictionary<string, string>();
 

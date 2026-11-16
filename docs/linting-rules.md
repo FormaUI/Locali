@@ -938,3 +938,17 @@ localizer contract, or in code no instance of the project runs; the key is an ex
 LOC0208 reports; or the lookup goes through Microsoft's `IStringLocalizer` where the run does
 not have Forma's adapter answer it.
 
+### LOC0216 — A project was not restored
+
+**Reports.** A project that references packages, loaded without the assets file restore writes,
+once, at the project.
+
+**Why it matters.** The build reads a project's packages from that file, so without it the types
+the packages declare are unknown: a component deriving from a package's base, or a locale
+reached through a package's service, is followed nowhere, and a run reads clean while checking
+less than it would, with no word why.
+
+**What fixes it.** Restore the solution, `dotnet restore`, or build it, before linting it.
+
+**Silent where.** The project references no package, so restore gives it nothing to read; or its
+assets file is there, however old.

@@ -179,7 +179,8 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             references,
             GetRuntimeAssemblyPaths(instance),
             instance.GetPropertyValue("IsTestProject").Equals("true", StringComparison.OrdinalIgnoreCase),
-            GetPackageRoots(instance)));
+            GetPackageRoots(instance),
+            IsRestored(instance)));
     }
 
     // A referenced project is evaluated only where the assembly it builds is missing, which is a tree that was never built,
@@ -266,7 +267,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         await lanes.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var result = Load(project, standIns, cancellationToken) with { RuntimeAssemblyPaths = project.RuntimeAssemblyPaths ?? new Dictionary<string, string>(), IsTestProject = project.IsTestProject, PackageRoots = project.PackageRoots ?? new Dictionary<string, string>() };
+            var result = Load(project, standIns, cancellationToken) with { RuntimeAssemblyPaths = project.RuntimeAssemblyPaths ?? new Dictionary<string, string>(), IsTestProject = project.IsTestProject, PackageRoots = project.PackageRoots ?? new Dictionary<string, string>(), IsRestored = project.IsRestored };
             loaded.TryWrite(result);
 
             return result;
@@ -444,6 +445,12 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         return paths;
     }
 
+    // Restore writes the assets file the build reads a project's packages from, so a project referencing packages without it reads none.
+    private static bool IsRestored(ProjectInstance instance)
+        => instance.GetItems("PackageReference").Count == 0
+            || instance.GetPropertyValue("ProjectAssetsFile") is not { Length: > 0 } assets
+            || File.Exists(assets);
+
     // A package's folder is where a compile-time assembly it ships sits, less the path the assembly has inside the package.
     private static Dictionary<string, string> GetPackageRoots(ProjectInstance instance)
     {
@@ -479,7 +486,8 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         IReadOnlyList<BuiltProject> References,
         IReadOnlyDictionary<string, string>? RuntimeAssemblyPaths = null,
         bool IsTestProject = false,
-        IReadOnlyDictionary<string, string>? PackageRoots = null);
+        IReadOnlyDictionary<string, string>? PackageRoots = null,
+        bool IsRestored = true);
 
     // The collection every project of one load is evaluated in, what the load has evaluated so far, and where a built project goes.
     private sealed record LoadRun(ProjectCollection Collection, ChannelWriter<BuiltProject> Built)

@@ -43,6 +43,17 @@ public sealed class SourceLinter(
                 "The project carries Razor markup but no generated C# was found; build with EmitCompilerGeneratedFiles=true or its callsites go unchecked."));
         }
 
+        if (!project.IsRestored)
+        {
+            diagnostics.Add(new LintingDiagnostic(
+                project.Path,
+                1,
+                1,
+                LintingCodes.NotRestored.DefaultSeverity,
+                LintingCodes.NotRestored,
+                "The project references packages but was loaded without its restore output, so the types its packages declare went unread and what the rules read through them went unchecked; restore the solution before linting it."));
+        }
+
         if (project.Compilation is not { } compilation)
         {
             return new SourceLintResult(diagnostics, []);

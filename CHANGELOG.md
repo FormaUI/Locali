@@ -15,6 +15,8 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   on, so a helper such as `string Label(string key) => L[key]` or a wrapper of `LocalizableText.For` needs no marking.
   LOC0208 reports it where a call writes it otherwise, where calls the run cannot see may write it, or where a call's
   text may not be what the lookup reads, as under a condition.
+- LOC0216 reports, as an error, a project referencing packages that was loaded without its restore output, whose
+  packages' types went unread, in place of a run that reads clean while checking less than it would.
 
 ## `1.0.0-preview.20`
 

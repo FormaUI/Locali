@@ -295,6 +295,26 @@ public sealed class SourceLinterTests
         Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
     }
 
+    [Fact]
+    public void Should_report_a_project_loaded_without_its_restore_output()
+    {
+        // Arrange
+        var compilation = Compile("""public void Show() => _ = L["Today"];""");
+        var project = new LoadedProject("Scratch.csproj", compilation, HasGeneratedSources: false, HasRazorMarkup: false) { IsRestored = false };
+
+        // Act
+        var diagnostics = new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers())
+            .Lint(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)], TestContext.Current.CancellationToken)
+            .Diagnostics;
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.NotRestored, diagnostic.Code),
+            () => Assert.Equal(LintingSeverity.Error, diagnostic.Severity),
+            () => Assert.Equal("Scratch.csproj", diagnostic.Path));
+    }
+
     private static IReadOnlyList<LintingDiagnostic> Lint(string body)
         => Reported(Compile(body));
 
