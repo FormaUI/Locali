@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.19`
 
-*Unreleased*
+*November 16, 2026*
 
 - LOC0207 reads the property `[LocaleSource]` names in the compiled code of the assembly the build runs where no
   project of the run builds it, as where an application takes `FormaComponentBase` from a package, so a component
