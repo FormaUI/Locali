@@ -33,6 +33,22 @@ public sealed class ConsoleDiagnosticReporterTests
     }
 
     [Fact]
+    public async Task Should_count_the_lookups_that_went_unchecked_after_the_summary()
+    {
+        // Arrange
+        await using var writer = new StringWriter();
+        var reporter = new ConsoleDiagnosticReporter(writer);
+        var coverage = LookupCoverage.None with { Lookups = 10, FullyChecked = 7, Unchecked = 3 };
+
+        // Act
+        await reporter.ReportAsync(new LintingResult([], 2, [], 0) { Coverage = coverage }, TestContext.Current.CancellationToken);
+
+        // Assert
+        var lines = writer.ToString().TrimEnd().Split(Environment.NewLine);
+        Assert.Equal(["Linted 2 file(s); no diagnostics.", "3 of 10 lookup(s) went unchecked; pass --report to list each and why."], lines);
+    }
+
+    [Fact]
     public async Task Should_brief_the_diagnostics_the_severity_left_out()
     {
         // Arrange — a file rule and two callsite rules, so the brief has both families to line up.
@@ -43,7 +59,7 @@ public sealed class ConsoleDiagnosticReporterTests
         [
             new(LintingCodes.MarkerNotFirst, 2),
             new(LintingCodes.MissingLocalization, 4),
-            new(LintingCodes.KeyNotAnalysed, 1),
+            new(LintingCodes.BareHoleKey, 1),
         ];
 
         // Act
@@ -58,7 +74,7 @@ public sealed class ConsoleDiagnosticReporterTests
                 string.Empty,
                 "7 diagnostic(s) not shown:",
                 "  - LOC0102 (2)",
-                "  - LOC0207 (4), LOC0208 (1)",
+                "  - LOC0207 (4), LOC0209 (1)",
                 "Pass --severity warning to read them.",
             ],
             lines);

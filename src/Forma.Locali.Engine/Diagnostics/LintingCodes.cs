@@ -51,19 +51,16 @@ public static class LintingCodes
             RazorNotAnalysed,
             HoleShapedText,
             MissingLocalization,
-            KeyNotAnalysed,
             BareHoleKey,
             BareExpressionKey,
             InterpolatedKey,
             ReservedShapedLookup,
             ReformattedLookup,
-            UnreadLocaleSource,
-            UnresolvedLocale,
             NotRestored,
         ];
 
     /// <summary>The identifiers of the rules this linter has retired, which a linting configuration may still name and no run reports.</summary>
-    public static IReadOnlySet<string> Retired { get; } = new HashSet<string>(StringComparer.Ordinal) { "LOC0117" };
+    public static IReadOnlySet<string> Retired { get; } = new HashSet<string>(StringComparer.Ordinal) { "LOC0117", "LOC0208", "LOC0214", "LOC0215" };
 
     /// <summary>The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define.</summary>
     public static LintingCode MalformedConfiguration { get; } = new(
@@ -317,12 +314,6 @@ public static class LintingCodes
         LintingSeverity.Warning,
         "A key written at a callsite has no entry in a culture its type is already localized in, so it renders in the source language.");
 
-    /// <summary>A lookup writes its key as an expression, so no rule could read it.</summary>
-    public static LintingCode KeyNotAnalysed { get; } = new(
-        "LOC0208",
-        LintingSeverity.Warning,
-        "A lookup writes its key as an expression, so what it reads went unchecked.");
-
     /// <summary>The key carries holes but no words for anyone localizing it to read.</summary>
     public static LintingCode BareHoleKey { get; } = new(
         "LOC0209",
@@ -352,18 +343,6 @@ public static class LintingCodes
         "LOC0213",
         LintingSeverity.Error,
         "A lookup supplies string.Format's format text, which reads its own '{0}' rather than the runtime's holes, and throws once a text names one.");
-
-    /// <summary>A lookup goes through a member a hint relates to a type member whose getter tells no type that could be read.</summary>
-    public static LintingCode UnreadLocaleSource { get; } = new(
-        "LOC0214",
-        LintingSeverity.Warning,
-        "A lookup goes through a member a hint relates to a type member whose getter tells no type that could be read, so its key went unchecked.");
-
-    /// <summary>A lookup writing its key in a localized project reaches no type its locale is read for.</summary>
-    public static LintingCode UnresolvedLocale { get; } = new(
-        "LOC0215",
-        LintingSeverity.Warning,
-        "A lookup writes its key in a localized project, but no path from it reaches the type its locale is read for, so whether a culture answers the key went unchecked.");
 
     /// <summary>A project referencing packages was loaded without its restore output.</summary>
     public static LintingCode NotRestored { get; } = new(

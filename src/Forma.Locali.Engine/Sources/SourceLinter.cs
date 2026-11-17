@@ -87,40 +87,18 @@ public sealed class SourceLinter(
             .WithCancellation(cancellationToken)
             .SelectMany(Check));
 
-        diagnostics.AddRange(lookups.UnreadableKeys.Select(Unreadable));
         diagnostics.AddRange(lookups.InterpolatedKeys.Select(Interpolated));
 
-        return new SourceLintResult(diagnostics, lookups.Lookups) { ForwardedKeys = lookups.ForwardedKeys };
+        return new SourceLintResult(diagnostics, lookups.Lookups) { ForwardedKeys = lookups.ForwardedKeys, UnreadKeys = lookups.UnreadableKeys };
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<LintingDiagnostic> Lint(IReadOnlyList<LocalizerLookup> forwarded, IReadOnlyList<ForwardedKey> unforwarded)
+    public IReadOnlyList<LintingDiagnostic> Lint(IReadOnlyList<LocalizerLookup> forwarded)
     {
         ArgumentNullException.ThrowIfNull(forwarded);
-        ArgumentNullException.ThrowIfNull(unforwarded);
 
-        return
-        [
-            .. forwarded.SelectMany(Check),
-            .. unforwarded.Select(key => new LintingDiagnostic(
-                key.Key.Path,
-                key.Key.StartLinePosition.Line + 1,
-                key.Key.StartLinePosition.Character + 1,
-                LintingCodes.KeyNotAnalysed.DefaultSeverity,
-                LintingCodes.KeyNotAnalysed,
-                $"The lookup's key is the parameter '{key.Parameter}', which a call writes as an expression, passes from outside the run, or hands a method whose path to the lookup turns on the text in a way the flow cannot tell, so no rule could check what it reads.")),
-        ];
+        return [.. forwarded.SelectMany(Check)];
     }
-
-    // Naming the blind spot keeps a run from reading as complete coverage when part of it was unreadable.
-    private static LintingDiagnostic Unreadable(FileLinePositionSpan location)
-        => new(
-            location.Path,
-            location.StartLinePosition.Line + 1,
-            location.StartLinePosition.Character + 1,
-            LintingCodes.KeyNotAnalysed.DefaultSeverity,
-            LintingCodes.KeyNotAnalysed,
-            "The lookup's key is an expression rather than text, so no rule could check what it reads.");
 
     private static LintingDiagnostic Interpolated(FileLinePositionSpan location)
         => new(

@@ -7,6 +7,12 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 *Unreleased*
 
+- Breaking: LOC0208, LOC0214 and LOC0215 are retired, LOC0208 at a library's public method included. A lookup the run
+  could not check is no diagnostic: one writing its key as an expression, one taking its key from a parameter some call
+  writes otherwise, and one from which no path reaches a type are counted unchecked, the console summary says how many,
+  and the JSON report's `coverage.uncheckedLookups` lists each with its place, its reasons, `keyNotWritten` and
+  `keyFromParameter` among them, and what kept it unchecked, naming for a library's public method the key hint that lets
+  its consumers' runs check the calls they make. `coverage.lookups` counts those two kinds of key as well.
 - A linting configuration naming a retired rule in `ignoreDiagnostics` is reported as LOC0021, a warning, rather than
   LOC0020, so a configuration written for an earlier release keeps its run passing until the line is dropped.
 

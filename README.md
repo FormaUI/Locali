@@ -145,16 +145,18 @@ nothing disappears without a trace:
 
 ```text
 Linted 658 file(s); 6 diagnostic(s).
+12 of 840 lookup(s) went unchecked; pass --report to list each and why.
 
 8 diagnostic(s) not shown:
   - LOC0106 (1)
-  - LOC0204 (1), LOC0207 (4), LOC0208 (2)
+  - LOC0204 (1), LOC0207 (4), LOC0209 (2)
 Pass --severity warning to read them.
 ```
 
 The brief names each rule and how many it contributed, a line per family. Its closing line only
 promises what raising `--severity` will reveal: where the linting configuration accounts for
-some or all of what is left out, it says so instead.
+some or all of what is left out, it says so instead. A lookup the run could not check is no
+diagnostic, so the line after the summary counts those, and the JSON report lists each.
 
 | Exit code | Meaning |
 |-----------|---------|
@@ -165,15 +167,20 @@ some or all of what is left out, it says so instead.
 `--report` writes a JSON report carrying `fileCount`, `diagnosticCount`, `suppressedCount`,
 `ignoredCount` — how many of the suppressed diagnostics the linting configuration left out
 rather than the severity — a `diagnostics` array of `path`, `line`, `column`, `severity`,
-`code`, `message`, and a `coverage` object for the lookups writing their keys in the files the
-run linted: `lookups`; `fullyChecked`, `partiallyChecked` and `unchecked`, as each was held to
-every type it reads with entries the run could read, to some, or to none; `evidence`, how many
-checked lookups rest on the flow alone (`analysis`), on a hint the flow confirmed
-(`verifiedHint`), or on a hint alone (`hint`); and `reasons`, how many lookups each reason left
-short of fully checked: the kind of place a path ended, as `customFactory` or `externalCallers`,
-`approximate` alternatives, `unavailableEntries` for a type whose assembly no project of the run
-builds, or `notFollowed` for a lookup found without a bound compilation, or in code no instance
-runs.
+`code`, `message`, and a `coverage` object for the lookups the run found in the files it linted:
+`lookups`, among them those writing their key as an expression and those taking it from a
+parameter some call writes otherwise; `fullyChecked`, `partiallyChecked` and `unchecked`, as
+each was held to every type it reads with entries the run could read, to some, or to none;
+`evidence`, how many checked lookups rest on the flow alone (`analysis`), on a hint the flow
+confirmed (`verifiedHint`), or on a hint alone (`hint`); `reasons`, how many lookups each reason
+left short of fully checked: the kind of place a path ended, as `customFactory` or
+`externalCallers`, `approximate` alternatives, `unavailableEntries` for a type whose assembly no
+project of the run builds, `notFollowed` for a lookup found without a bound compilation, or in
+code no instance runs, `keyNotWritten` for a key written as an expression, or `keyFromParameter`
+for a key a parameter takes that some call writes otherwise; and `uncheckedLookups`, each lookup
+counted unchecked with its `path`, `line`, `column`, `reasons` and an `explanation` of what kept
+it unchecked, which for a library's public method whose key its consumers write names the key
+hint that lets their runs check the calls they make.
 
 ## How Callsites Are Found
 
@@ -198,12 +205,12 @@ is read through the method's paths with what it passes: a condition its constant
 settle, such as an empty or null test of the key or a flag it passes as `false`, is followed the
 one way it goes, so a call the method returns from before the lookup looks nothing up, and a
 condition on anything but the key leaves the lookup as reachable as one written under it. The
-key is reported as an expression where a call reaching the lookup writes it otherwise; where
-calls the run cannot see may write it: through a delegate, a base or an interface method, or
-from outside a library, unless a key hint the method's body bears out names it; and where a
-call's text may not be what the lookup reads: a condition on the key the flow cannot settle,
-such as `key.StartsWith("raw:")`, stands between the call and the lookup, or the method writes
-the parameter first, or reads it in a lambda, a local function or a handler.
+lookup is counted unchecked, and listed in the run's report, where a call reaching it writes the
+key otherwise; where calls the run cannot see may write it: through a delegate, a base or an
+interface method, or from outside a library, unless a key hint the method's body bears out names
+it; and where a call's text may not be what the lookup reads: a condition on the key the flow
+cannot settle, such as `key.StartsWith("raw:")`, stands between the call and the lookup, or the
+method writes the parameter first, or reads it in a lambda, a local function or a handler.
 
 A lookup through Microsoft's `IStringLocalizer`, written as `localizer["Checkout"]` with a
 literal key, is a lookup of Forma's where the run has Forma's adapter answer it: its product
@@ -229,7 +236,8 @@ the walk cannot follow a value, such as a type chosen at run time, a factory the
 itself, or a service registered in a way the walk cannot read, the path ends and the lookup is
 held to no type along it; alternatives the walk cannot pair with the lookup, such as both sides
 of a conditional, whether locales, objects holding them, or delegates returning them, are never
-held to it for certain.
+held to it for certain. A lookup held to no type is counted unchecked, and the report lists it
+with where its path ended.
 
 What the walk cannot read, a hint states: a member whose locale is read for the type another
 member of the same instance returns, as `FormaComponentBase.L` is for `LocaleSourceType`, or a
@@ -302,14 +310,11 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0205 | Warning | A project's Razor markup went unchecked |
 | LOC0206 | Error | A key writes text shaped like a hole the runtime cannot read |
 | LOC0207 | Warning | A key is not answered in a culture its type is localized in |
-| LOC0208 | Warning | A lookup writes its key as an expression |
 | LOC0209 | Warning | A key carries holes but no words anywhere else |
 | LOC0210 | Warning | An expression key carries no words in any field |
 | LOC0211 | Error | A lookup writes its key as an interpolated string with holes |
 | LOC0212 | Error | A lookup writes a key shaped like a reserved entry |
 | LOC0213 | Error | A lookup supplies `string.Format`'s format text |
-| LOC0214 | Warning | A lookup's type through a hinted member could not be read |
-| LOC0215 | Warning | A lookup writing its key in a localized project reaches no type its locale is read for |
 | LOC0216 | Error | A project referencing packages was loaded without its restore output |
 
 ## Contributing

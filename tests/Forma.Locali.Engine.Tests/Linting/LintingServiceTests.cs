@@ -677,6 +677,109 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
+    public async Task Should_list_each_lookup_the_run_could_not_check_with_what_kept_it_unchecked()
+    {
+        // Arrange — a factory the code builds makes the locale, so no path reaches the type it is read for.
+        using var directory = new TempDirectory();
+        var project = directory.Write(Path.Combine("Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var source = directory.Write(Path.Combine("Widgets", "Widget.cs"), """
+            using System;
+
+            using Forma.Framework.Localization;
+
+            namespace Scratch;
+
+            internal sealed class Factory : IStringLocaleFactory
+            {
+                public IStringLocale Create(Type resourceSource) => throw new NotSupportedException();
+
+                public IStringLocale Create(string baseName, string location) => throw new NotSupportedException();
+            }
+
+            public sealed class Widget
+            {
+                public string Show() => new Factory().Create(typeof(Widget))["Tomorrow"].Value;
+            }
+            """);
+        directory.Write(Path.Combine("Widgets", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.ReferencedFiles("Scratch", source), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var entry = Assert.Single(result.Coverage.UncheckedLookups);
+        Assert.Multiple(
+            () => Assert.Empty(result.Diagnostics),
+            () => Assert.Equal((source, 16), (entry.Path, entry.Line)),
+            () => Assert.Equal(["customFactory"], entry.Reasons),
+            () => Assert.Contains("a factory the code builds itself", entry.Explanation, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_count_and_list_a_key_written_as_an_expression_as_unchecked()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var project = directory.Write(Path.Combine("Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var source = directory.Write(Path.Combine("Widgets", "Widget.cs"), """
+            using Forma.Framework.Localization;
+
+            namespace Scratch;
+
+            public sealed class Widget(IStringLocale<Widget> locale)
+            {
+                public string Show(object column) => locale[column.ToString()!].Value;
+            }
+            """);
+        directory.Write(Path.Combine("Widgets", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.ReferencedFiles("Scratch", source), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var coverage = result.Coverage;
+        var entry = Assert.Single(coverage.UncheckedLookups);
+        Assert.Multiple(
+            () => Assert.Empty(result.Diagnostics),
+            () => Assert.Equal((1, 0, 1), (coverage.Lookups, coverage.FullyChecked, coverage.Unchecked)),
+            () => Assert.Equal(new Dictionary<string, int> { ["keyNotWritten"] = 1 }, coverage.Reasons),
+            () => Assert.Equal(7, entry.Line),
+            () => Assert.Equal(["keyNotWritten"], entry.Reasons));
+    }
+
+    [Fact]
+    public async Task Should_tell_how_a_hint_lets_consumers_check_a_public_library_methods_key()
+    {
+        // Arrange — the library's own run makes no call writing the key, which its consumers write outside the run.
+        using var directory = new TempDirectory();
+        var project = directory.Write(Path.Combine("Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var source = directory.Write(Path.Combine("Widgets", "Widget.cs"), """
+            using Forma.Framework.Localization;
+
+            namespace Scratch;
+
+            public sealed class Widget(IStringLocale<Widget> locale)
+            {
+                public string Label(string key) => locale[key].Value;
+            }
+            """);
+        directory.Write(Path.Combine("Widgets", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.ReferencedFiles("Scratch", source), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var entry = Assert.Single(result.Coverage.UncheckedLookups);
+        Assert.Multiple(
+            () => Assert.Empty(result.Diagnostics),
+            () => Assert.Equal(["keyFromParameter"], entry.Reasons),
+            () => Assert.Contains("a localeKeys hint its body bears out lets its consumers' runs check the calls they make", entry.Explanation, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Should_check_a_key_a_lookup_takes_from_a_parameter_at_the_calls_writing_it()
     {
         // Arrange — one call writes a key the file leaves out, and another writes its key as an expression.
@@ -701,10 +804,15 @@ public sealed class LintingServiceTests
         var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
 
         // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        var unread = Assert.Single(result.Coverage.UncheckedLookups);
         Assert.Multiple(
-            () => Assert.Equal([LintingCodes.MissingLocalization.Id, LintingCodes.KeyNotAnalysed.Id], result.Diagnostics.Select(diagnostic => diagnostic.Code.Id).Order(StringComparer.Ordinal)),
-            () => Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == LintingCodes.MissingLocalization && diagnostic.Line == 9 && diagnostic.Message.StartsWith("'Tomorrow' has no entry", StringComparison.Ordinal)),
-            () => Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == LintingCodes.KeyNotAnalysed && diagnostic.Line == 7 && diagnostic.Message.Contains("the parameter 'key'", StringComparison.Ordinal)));
+            () => Assert.Equal((LintingCodes.MissingLocalization, 9), (diagnostic.Code, diagnostic.Line)),
+            () => Assert.StartsWith("'Tomorrow' has no entry", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Equal(7, unread.Line),
+            () => Assert.Equal(["keyFromParameter"], unread.Reasons),
+            () => Assert.Contains("the parameter 'key'", unread.Explanation, StringComparison.Ordinal),
+            () => Assert.DoesNotContain("localeKeys", unread.Explanation, StringComparison.Ordinal));
     }
 
     [Fact]

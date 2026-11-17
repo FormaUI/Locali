@@ -116,7 +116,7 @@ public sealed class LocaleFlow
             var calls = new List<ForwardedCall>();
             if (!new FlowEvaluator(_run, _memo, _analysisMemo).Forward(lookup, parameter, calls))
             {
-                unforwarded.Add(key);
+                unforwarded.Add(key with { IsCalledFromOutside = parameter.ContainingSymbol is IMethodSymbol method && FlowEvaluator.IsLibraryMember(method, compilation) });
             }
 
             // A call reaching several lookups is one lookup of its key, in every type they read.

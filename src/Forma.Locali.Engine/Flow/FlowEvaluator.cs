@@ -303,8 +303,10 @@ internal sealed class FlowEvaluator(
             || method.ContainingType.AllInterfaces.SelectMany(face => face.GetMembers()).OfType<IMethodSymbol>()
                 .Any(member => SymbolEqualityComparer.Default.Equals(method.ContainingType.FindImplementationForInterfaceMember(member), method));
 
-    // A public method of a library is called by its consumers, outside the run.
-    private static bool IsLibraryMember(IMethodSymbol method, Compilation compilation)
+    /// <summary>Whether a method is a library's public one, which its consumers call outside the run.</summary>
+    /// <param name="method">The method.</param>
+    /// <param name="compilation">The compilation declaring it.</param>
+    internal static bool IsLibraryMember(IMethodSymbol method, Compilation compilation)
         => IsReachableFromOutside(method) && compilation.Options.OutputKind == OutputKind.DynamicallyLinkedLibrary;
 
     private static IOperation? Unconverted(IOperation? operation)

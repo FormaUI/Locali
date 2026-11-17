@@ -24,6 +24,14 @@ public sealed class ConsoleDiagnosticReporter(TextWriter writer) : IDiagnosticRe
 
         await _writer.WriteLineAsync(summary.AsMemory(), cancellationToken).ConfigureAwait(false);
 
+        // A lookup the run could not check is no diagnostic, so the summary counts them and says where each is listed.
+        if (result.Coverage is { Unchecked: > 0 } coverage)
+        {
+            await _writer
+                .WriteLineAsync($"{coverage.Unchecked} of {coverage.Lookups} lookup(s) went unchecked; pass --report to list each and why.".AsMemory(), cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         if (result.Suppressed.Count == 0)
         {
             return;

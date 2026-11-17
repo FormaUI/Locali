@@ -15,10 +15,9 @@ public interface ISourceLinter
         IReadOnlyCollection<string> files,
         CancellationToken cancellationToken = default);
 
-    /// <summary>What the callsite rules report for the lookups keys passed through parameters make at the calls writing them, and for the keys no path writes as text.</summary>
+    /// <summary>What the callsite rules report for the lookups keys passed through parameters make at the calls writing them.</summary>
     /// <param name="forwarded">The lookups the calls make.</param>
-    /// <param name="unforwarded">The keys some call writes otherwise, or that no call of the run writes at all.</param>
-    IReadOnlyList<LintingDiagnostic> Lint(IReadOnlyList<LocalizerLookup> forwarded, IReadOnlyList<ForwardedKey> unforwarded);
+    IReadOnlyList<LintingDiagnostic> Lint(IReadOnlyList<LocalizerLookup> forwarded);
 
     /// <summary>Lints a project's calls to the methods a hint states look a parameter up as a key, which no project of the run builds, as lookups of their keys.</summary>
     /// <param name="project">The loaded project.</param>

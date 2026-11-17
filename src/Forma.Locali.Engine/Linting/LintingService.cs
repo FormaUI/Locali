@@ -163,6 +163,7 @@ public sealed class LintingService(
                 linted[index] = (project, new SourceLintResult([.. sources.Diagnostics, .. keyed.Diagnostics], [.. sources.Callsites, .. keyed.Callsites])
                 {
                     ForwardedKeys = [.. sources.ForwardedKeys, .. keyed.ForwardedKeys],
+                    UnreadKeys = [.. sources.UnreadKeys, .. keyed.UnreadKeys],
                 });
             }
         }
@@ -170,15 +171,15 @@ public sealed class LintingService(
         // A type's entries are read from its own assembly's project, so every project's files are resolved before any rule reads them.
         var localizations = RunLocalizations.Resolve(_localeFormat.RuntimeFormat, projects.All, target.LocalizationFilesOf, packs, builtAssemblies);
 
-        // A key passed through a parameter is checked at each call writing it, in the project holding the call, and is left unread where
-        // a call writes it otherwise.
+        // A key passed through a parameter is checked at each call writing it, in the project holding the call, and is counted unchecked
+        // where a call writes it otherwise.
         var forwarded = flow.Forward([.. linted.SelectMany(entry => entry.Sources.ForwardedKeys.Select(key => (entry.Project, key)))]);
         IReadOnlyList<LocalizerLookup> Forwarded(LoadedProject project)
         {
             return [.. forwarded.ByProject.GetValueOrDefault(project.Path, []).Where(site => wanted.Contains(site.Key.Location.Path))];
         }
 
-        diagnostics.AddRange(_sources.Lint([.. linted.SelectMany(entry => Forwarded(entry.Project))], [.. forwarded.Unforwarded.Where(key => wanted.Contains(key.Key.Path))]));
+        diagnostics.AddRange(_sources.Lint([.. linted.SelectMany(entry => Forwarded(entry.Project))]));
 
         var resolved = new List<LocalizerLookup>();
         foreach (var (project, sources) in linted)
@@ -192,68 +193,14 @@ public sealed class LintingService(
         diagnostics.AddRange(hints.Diagnostics);
         diagnostics.AddRange(flow.GetDiagnostics());
 
-        return (diagnostics, Coverage(resolved, localizations));
+        var coverage = LookupCoverages.Of(
+            resolved,
+            [.. linted.SelectMany(entry => entry.Sources.UnreadKeys)],
+            [.. forwarded.Unforwarded.Where(key => wanted.Contains(key.Key.Path))],
+            localizations);
+
+        return (diagnostics, coverage);
     }
-
-    // A lookup is checked against each certain type whose entries the run reads, from the project building the type's assembly;
-    // what kept it short of that is named for the path that ended, or for the alternatives or the entries it could not use.
-    private static LookupCoverage Coverage(List<LocalizerLookup> lookups, RunLocalizations localizations)
-    {
-        int fullyChecked = 0, partiallyChecked = 0, notChecked = 0, byAnalysis = 0, byVerifiedHint = 0, byHint = 0;
-        var reasons = new SortedDictionary<string, int>(StringComparer.Ordinal);
-
-        foreach (var lookup in lookups)
-        {
-            var certain = lookup.Origins.Where(origin => !origin.IsApproximate).ToArray();
-            var read = certain.Where(origin => origin.Type.ContainingAssembly?.Name is { Length: > 0 } name && localizations.ForAssembly(name) is not null).ToArray();
-
-            var shortfalls = new SortedSet<string>(lookup.Gaps.Select(gap => Camel(gap.Kind.ToString())), StringComparer.Ordinal);
-            if (certain.Length < lookup.Origins.Count)
-            {
-                shortfalls.Add("approximate");
-            }
-
-            if (read.Length < certain.Length)
-            {
-                shortfalls.Add("unavailableEntries");
-            }
-
-            // A lookup found without a bound compilation, or in code no instance runs, was never followed to a type.
-            if (read.Length == 0 && shortfalls.Count == 0)
-            {
-                shortfalls.Add("notFollowed");
-            }
-
-            foreach (var reason in shortfalls)
-            {
-                reasons[reason] = reasons.GetValueOrDefault(reason) + 1;
-            }
-
-            if (read.Length == 0)
-            {
-                notChecked++;
-                continue;
-            }
-
-            if (shortfalls.Count == 0)
-            {
-                fullyChecked++;
-            }
-            else
-            {
-                partiallyChecked++;
-            }
-
-            byAnalysis += read.Any(origin => origin.Evidence == LocaleEvidence.Analysis) ? 1 : 0;
-            byVerifiedHint += read.Any(origin => origin.Evidence == LocaleEvidence.VerifiedHint) ? 1 : 0;
-            byHint += read.Any(origin => origin.Evidence == LocaleEvidence.Hint) ? 1 : 0;
-        }
-
-        return new LookupCoverage(lookups.Count, fullyChecked, partiallyChecked, notChecked, new LookupEvidence(byAnalysis, byVerifiedHint, byHint), reasons);
-    }
-
-    private static string Camel(string name)
-        => string.Concat(char.ToLowerInvariant(name[0]).ToString(), name[1..]);
 
     // Each project's folder and each restored package's root, once, with the assemblies the library there builds or ships.
     private static HintsFolder[] Libraries(IReadOnlyList<LoadedProject> projects)

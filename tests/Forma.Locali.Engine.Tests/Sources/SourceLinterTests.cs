@@ -9,30 +9,28 @@ using Microsoft.CodeAnalysis;
 public sealed class SourceLinterTests
 {
     [Fact]
-    public void Should_report_a_key_written_as_an_expression()
+    public void Should_count_a_key_written_as_an_expression_as_unread_without_reporting_it()
     {
         // Act
-        var diagnostics = Lint("""
+        var result = Result(Compile("""
             private string Column { get; } = "Name";
             public void Show() => _ = L[Column];
-            """);
+            """));
 
         // Assert
-        var diagnostic = Assert.Single(diagnostics);
-
         Assert.Multiple(
-            () => Assert.Equal(LintingCodes.KeyNotAnalysed, diagnostic.Code),
-            () => Assert.Equal(LintingSeverity.Warning, diagnostic.Severity));
+            () => Assert.Single(result.UnreadKeys),
+            () => Assert.Empty(result.Diagnostics));
     }
 
     [Fact]
-    public void Should_report_a_key_written_as_a_call()
+    public void Should_count_a_key_written_as_a_call_as_unread()
     {
         // Act
-        var diagnostics = Lint("""public void Show(object column) => _ = L[column.ToString()];""");
+        var unread = UnreadKeys("""public void Show(object column) => _ = L[column.ToString()];""");
 
         // Assert
-        Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
+        Assert.Single(unread);
     }
 
     [Fact]
@@ -135,10 +133,10 @@ public sealed class SourceLinterTests
     public void Should_leave_a_key_written_as_a_literal_alone()
     {
         // Act
-        var diagnostics = Lint("""public void Show() => _ = L["Today"];""");
+        var unread = UnreadKeys("""public void Show() => _ = L["Today"];""");
 
         // Assert
-        Assert.Empty(diagnostics);
+        Assert.Empty(unread);
     }
 
     [Fact]
@@ -151,10 +149,10 @@ public sealed class SourceLinterTests
             """;
 
         // Act
-        var diagnostics = Lint(Body);
+        var unread = UnreadKeys(Body);
 
         // Assert
-        Assert.Empty(diagnostics);
+        Assert.Empty(unread);
     }
 
     [Fact]
@@ -203,10 +201,10 @@ public sealed class SourceLinterTests
             """);
 
         // Act
-        var diagnostics = Reported(compilation);
+        var unread = UnreadKeys(compilation);
 
         // Assert
-        Assert.Empty(diagnostics);
+        Assert.Empty(unread);
     }
 
     [Fact]
@@ -225,14 +223,14 @@ public sealed class SourceLinterTests
             """);
 
         // Act
-        var diagnostics = Reported(compilation);
+        var unread = UnreadKeys(compilation);
 
         // Assert
-        Assert.Empty(diagnostics);
+        Assert.Empty(unread);
     }
 
     [Fact]
-    public void Should_report_a_forwarded_key_from_a_type_that_is_no_localizer()
+    public void Should_count_a_forwarded_key_from_a_type_that_is_no_localizer_as_unread()
     {
         // Arrange — the same lookup, on a type that only holds a localizer, is a genuine blind spot.
         var compilation = CompilationTestFactory.Unreferenced("""
@@ -247,22 +245,22 @@ public sealed class SourceLinterTests
             """);
 
         // Act
-        var diagnostics = Reported(compilation);
+        var unread = UnreadKeys(compilation);
 
         // Assert
-        Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
+        Assert.Single(unread);
     }
 
     [Fact]
-    public void Should_report_a_key_a_call_writes_as_an_expression()
+    public void Should_count_a_key_a_call_writes_as_an_expression_as_unread()
     {
         // Act
-        var diagnostics = Lint("""
+        var unread = UnreadKeys("""
             public void Show(object column) => _ = LocalizableText.For<Widget>(column.ToString()!);
             """);
 
         // Assert
-        Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
+        Assert.Single(unread);
     }
 
     [Fact]
@@ -320,7 +318,7 @@ public sealed class SourceLinterTests
     }
 
     [Fact]
-    public void Should_report_a_call_to_a_hinted_method_writing_its_key_as_an_expression()
+    public void Should_count_a_call_to_a_hinted_method_writing_its_key_as_an_expression_as_unread()
     {
         // Arrange — the library's method looks its key up, which only the hint tells, and the call writes the key as an expression.
         var library = CompilationTestFactory.Referenced("""
@@ -345,16 +343,17 @@ public sealed class SourceLinterTests
         var keyed = new LocaleFlow([project], [], [LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Labels", "Text", typeParameter: "TSource")]).KeyedMethods;
 
         // Act
-        var diagnostics = new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers())
-            .LintKeyed(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)], keyed, TestContext.Current.CancellationToken)
-            .Diagnostics;
+        var result = new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers())
+            .LintKeyed(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)], keyed, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
+        Assert.Multiple(
+            () => Assert.Single(result.UnreadKeys),
+            () => Assert.Empty(result.Diagnostics));
     }
 
-    private static IReadOnlyList<LintingDiagnostic> Lint(string body)
-        => Reported(Compile(body));
+    private static IReadOnlyList<FileLinePositionSpan> UnreadKeys(string body)
+        => UnreadKeys(Compile(body));
 
     private static IReadOnlyList<LintingDiagnostic> Lint(string body, LintingCode code)
         => Reported(Compile(body), code);
@@ -362,8 +361,8 @@ public sealed class SourceLinterTests
     private static IReadOnlyList<LocalizerLookup> Lookups(string body)
         => Result(Compile(body)).Callsites;
 
-    private static IReadOnlyList<LintingDiagnostic> Reported(Compilation compilation)
-        => Reported(compilation, LintingCodes.KeyNotAnalysed);
+    private static IReadOnlyList<FileLinePositionSpan> UnreadKeys(Compilation compilation)
+        => Result(compilation).UnreadKeys;
 
     private static IReadOnlyList<LintingDiagnostic> Reported(Compilation compilation, LintingCode code)
         => [.. Result(compilation).Diagnostics.Where(diagnostic => diagnostic.Code == code)];

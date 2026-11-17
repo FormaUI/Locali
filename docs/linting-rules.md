@@ -108,11 +108,11 @@ each method of the run it passes the key on to: every lookup of the parameter th
 reached with the call's text as written on every path that text does not decide, in the locale
 the hint names, and a body that does not bear the hint out sets it aside, which LOC0029 reports.
 A hint the body bears out answers for the calls a library's consumers make, which their own runs
-read, so the method's key is not reported as one they may write; and in a run that only
-references the method, every call to it is a lookup of the key it passes, in the locale the hint
-names. LOC0028 reports a hint naming what is not there, LOC0029 two hints relating one member to
-different type members, or one method differently, which leaves it to neither, and LOC0021 a
-hint naming an assembly the run neither builds nor references.
+read, so the method's key is not counted unchecked; and in a run that only references the
+method, every call to it is a lookup of the key it passes, in the locale the hint names. LOC0028
+reports a hint naming what is not there, LOC0029 two hints relating one member to different type
+members, or one method differently, which leaves it to neither, and LOC0021 a hint naming an
+assembly the run neither builds nor references.
 
 ### LOC0020 — The linting configuration cannot be read
 
@@ -687,6 +687,14 @@ a constant is folded by the compiler and checked like a literal on the semantic 
 inside a type that implements `IStringLocale` is left alone throughout, since such a type
 forwards the key its own caller wrote.
 
+A lookup the run cannot check is no diagnostic, since a rule reports only what the evidence the
+run established makes certain: a lookup writing its key as an expression, one taking its key
+from a parameter some call writes otherwise, and one from which no path reaches a type its
+locale is read for. The run counts each as unchecked, its console summary says how many there
+were, and the JSON report lists each under `coverage.uncheckedLookups` with its place, its
+reasons and what kept it unchecked; for a library's public method whose key its consumers write,
+that names the key hint which lets their runs check the calls they make.
+
 A call to `LocalizableText.For<TSource>`, the runtime's text carried as data, is a lookup too,
 found on the semantic path alone: its first argument is the key, read in the entries of its type
 argument, and the values are what its `params` parameter gathers:
@@ -705,13 +713,13 @@ is read through the method's paths with what it passes: a condition its constant
 settle, such as an empty or null test of the key or a flag it passes as `false`, is followed the
 one way it goes, so a call the method returns from before the lookup looks nothing up, and a
 condition on anything but the key leaves the lookup as reachable as one written under it. The
-key is reported as an expression where a call reaching the lookup writes it otherwise; where
-calls the run cannot see may write it: through a delegate, a base or an interface method, or
-from outside a library, unless a key hint the method's body bears out names it; and where a
-call's text may not be what the lookup reads: a condition on the key the flow cannot settle,
-such as `key.StartsWith("raw:")`, stands between the call and the lookup, or the method writes
-the parameter first, or reads it in a lambda, a local function or a handler. The values such a
-call passes are left uncounted, since the method may fill the holes itself:
+lookup is counted unchecked, and listed in the run's report, where a call reaching it writes the
+key otherwise; where calls the run cannot see may write it: through a delegate, a base or an
+interface method, or from outside a library, unless a key hint the method's body bears out names
+it; and where a call's text may not be what the lookup reads: a condition on the key the flow
+cannot settle, such as `key.StartsWith("raw:")`, stands between the call and the lookup, or the
+method writes the parameter first, or reads it in a lambda, a local function or a handler. The
+values such a call passes are left uncounted, since the method may fill the holes itself:
 
 ```csharp
 LocalizableText Title(string key) => LocalizableText.For<SectionMenu>(key);
@@ -852,35 +860,11 @@ twice, as an instance, through a factory creating no one type, or by a call of t
 own handed the service collection, or declared outside the run's projects; the types the walk
 reaches are alternatives it cannot pair with the lookup, as both sides of a conditional, several
 returns, or a value a constructor or a later write may replace; the type member a hint names
-returns nothing the walk can read, which LOC0214 reports; a type derived from the lookup's own
-overrides the member holding the lookup, so its instances never run it; the lookup goes through
-Microsoft's `IStringLocalizer` where the run does not have Forma's adapter answer it, so it
-reads the localizer's own resources; a parent culture answers, since `es-419` reads `es` for
-what it does not declare; or the run did not name the project's files.
-
-### LOC0208 — A lookup writes its key as an expression
-
-**Reports.** `L[column.ToString()]`: a key only the run knows. A key the lookup takes from a
-parameter of its own method is reported where a call reaching the lookup writes it as an
-expression, or where calls the run cannot see may write it: the method is passed as a delegate,
-is virtual, implements an interface, or is a public method of a library, which its consumers
-call, and no key hint its body bears out names it; or where a call's text may not be what the
-lookup reads: a condition on the key the flow cannot settle stands between the call and the
-lookup, where it settles a test of the text for being null, empty or blank, of its length, of
-its equality with a constant, and an ordinal test of its start, its end or a part of it; or the
-method writes the parameter first, or reads it in a lambda, a local function or a handler.
-
-**Why it matters.** No rule can judge the key and no coverage check can count it; leaving it
-silent would let a run read as complete when part of it was never looked at.
-
-**What fixes it.** Write the key as a literal or a constant, which the compiler folds and every
-rule reads.
-
-**Silent where.** The lookup sits inside a type that implements `IStringLocale`, which forwards
-the key its own caller wrote; or the key is a parameter every call reaching the lookup writes as
-text, which is checked at those calls instead, where a call writing it otherwise is one the
-method never reaches the lookup for, and where the method is a library's public one a key hint
-its body bears out names, whose consumers' runs read the calls they make.
+returns nothing the walk can read; a type derived from the lookup's own overrides the member
+holding the lookup, so its instances never run it; the lookup goes through Microsoft's
+`IStringLocalizer` where the run does not have Forma's adapter answer it, so it reads the
+localizer's own resources; a parent culture answers, since `es-419` reads `es` for what it does
+not declare; or the run did not name the project's files.
 
 ### LOC0209 — A key with holes and no words
 
@@ -938,52 +922,6 @@ L[key])`; or the result is stored, formatted later or passed through a method, w
 cannot follow. Without a bound compilation, only the lookup written as the unnamed or
 `format`-named first argument is certain. A call to `LocalizableText.For` is never read as
 format text, since it returns text carried as data.
-
-### LOC0214 — A lookup's type through a hinted member could not be read
-
-**Reports.** A lookup through a member a hint relates to a type member, where the flow reaches
-no type on its own and the type member, as a type of instance reads it, has a getter that
-returns no `typeof` of a type or `GetType()` of the instance that could be read, once per lookup
-and type member, naming the types of instance it was left unread for: `protected override Type
-LocaleSourceType => _source;`. A getter is read in source, in another project of the run's
-source, or in the compiled code of the assembly the build runs, where it returns one of the two
-in one straight run.
-
-**Why it matters.** LOC0207 holds the key to the type the getter names; where no reading tells
-the type, the key goes unchecked, and leaving that silent would let a run read as complete when
-part of it was never looked at.
-
-**What fixes it.** Return the type as `typeof(X)`, or the instance's own as `GetType()`, from
-the getter; or, where the type is chosen at run time, accept the key unchecked.
-
-**Silent where.** The project is localized in no culture, by its own files or a pack, so no key
-of it could be checked; the flow reaches the member's type without the hint; the lookup goes
-through the generic `IStringLocale<T>`, through a member no hint names, or through another
-instance than the one its code runs on, which LOC0207 leaves alone.
-
-### LOC0215 — A lookup reaches no type
-
-**Reports.** A lookup writing its key, in a project localized in at least one culture, from
-which no path reaches a type its locale is read for, naming where a path ended: `new
-JsonStringLocaleFactory().Create(typeof(Page))["Save"]` ends at a factory the code builds
-itself, whose files no rule can know.
-
-**Why it matters.** LOC0207 holds a key to the files of the types its lookup reads; a lookup
-reaching none has its key held to nothing, and a run reading clean would claim a check it never
-made. The JSON report counts every such lookup as unchecked, with the reason.
-
-**What fixes it.** Read the locale through `IStringLocale<T>` or the registered factory,
-injected or reached through `GetStringLocaleFactory()`; state what the code hides as a hint; or,
-where the type is chosen at run time, accept the key unchecked and name the file in
-`ignoreDiagnostics`.
-
-**Silent where.** The project is localized in no culture, by its own files or a pack, so no key
-of it could be checked; a path reaches a type, even where another ends, which the JSON report
-counts as partly checked; the type member a hint names tells no type, which LOC0214 reports; no
-path was followed from the lookup, as one found where the compilation does not bind the
-localizer contract, or in code no instance of the project runs; the key is an expression, which
-LOC0208 reports; or the lookup goes through Microsoft's `IStringLocalizer` where the run does
-not have Forma's adapter answer it.
 
 ### LOC0216 — A project was not restored
 
