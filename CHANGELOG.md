@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.22`
 
-*Unreleased*
+*November 17, 2026*
 
 - A key a lookup takes from a parameter is settled call by call through the method's paths, carrying what each call
   passes: a condition the call's constants decide, such as an empty or null test of the key or a flag it passes, is
