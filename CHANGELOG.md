@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.23`
 
-*Unreleased*
+*November 17, 2026*
 
 - Breaking: LOC0208, LOC0214 and LOC0215 are retired, LOC0208 at a library's public method included. A lookup the run
   could not check is no diagnostic: one writing its key as an expression, one taking its key from a parameter some call
