@@ -62,17 +62,20 @@ public static class LintingCodes
             NotRestored,
         ];
 
+    /// <summary>The identifiers of the rules this linter has retired, which a linting configuration may still name and no run reports.</summary>
+    public static IReadOnlySet<string> Retired { get; } = new HashSet<string>(StringComparer.Ordinal) { "LOC0117" };
+
     /// <summary>The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define.</summary>
     public static LintingCode MalformedConfiguration { get; } = new(
         "LOC0020",
         LintingSeverity.Error,
         "The linting configuration is not readable JSON, does not follow its shape, or names a rule this linter does not define.");
 
-    /// <summary>An entry in the linting configuration applied to no file the run reached.</summary>
+    /// <summary>An entry in the linting configuration applied to no file the run reached, or names a rule this linter has retired.</summary>
     public static LintingCode StaleConfigurationEntry { get; } = new(
         "LOC0021",
         LintingSeverity.Warning,
-        "An entry in the linting configuration applied to no file the run reached, so it excludes, leaves out, or governs nothing.");
+        "An entry in the linting configuration applied to no file the run reached, or names a rule this linter has retired, so it excludes, leaves out, or governs nothing.");
 
     /// <summary>The runtime's config file is not readable JSON, names a key the runtime does not read, gives a value the runtime would refuse, is one of two for an assembly, sits anywhere but its project's root, or sits in a locale pack.</summary>
     public static LintingCode MalformedLocaleConfig { get; } = new(

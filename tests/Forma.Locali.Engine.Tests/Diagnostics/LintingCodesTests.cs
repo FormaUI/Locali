@@ -13,6 +13,16 @@ public sealed class LintingCodesTests
     }
 
     [Fact]
+    public void Should_retire_no_identifier_a_catalogued_rule_still_reports_under()
+    {
+        // Act
+        var reused = LintingCodes.All.Where(code => LintingCodes.Retired.Contains(code.Id));
+
+        // Assert
+        Assert.Empty(reused);
+    }
+
+    [Fact]
     public void Should_describe_every_rule()
     {
         // Assert

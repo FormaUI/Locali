@@ -3,6 +3,13 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.23`
+
+*Unreleased*
+
+- A linting configuration naming a retired rule in `ignoreDiagnostics` is reported as LOC0021, a warning, rather than
+  LOC0020, so a configuration written for an earlier release keeps its run passing until the line is dropped.
+
 ## `1.0.0-preview.22`
 
 *November 17, 2026*

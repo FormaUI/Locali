@@ -294,6 +294,26 @@ public sealed class LintingConfigurationTests
     }
 
     [Fact]
+    public void Should_warn_that_a_retired_rule_leaves_nothing_out_rather_than_fail_the_run()
+    {
+        // Arrange — a configuration written for a release that still reported LOC0117.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0117"] } }""");
+        var file = directory.Write("Widget.he.json", "{}");
+        var configuration = new LintingConfiguration(directory.Root);
+        configuration.GetIgnoredCodes(file);
+
+        // Act
+        var diagnostics = configuration.GetDiagnostics();
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal((LintingCodes.StaleConfigurationEntry, LintingSeverity.Warning), (diagnostic.Code, diagnostic.Severity)),
+            () => Assert.StartsWith("'LOC0117' is a rule this linter has retired", diagnostic.Message, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Should_report_a_configuration_file_that_is_not_readable_json()
     {
         // Arrange

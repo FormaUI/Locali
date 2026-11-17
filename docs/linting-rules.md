@@ -117,9 +117,9 @@ hint naming an assembly the run neither builds nor references.
 ### LOC0020 — The linting configuration cannot be read
 
 **Reports.** A `.locali.json` or a `.locali-hints.json` that is not readable JSON or does not
-follow its shape, or a `.locali.json` naming a rule this linter does not define, in either list.
-A restored package's `.locali-hints.json` is reported as a warning, since the run cannot change
-it.
+follow its shape, or a `.locali.json` naming a rule this linter does not define and never
+retired, in either list. A restored package's `.locali-hints.json` is reported as a warning,
+since the run cannot change it.
 
 **Why it matters.** A typo in a rule identifier would silence nothing and say nothing; the file
 is refused instead. The rule over `.locali.json` itself can never be named in its own
@@ -132,12 +132,15 @@ is refused instead. The rule over `.locali.json` itself can never be named in it
 **Reports.** A glob in `ignoreDiagnostics` or `excludeFiles` that matched no file the run
 reached, a `localeSources` line that is the last match for no locale file the run reached,
 because none matches it or a later line claims every file it matches, a hint naming an assembly
-no project of the run builds or references.
+no project of the run builds or references, or an `ignoreDiagnostics` line naming a rule this
+linter has retired, which no run reports.
 
 **Why it matters.** A file moved out of the tree is exactly when its exceptions go stale, and an
 exception that names nothing sits unnoticed until it excuses the wrong file. A `localeSources`
-line outlives the files it was written for the same way, or is written after a broader line
-that already claims its files, and then reads as a policy nothing is held to.
+line outlives the files it was written for the same way, or is written after a broader line that
+already claims its files, and then reads as a policy nothing is held to. A line naming a retired
+rule was written for a release that still reported it; it is a warning rather than LOC0020's
+error, so a configuration keeps its run passing past that release until the line is dropped.
 
 **What fixes it.** Delete the entry, point it at the file's new place, or move the line after
 the broader one that overrides it.

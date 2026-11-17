@@ -258,7 +258,15 @@ public sealed class LintingConfiguration : ILintingConfiguration
         {
             foreach (var diagnostic in entry.Entries)
             {
-                if (Resolve(diagnostic.Id) is null)
+                // A retired rule reports nowhere, so a configuration still naming it leaves nothing out and fails no run.
+                if (LintingCodes.Retired.Contains(diagnostic.Id))
+                {
+                    diagnostics.Add(config.Diagnose(
+                        diagnostic.Offset,
+                        LintingCodes.StaleConfigurationEntry,
+                        $"'{diagnostic.Id}' is a rule this linter has retired, so it leaves nothing out."));
+                }
+                else if (Resolve(diagnostic.Id) is null)
                 {
                     diagnostics.Add(config.Diagnose(
                         diagnostic.Offset,
