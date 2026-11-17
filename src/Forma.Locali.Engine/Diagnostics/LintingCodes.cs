@@ -351,9 +351,9 @@ public static class LintingCodes
         LintingSeverity.Error,
         "A project referencing packages was loaded without its restore output, so the types its packages declare went unread and what the rules read through them went unchecked.");
 
-    /// <summary>A type lookups read has no entries in any culture its assembly's locale files carry.</summary>
+    /// <summary>A type lookups read has no entries of its own in any culture its assembly's locale files carry.</summary>
     public static LintingCode UnlocalizedType { get; } = new(
         "LOC0217",
         LintingSeverity.Warning,
-        "A type lookups read has no entries in any culture its assembly's locale files carry, so every key read for it renders in the source language in each.");
+        "A type lookups read has no entries of its own in any culture its assembly's locale files carry, so every key read for it renders in the source language in each culture no other entry reaches it in.");
 }

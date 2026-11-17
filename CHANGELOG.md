@@ -3,6 +3,15 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.25`
+
+*Unreleased*
+
+- LOC0217 holds a type to entries of its own, as LOC0119 does. A type that a `$shared` block above it reaches in one
+  culture and nothing reaches in another is reported in the second, where the block's entries kept every rule silent
+  before. A library's type that an application's files localize in some of the library's cultures is reported in the
+  others, which no rule checked.
+
 ## `1.0.0-preview.24`
 
 *November 17, 2026*

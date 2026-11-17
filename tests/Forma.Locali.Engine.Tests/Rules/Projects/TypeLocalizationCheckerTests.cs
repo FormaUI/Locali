@@ -85,7 +85,37 @@ public sealed class TypeLocalizationCheckerTests
     }
 
     [Fact]
-    public void Should_leave_a_type_a_shared_block_gives_entries_alone()
+    public void Should_report_a_type_only_a_shared_block_above_it_reaches_in_each_culture_the_block_leaves_out()
+    {
+        // Arrange — the root's Hebrew shared block answers for every type beneath it, and nothing gives Widget a Spanish entry.
+        using var directory = new TempDirectory();
+        var hebrew = directory.Write(Path.Combine(".locales", "he.json"), LocalizationFileFakeData.WithSharedAndSection("Today", "היום", "Gadget", "Today", "היום"));
+        var spanish = directory.Write(SpanishGadgetFile, LocalizationFileFakeData.ForCulture("es", "Today", "hoy"));
+
+        // Act
+        var diagnostics = Check(directory, """public void Show() => _ = L["Tomorrow"];""", hebrew, spanish);
+
+        // Assert
+        Assert.Contains("no entries in 'es'", Assert.Single(diagnostics).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_leave_a_type_its_own_shared_block_localizes_alone()
+    {
+        // Arrange — a shared block in Widget's own section is Widget's own, so the culture it leaves out is LOC0119's to report.
+        using var directory = new TempDirectory();
+        var hebrew = directory.Write(Path.Combine(".locales", "he.json"), LocalizationFileFakeData.WithSharedSection("Widget", "Today", "היום"));
+        var spanish = directory.Write(SpanishGadgetFile, LocalizationFileFakeData.ForCulture("es", "Today", "hoy"));
+
+        // Act
+        var diagnostics = Check(directory, """public void Show() => _ = L["Tomorrow"];""", hebrew, spanish);
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_leave_a_type_a_shared_block_gives_entries_in_every_culture_alone()
     {
         // Arrange — the root's shared block answers for every type beneath it, so Widget reads entries and its keys are LOC0207's.
         using var directory = new TempDirectory();

@@ -9,9 +9,9 @@ using Forma.Locali.Sources;
 using Microsoft.CodeAnalysis;
 
 /// <summary>
-/// Checks that a type lookups read is localized in some culture its assembly's locale files carry. A new component whose
-/// type has no section anywhere passes every check while rendering every key in the source language, because a type with
-/// no entries reads as one left unlocalized on purpose.
+/// Checks that a type lookups read has entries of its own in some culture its assembly's locale files carry. A new component
+/// whose type has no section anywhere passes every check while rendering every key in the source language, because a type
+/// with no entries reads as one left unlocalized on purpose.
 /// </summary>
 public sealed class TypeLocalizationChecker : IProjectRuleChecker
 {
@@ -43,14 +43,15 @@ public sealed class TypeLocalizationChecker : IProjectRuleChecker
                     continue;
                 }
 
-                // A type with entries in any culture is localized, and LOC0207 and LOC0119 hold it to the cultures it leaves out.
+                // A type with entries of its own in any culture is localized, and LOC0119 holds it to the culture families it leaves out.
                 var typeName = ResourceTypeNames.GetName(origin.Type);
-                if (owner.Cultures.Any(culture => HasEntries(owner, localization, typeName, culture)) || !seen.Add((owner.AssemblyName, typeName)))
+                if (HasOwnEntries(owner, typeName) || !seen.Add((owner.AssemblyName, typeName)))
                 {
                     continue;
                 }
 
-                foreach (var culture in owner.Cultures.OrderBy(culture => culture.Name, StringComparer.Ordinal))
+                // In a culture any entry reaches the type in, a shared block's above it among them, the type is not left wholly in the source language.
+                foreach (var culture in owner.Cultures.Where(culture => !HasEntries(owner, localization, typeName, culture)).OrderBy(culture => culture.Name, StringComparer.Ordinal))
                 {
                     context.Report(
                         Code,
@@ -61,20 +62,23 @@ public sealed class TypeLocalizationChecker : IProjectRuleChecker
         }
     }
 
-    // The runtime walks the culture up to its parents, and an application lays its own files for another assembly's type over that
-    // assembly's.
+    // LOC0119 reads the assembly's own files alone, so an application's files for the type leave it to this rule.
+    private static bool HasOwnEntries(ProjectLocalization owner, string typeName)
+        => owner.Cultures.Any(culture => owner.Read(typeName, culture).Any(entry => owner.IsOwn(typeName, entry)));
+
+    // An application lays its own files for another assembly's type over that assembly's.
     private static bool HasEntries(ProjectLocalization owner, ProjectLocalization lookupProject, string typeName, CultureInfo culture)
+        => WithParents(culture).Any(candidate =>
+            owner.Read(typeName, candidate).Count > 0
+            || (lookupProject != owner && lookupProject.ReadApplication(owner.AssemblyName, typeName, candidate).Count > 0));
+
+    // The runtime walks a culture up to its parents for what it does not declare.
+    private static IEnumerable<CultureInfo> WithParents(CultureInfo culture)
     {
         for (var candidate = culture; candidate.Name.Length != 0; candidate = candidate.Parent)
         {
-            if (owner.Read(typeName, candidate).Count > 0
-                || (lookupProject != owner && lookupProject.ReadApplication(owner.AssemblyName, typeName, candidate).Count > 0))
-            {
-                return true;
-            }
+            yield return candidate;
         }
-
-        return false;
     }
 
     // A type only a hint supplied names that hint, so a finding that rests on an assumption can be traced to it.

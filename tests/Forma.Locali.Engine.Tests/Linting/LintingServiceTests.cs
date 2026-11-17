@@ -947,6 +947,41 @@ public sealed class LintingServiceTests
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == LintingCodes.MissingLocalization);
     }
 
+    [Fact]
+    public async Task Should_report_a_type_an_applications_file_localizes_in_each_culture_of_its_assembly_the_file_leaves_out()
+    {
+        // Arrange — the library localizes only Gadget, in Hebrew and Spanish, and the application gives Widget Hebrew alone.
+        using var directory = new TempDirectory();
+        var widgetsProject = directory.Write(Path.Combine("Widgets", "Contoso.Widgets.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("Widgets", ".locales", "Gadget.he.json"), LocalizationFileFakeData.Valid);
+        directory.Write(Path.Combine("Widgets", ".locales", "Gadget.es.json"), LocalizationFileFakeData.ForCulture("es", "Today", "hoy"));
+        var widgets = CompilationTestFactory.Referenced("namespace Contoso.Widgets; public sealed class Widget; public sealed class Gadget;").WithAssemblyName("Contoso.Widgets");
+        var appProject = directory.Write(Path.Combine("App", "Contoso.App.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("App", ".locales", "he", "Contoso.Widgets.json"), LocalizationFileFakeData.WithSection("he", "Widget", "Tomorrow", "מחר"));
+        var source = directory.Write(Path.Combine("App", "Program.cs"), """
+            using Forma.Framework.Localization;
+
+            namespace Contoso.App;
+
+            public static class Program
+            {
+                private static IStringLocale<Contoso.Widgets.Widget> L { get; } = default!;
+
+                public static void Main() => _ = L["Tomorrow"];
+            }
+            """);
+        var app = CompilationTestFactory.ReferencedFiles("Contoso.App", source).AddReferences(CompilationTestFactory.MetadataOf(widgets));
+        app = app.WithOptions(app.Options.WithOutputKind(OutputKind.ConsoleApplication));
+        var loader = new StubProjectLoader(new LoadedProject(appProject, app, false, false), new LoadedProject(widgetsProject, widgets, false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics, diagnostic => diagnostic.Code == LintingCodes.UnlocalizedType);
+        Assert.Contains("no entries in 'es'", diagnostic.Message, StringComparison.Ordinal);
+    }
+
     // A library declaring Contoso.Widgets.Widget, with a Hebrew file for it, written under its own folder of the run.
     private static (Compilation Compilation, LoadedProject Project) WidgetsProject(TempDirectory directory, string hebrew)
     {
