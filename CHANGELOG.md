@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.24`
 
-*Unreleased*
+*November 17, 2026*
 
 - A lookup in a test project is followed through the test's own registrations beside product code's. One reaching a
   locale factory the test registers itself, as a stub answering its keys does, is held to no type and counted unchecked,
