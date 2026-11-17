@@ -182,6 +182,14 @@ counted unchecked with its `path`, `line`, `column`, `reasons` and an `explanati
 it unchecked, which for a library's public method whose key its consumers write names the key
 hint that lets their runs check the calls they make.
 
+What Locali cannot check before the app runs, Forma's runtime checks while it runs. From Forma
+`1.0.0-preview.9`, `LocalizationOptions.Diagnostics`, set to `new() { Cultures = ["he", "es"] }`
+in a development or test host, has the JSON factory log a warning once wherever a lookup that
+runs finds no entry in its UI culture or a culture listed, the source language aside: event 5
+for an assembly with no entries there, 6 for a type, 7 for a key, and 8 for a locale file it
+cannot read. Locali checks every lookup it can establish, and the runtime the lookups a run
+exercises, so a clean run of either speaks for what it saw.
+
 ## How Callsites Are Found
 
 Callsites are found semantically where the compilation binds `IStringLocale`, and syntactically

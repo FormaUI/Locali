@@ -693,7 +693,8 @@ from a parameter some call writes otherwise, and one from which no path reaches 
 locale is read for. The run counts each as unchecked, its console summary says how many there
 were, and the JSON report lists each under `coverage.uncheckedLookups` with its place, its
 reasons and what kept it unchecked; for a library's public method whose key its consumers write,
-that names the key hint which lets their runs check the calls they make.
+that names the key hint which lets their runs check the calls they make. Forma's runtime
+diagnostics, `LocalizationOptions.Diagnostics`, check such a lookup where it runs.
 
 A call to `LocalizableText.For<TSource>`, the runtime's text carried as data, is a lookup too,
 found on the semantic path alone: its first argument is the key, read in the entries of its type
