@@ -66,7 +66,7 @@ public sealed class CultureCoverageChecker : IProjectRuleChecker
             foreach (var culture in cultures)
             {
                 // A shared block above the type answers for every type beneath it and says nothing about this one, so only the type's own entries, its own shared block among them, count.
-                if (localization.Read(typeName, culture).Where(entry => IsOwn(localization, typeName, entry)).ToArray() is [.., var entry])
+                if (localization.Read(typeName, culture).Where(entry => localization.IsOwn(typeName, entry)).ToArray() is [.., var entry])
                 {
                     answered[family] = entry;
                     break;
@@ -75,47 +75,6 @@ public sealed class CultureCoverageChecker : IProjectRuleChecker
         }
 
         return answered;
-    }
-
-    // A shared block's owner is the section holding it, spelled from the file's position, or from the assembly's root for a rooted section; the block is the type's own when that owner spells the type.
-    private static bool IsOwn(ProjectLocalization localization, string typeName, LocaleSourceEntry entry)
-    {
-        if (!TryGetSharedOwner(entry.TypeName, out var owner))
-        {
-            return true;
-        }
-
-        if (owner.StartsWith(LocalizationSchema.RootedSectionPrefix, StringComparison.Ordinal))
-        {
-            var rooted = owner[LocalizationSchema.RootedSectionPrefix.Length..];
-
-            return rooted == typeName || $"{localization.Source.GetRootNamespace(localization.AssemblyName)}.{rooted}" == typeName;
-        }
-
-        return localization.GetFile(entry.FileName) is { } file
-            && localization.GetAnchorNames(file).Any(anchorName => (owner.Length == 0 ? anchorName : $"{anchorName}.{owner}") == typeName);
-    }
-
-    private static bool TryGetSharedOwner(string entryTypeName, out string owner)
-    {
-        if (entryTypeName == LocalizationSchema.SharedKey)
-        {
-            owner = string.Empty;
-
-            return true;
-        }
-
-        var suffix = $".{LocalizationSchema.SharedKey}";
-        if (entryTypeName.EndsWith(suffix, StringComparison.Ordinal))
-        {
-            owner = entryTypeName[..^suffix.Length];
-
-            return true;
-        }
-
-        owner = string.Empty;
-
-        return false;
     }
 
     // Where a culture's hierarchy bottoms out: es-419's is es, es's is itself.

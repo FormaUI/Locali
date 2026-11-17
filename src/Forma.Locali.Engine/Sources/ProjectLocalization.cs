@@ -136,6 +136,31 @@ public sealed class ProjectLocalization
             ?? _applicationSource.Value?.GetFile(name);
     }
 
+    /// <summary>Whether an entry a type reads is the type's own: one its section or file gives, its own shared block among them, rather than one of a shared block above it, which answers for every type beneath.</summary>
+    /// <param name="typeName">The type's name, as the runtime resolves it.</param>
+    /// <param name="entry">An entry <see cref="Read"/> gives the type.</param>
+    public bool IsOwn(string typeName, LocaleSourceEntry entry)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(typeName);
+
+        // A shared block's owner is the section holding it, spelled from the file's position, or from the assembly's root for a
+        // rooted section; the block is the type's own when that owner spells the type.
+        if (!TryGetSharedOwner(entry.TypeName, out var owner))
+        {
+            return true;
+        }
+
+        if (owner.StartsWith(LocalizationSchema.RootedSectionPrefix, StringComparison.Ordinal))
+        {
+            var rooted = owner[LocalizationSchema.RootedSectionPrefix.Length..];
+
+            return rooted == typeName || $"{Source.GetRootNamespace(AssemblyName)}.{rooted}" == typeName;
+        }
+
+        return GetFile(entry.FileName) is { } file
+            && GetAnchorNames(file).Any(anchorName => (owner.Length == 0 ? anchorName : $"{anchorName}.{owner}") == typeName);
+    }
+
     /// <summary>The full name of every type or namespace the runtime reads a file for, none when no path in force reads it.</summary>
     /// <param name="file">The file, one of <see cref="Files"/>.</param>
     public IReadOnlyList<string> GetAnchorNames(ProjectLocaleFile file)
@@ -363,6 +388,28 @@ public sealed class ProjectLocalization
         ArgumentNullException.ThrowIfNull(culture);
 
         return _applicationSource.Value?.Read(assemblyName, typeName, culture.Name) ?? [];
+    }
+
+    private static bool TryGetSharedOwner(string entryTypeName, out string owner)
+    {
+        if (entryTypeName == LocalizationSchema.SharedKey)
+        {
+            owner = string.Empty;
+
+            return true;
+        }
+
+        var suffix = $".{LocalizationSchema.SharedKey}";
+        if (entryTypeName.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            owner = entryTypeName[..^suffix.Length];
+
+            return true;
+        }
+
+        owner = string.Empty;
+
+        return false;
     }
 
     /// <summary>What the runtime reads for a type in one culture, anchor by anchor from the root down to the type, from the embedded files, then from each pack in turn, then from an application's files named for its own assembly.</summary>
