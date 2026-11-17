@@ -286,13 +286,15 @@ public sealed class SourceLinterTests
     }
 
     [Fact]
-    public void Should_report_a_key_a_lookup_takes_from_a_parameter_only_under_a_condition()
+    public void Should_leave_a_key_a_lookup_takes_from_a_parameter_under_a_condition_to_the_calls_of_its_method()
     {
-        // Act — a call's text may never be looked up, so the key stays the expression it is here.
-        var diagnostics = Lint("""public string Text(string key) => key.Length == 0 ? string.Empty : L[key].Value;""");
+        // Act — whether the lookup reads a call's text is settled call by call, once every project of the run is loaded.
+        var result = Result(Compile("""public string Text(string key) => key.Length == 0 ? string.Empty : L[key].Value;"""));
 
         // Assert
-        Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
+        Assert.Multiple(
+            () => Assert.Empty(result.Diagnostics),
+            () => Assert.Equal("key", Assert.Single(result.ForwardedKeys).Parameter));
     }
 
     [Fact]

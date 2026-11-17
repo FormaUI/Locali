@@ -3,6 +3,17 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.22`
+
+*Unreleased*
+
+- A key a lookup takes from a parameter is settled call by call through the method's paths, carrying what each call
+  passes: a condition the call's constants decide, such as an empty or null test of the key or a flag it passes, is
+  followed the way it goes, and one on anything but the key leaves the lookup reachable. A call the method returns from
+  before the lookup, such as `Text("")` past `if (key.Length == 0) return key;`, is no longer checked as a key, and a
+  key looked up past such a condition is checked at its calls in place of LOC0208, which stays where a condition on the
+  key the flow cannot settle stands between a call and the lookup, or the method writes the parameter first.
+
 ## `1.0.0-preview.21`
 
 *November 17, 2026*

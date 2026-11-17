@@ -193,11 +193,17 @@ A key a lookup takes from a parameter of its own method, `string Label(string ke
 is the calls' to write: each call the run makes to the method that writes the key as text is a
 lookup of that text, at the call, read in the type the lookup's locale is when that call reaches
 it, so two calls passing different types to one method are each held to their own. A call
-passing the key on from a parameter of its own is followed to its own calls in turn. The key is
-reported as an expression where a call writes it otherwise, or where calls the run cannot see
-may write it: through a delegate, a base or an interface method, or from outside a library, and
-where the method reaches the lookup only on some paths or writes the parameter first, so a
-call's text may not be what it reads.
+passing the key on from a parameter of its own is followed to its own calls in turn. Each call
+is read through the method's paths with what it passes: a condition its constant arguments
+settle, such as an empty or null test of the key or a flag it passes as `false`, is followed the
+one way it goes, so a call the method returns from before the lookup looks nothing up, and a
+condition on anything but the key leaves the lookup as reachable as one written under it. The
+key is reported as an expression where a call reaching the lookup writes it otherwise; where
+calls the run cannot see may write it: through a delegate, a base or an interface method, or
+from outside a library; and where a call's text may not be what the lookup reads: a condition on
+the key the flow cannot settle, such as `key.StartsWith("raw:")`, stands between the call and
+the lookup, or the method writes the parameter first, or reads it in a lambda, a local function
+or a handler.
 
 A lookup through Microsoft's `IStringLocalizer`, written as `localizer["Checkout"]` with a
 literal key, is a lookup of Forma's where the run has Forma's adapter answer it: its product
@@ -322,7 +328,7 @@ root namespace `Forma.Locali`, so a folder's namespace is the same in either pro
 | Engine | `Rules/Files/` | Rules over a locale file |
 | Engine | `Rules/Sources/` | Rules over a callsite |
 | Engine | `Rules/Projects/` | Rules over a project's locale files read whole |
-| Engine | `Flow/` | Following a lookup's locale back to where the runtime decided its type, across the projects of a run, and holding hints to it |
+| Engine | `Flow/` | Following a lookup's locale back to where the runtime decided its type, and a key passed through parameters to the calls writing it, through each method's paths, across the projects of a run, and holding hints to it |
 | Engine | `Sources/` | Finding callsites, and resolving a project's locale files, the locale packs carrying files for it, and the assemblies of the run an application's files are read for, for the project rules |
 | Tool | `Cli/` | Argument parsing and exit codes |
 | Tool | `Projects/` | Binding Roslyn to the SDK's copy |

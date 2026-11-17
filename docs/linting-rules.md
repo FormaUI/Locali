@@ -666,10 +666,18 @@ A key a lookup takes from a parameter of its own method, `string Label(string ke
 is the calls' to write: each call the run makes to the method that writes the key as text is a
 lookup of that text, at the call, read in the type the lookup's locale is when that call reaches
 it, so two calls passing different types to one method are each held to their own. A call
-passing the key on from a parameter of its own is followed to its own calls in turn. The key is
-reported as an expression where a call writes it otherwise, or where calls the run cannot see
-may write it: through a delegate, a base or an interface method, or from outside a library. The values such a call passes are left
-uncounted, since the method may fill the holes itself:
+passing the key on from a parameter of its own is followed to its own calls in turn. Each call
+is read through the method's paths with what it passes: a condition its constant arguments
+settle, such as an empty or null test of the key or a flag it passes as `false`, is followed the
+one way it goes, so a call the method returns from before the lookup looks nothing up, and a
+condition on anything but the key leaves the lookup as reachable as one written under it. The
+key is reported as an expression where a call reaching the lookup writes it otherwise; where
+calls the run cannot see may write it: through a delegate, a base or an interface method, or
+from outside a library; and where a call's text may not be what the lookup reads: a condition on
+the key the flow cannot settle, such as `key.StartsWith("raw:")`, stands between the call and
+the lookup, or the method writes the parameter first, or reads it in a lambda, a local function
+or a handler. The values such a call passes are left uncounted, since the method may fill the
+holes itself:
 
 ```csharp
 LocalizableText Title(string key) => LocalizableText.For<SectionMenu>(key);
@@ -819,11 +827,14 @@ what it does not declare; or the run did not name the project's files.
 ### LOC0208 — A lookup writes its key as an expression
 
 **Reports.** `L[column.ToString()]`: a key only the run knows. A key the lookup takes from a
-parameter of its own method is reported where a call writes it as an expression, or where calls
-the run cannot see may write it: the method is passed as a delegate, is virtual, implements an
-interface, or is a public method of a library, which its consumers call; or where a call's text
-may not be what the lookup reads: the method reaches the lookup only on some paths, under a
-condition, in a loop or a lambda, or past a short circuit, or writes the parameter first.
+parameter of its own method is reported where a call reaching the lookup writes it as an
+expression, or where calls the run cannot see may write it: the method is passed as a delegate,
+is virtual, implements an interface, or is a public method of a library, which its consumers
+call; or where a call's text may not be what the lookup reads: a condition on the key the flow
+cannot settle stands between the call and the lookup, where it settles a test of the text for
+being null, empty or blank, of its length, of its equality with a constant, and an ordinal test
+of its start, its end or a part of it; or the method writes the parameter first, or reads it in
+a lambda, a local function or a handler.
 
 **Why it matters.** No rule can judge the key and no coverage check can count it; leaving it
 silent would let a run read as complete when part of it was never looked at.
@@ -833,7 +844,8 @@ rule reads.
 
 **Silent where.** The lookup sits inside a type that implements `IStringLocale`, which forwards
 the key its own caller wrote; or the key is a parameter every call reaching the lookup writes as
-text, which is checked at those calls instead.
+text, which is checked at those calls instead, where a call writing it otherwise is one the
+method never reaches the lookup for.
 
 ### LOC0209 — A key with holes and no words
 

@@ -45,55 +45,15 @@ internal static class SemanticCallsiteReader
     public static FileLinePositionSpan? UnreadableKey(ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
         => Key(arguments, keyOrdinal) is { } key ? Span(key) : null;
 
-    /// <summary>The key a lookup takes from a parameter of its own method, whose calls write it, or null when the key is anything else, or when a call's text may not be what the lookup reads.</summary>
+    /// <summary>The key a lookup takes from a parameter of its own method, whose calls write it, or null when the key is anything else.</summary>
     /// <param name="lookup">The lookup operation.</param>
     /// <param name="arguments">The arguments the lookup bound.</param>
     /// <param name="keyOrdinal">The ordinal of the parameter the key binds to.</param>
     public static ForwardedKey? ForwardedKey(IOperation lookup, ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)
         => Key(arguments, keyOrdinal)?.Value is { } value
             && Unconverted(value) is IParameterReferenceOperation { Parameter: { ContainingSymbol: IMethodSymbol { MethodKind: MethodKind.Ordinary } } parameter }
-            && IsAlwaysReached(lookup)
-            && !IsWritten(lookup, parameter)
             ? new ForwardedKey(lookup.Syntax, Span(value), parameter.Name)
             : null;
-
-    // A lookup under a condition, in a loop or a lambda, or past a short circuit may never run for a call, which then looks nothing up.
-    private static bool IsAlwaysReached(IOperation lookup)
-    {
-        for (var operation = lookup.Parent; operation is not null; operation = operation.Parent)
-        {
-            if (operation is IConditionalOperation or ISwitchOperation or ISwitchExpressionOperation or ICoalesceOperation or IConditionalAccessOperation
-                or ILoopOperation or ITryOperation or IAnonymousFunctionOperation or ILocalFunctionOperation
-                or IBinaryOperation { OperatorKind: BinaryOperatorKind.ConditionalAnd or BinaryOperatorKind.ConditionalOr })
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    // A parameter the method writes holds something other than the text its call wrote.
-    private static bool IsWritten(IOperation lookup, IParameterSymbol parameter)
-    {
-        var root = lookup;
-        while (root.Parent is { } parent)
-        {
-            root = parent;
-        }
-
-        return root.DescendantsAndSelf().Any(operation => operation switch
-        {
-            IDeconstructionAssignmentOperation { Target: var targets } => targets.DescendantsAndSelf().Any(target => Writes(target, parameter)),
-            IAssignmentOperation { Target: var target } => Writes(target, parameter),
-            IIncrementOrDecrementOperation { Target: var target } => Writes(target, parameter),
-            IArgumentOperation { Parameter.RefKind: RefKind.Ref or RefKind.Out, Value: var passed } => Writes(passed, parameter),
-            _ => false,
-        });
-    }
-
-    private static bool Writes(IOperation target, IParameterSymbol parameter)
-        => target is IParameterReferenceOperation { Parameter: var written } && SymbolEqualityComparer.Default.Equals(written, parameter);
 
     // The key binds to one parameter, wherever a named argument writes it.
     private static IArgumentOperation? Key(ImmutableArray<IArgumentOperation> arguments, int keyOrdinal)

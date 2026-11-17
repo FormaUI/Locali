@@ -90,7 +90,7 @@ public sealed class SourceLinter(
                 key.Key.StartLinePosition.Character + 1,
                 LintingCodes.KeyNotAnalysed.DefaultSeverity,
                 LintingCodes.KeyNotAnalysed,
-                $"The lookup's key is the parameter '{key.Parameter}', which a call writes as an expression or passes from outside the run, so no rule could check what it reads.")),
+                $"The lookup's key is the parameter '{key.Parameter}', which a call writes as an expression, passes from outside the run, or hands a method whose path to the lookup turns on the text in a way the flow cannot tell, so no rule could check what it reads.")),
         ];
     }
 

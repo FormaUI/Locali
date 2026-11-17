@@ -118,13 +118,23 @@ internal sealed class FlowEvaluator(
         ArgumentNullException.ThrowIfNull(parameter);
         ArgumentNullException.ThrowIfNull(calls);
 
-        return parameter.ContainingSymbol is IMethodSymbol method && Forward(method, parameter, lookup, static frame => [frame], calls, 0, []);
+        return parameter.ContainingSymbol is IMethodSymbol method
+            && Forward(method, parameter, lookup, [new KeyLevel(lookup, parameter)], static frame => [frame], calls, 0, []);
     }
 
     // A call writes the key as text, passes on a parameter of its own method, whose calls are followed in turn, or writes anything
-    // else, which leaves the key unread. A method called through a delegate, a base or an interface, or from outside the run, has calls
-    // the flow does not see, so their keys go unread too.
-    private bool Forward(IMethodSymbol method, IParameterSymbol parameter, IOperation lookup, Func<FlowFrame, IEnumerable<FlowFrame>> enterLookup, List<ForwardedCall> calls, int depth, HashSet<SymbolKey> following)
+    // else, which leaves the key unread unless the methods from the call inward never reach the lookup for it. A call writing text is
+    // checked where those methods reach the lookup with its text as written. A method called through a delegate, a base or an
+    // interface, or from outside the run, has calls the flow does not see, so their keys go unread too.
+    private bool Forward(
+        IMethodSymbol method,
+        IParameterSymbol parameter,
+        IOperation lookup,
+        IReadOnlyList<KeyLevel> levels,
+        Func<FlowFrame, IEnumerable<FlowFrame>> enterLookup,
+        List<ForwardedCall> calls,
+        int depth,
+        HashSet<SymbolKey> following)
     {
         var key = SymbolKey.Of(parameter);
         if (depth > MaxForwardDepth || !following.Add(key) || _run.FindSource(method) is not ({ } source, { } methodCompilation) || source is not IMethodSymbol sourceMethod)
@@ -158,13 +168,19 @@ internal sealed class FlowEvaluator(
                     }
 
                     reaches = true;
-                    switch (Unconverted(ArgumentFor(invocation.Arguments, parameter.Ordinal)))
+                    var argument = Unconverted(ArgumentFor(invocation.Arguments, parameter.Ordinal));
+                    if (argument is IParameterReferenceOperation { Parameter: { ContainingSymbol: IMethodSymbol { MethodKind: MethodKind.Ordinary } outer } next })
                     {
-                        case { ConstantValue: { HasValue: true, Value: string } }:
-                            calls.Add(new ForwardedCall(invocation, parameter.Ordinal, compilation, [.. frames.SelectMany(frame => LocaleOf(lookup, frame))]));
+                        isComplete &= Forward(outer, next, lookup, [new KeyLevel(invocation, next), .. levels], EnterCall, calls, depth + 1, following);
+                        continue;
+                    }
+
+                    switch (Reach(levels, invocation))
+                    {
+                        case KeyReach.Skips:
                             break;
-                        case IParameterReferenceOperation { Parameter: { ContainingSymbol: IMethodSymbol { MethodKind: MethodKind.Ordinary } outer } next }:
-                            isComplete &= Forward(outer, next, lookup, EnterCall, calls, depth + 1, following);
+                        case KeyReach.Reads when argument is { ConstantValue: { HasValue: true, Value: string } }:
+                            calls.Add(new ForwardedCall(invocation, parameter.Ordinal, compilation, [.. frames.SelectMany(frame => LocaleOf(lookup, frame))]));
                             break;
                         default:
                             isComplete = false;
@@ -179,6 +195,38 @@ internal sealed class FlowEvaluator(
         {
             following.Remove(key);
         }
+    }
+
+    // What the methods from a call inward do with the key it writes: the call's constant arguments are carried through each method
+    // passing the key on, so a condition one settles is followed the way it goes.
+    private KeyReach Reach(IReadOnlyList<KeyLevel> levels, IInvocationOperation call)
+    {
+        var keyOrdinal = levels[0].Key.Ordinal;
+        IReadOnlyDictionary<int, CallValue> arguments = call.Arguments
+            .Where(argument => argument.Parameter is not null)
+            .ToDictionary(
+                argument => argument.Parameter!.Ordinal,
+                argument => argument.Value.ConstantValue is { HasValue: true, Value: var constant }
+                    ? CallValue.Of(constant, argument.Parameter!.Ordinal == keyOrdinal)
+                    : CallValue.Unknown(argument.Parameter!.Ordinal == keyOrdinal));
+        var isKeyShared = false;
+        foreach (var (target, key) in levels)
+        {
+            if (_run.GraphOf(target) is not { } graph)
+            {
+                return KeyReach.Unknown;
+            }
+
+            var result = KeyReachAnalysis.Of(graph, target, key, arguments, isKeyShared);
+            if (result.Reach != KeyReach.Reads)
+            {
+                return result.Reach;
+            }
+
+            (arguments, isKeyShared) = (result.Arguments, result.IsKeyShared);
+        }
+
+        return KeyReach.Reads;
     }
 
     // A call enters its method's body on each receiver that runs that body, with the call's arguments and type arguments; a receiver
@@ -1381,4 +1429,8 @@ internal sealed class FlowEvaluator(
         => symbol is IMethodSymbol { AssociatedSymbol: { } associated }
             ? $"{associated.ContainingType?.Name}.{associated.Name}"
             : $"{symbol.ContainingType?.Name}.{symbol.Name}";
+
+    // A method on the way from a call writing a key to the lookup reading it: the operation it reaches next, the lookup or a call
+    // passing the key on, and the parameter holding the key.
+    private readonly record struct KeyLevel(IOperation Target, IParameterSymbol Key);
 }

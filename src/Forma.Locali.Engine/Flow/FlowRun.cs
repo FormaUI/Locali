@@ -6,6 +6,7 @@ using Forma.Locali.Configuration;
 using Forma.Locali.Projects;
 
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.FlowAnalysis;
 using Microsoft.CodeAnalysis.Operations;
 
 using CSharp = Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -22,6 +23,7 @@ internal sealed class FlowRun
     private readonly ConcurrentDictionary<Compilation, Lazy<ILookup<SymbolKey, IOperation>>> _creations = new(ReferenceEqualityComparer.Instance);
     private readonly ConcurrentDictionary<Compilation, Lazy<ILookup<SymbolKey, INamedTypeSymbol>>> _derived = new(ReferenceEqualityComparer.Instance);
     private readonly ConcurrentDictionary<SyntaxTree, SemanticModel> _models = new();
+    private readonly ConcurrentDictionary<SyntaxNode, ControlFlowGraph?> _graphs = new();
     private const string ServiceCollectionName = "IServiceCollection";
     private const string AdapterNamespace = "Forma.Framework.Localization.StringLocalizerAdapter";
     private const string AdapterRegistration = "AddFormaStringLocalizerAdapter";
@@ -72,6 +74,26 @@ internal sealed class FlowRun
         ArgumentNullException.ThrowIfNull(tree);
 
         return _models.GetOrAdd(tree, static (key, owner) => owner.GetSemanticModel(key), compilation);
+    }
+
+    /// <summary>The control flow graph of the body holding an operation, made once per body, or null where the body is none a graph is made for.</summary>
+    /// <param name="operation">An operation of the body, from its own operation tree.</param>
+    public ControlFlowGraph? GraphOf(IOperation operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        var root = operation;
+        while (root.Parent is { } parent)
+        {
+            root = parent;
+        }
+
+        return _graphs.GetOrAdd(root.Syntax, static (_, body) => body switch
+        {
+            IMethodBodyOperation method => ControlFlowGraph.Create(method),
+            IBlockOperation block => ControlFlowGraph.Create(block),
+            _ => null,
+        }, root);
     }
 
     /// <summary>The project a compilation belongs to, or null when it is none of the run's.</summary>

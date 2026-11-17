@@ -2129,20 +2129,327 @@ public sealed class LocaleFlowTests
     }
 
     [Fact]
-    public void Should_leave_unforwarded_a_key_a_lookup_takes_only_under_a_condition()
+    public void Should_leave_out_a_call_whose_text_a_condition_keeps_from_the_lookup()
     {
-        // Act — an empty key is never looked up, so the call writing it reads nothing.
+        // Act — an empty key is never looked up, so the call writing it reads nothing, while the other's text is.
         var forwarded = Forward("""
             public sealed class Page(IStringLocale<Page> locale)
             {
                 private string Text(string key) => string.IsNullOrEmpty(key) ? string.Empty : locale[key].Value;
 
-                public string Show() => Text("");
+                public string Show() => Text("") + Text("Today");
             }
             """);
 
         // Assert
-        Assert.Empty(forwarded.ByProject);
+        var site = Assert.Single(Assert.Single(forwarded.ByProject).Value);
+        Assert.Multiple(
+            () => Assert.Equal("Today", site.Key.Text),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_leave_unread_a_call_whose_text_a_condition_the_flow_cannot_settle_may_keep_from_the_lookup()
+    {
+        // Act — the method tells raw text from a key by a test on the text no rule reads, so the call's text may be no key.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string key) => key.StartsWith("raw:") ? key[4..] : locale[key].Value;
+
+                public string Show() => Text("raw:Today");
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(forwarded.ByProject),
+            () => Assert.Equal("key", Assert.Single(forwarded.Unforwarded).Parameter));
+    }
+
+    [Fact]
+    public void Should_settle_an_ordinal_test_of_the_keys_start_by_each_calls_text()
+    {
+        // Act — the raw text is returned as it is, and the other call's text is looked up.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string key) => key.StartsWith("raw:", StringComparison.Ordinal) ? key[4..] : locale[key].Value;
+
+                public string Show() => Text("raw:Today") + Text("Today");
+            }
+            """);
+
+        // Assert
+        var site = Assert.Single(Assert.Single(forwarded.ByProject).Value);
+        Assert.Multiple(
+            () => Assert.Equal("Today", site.Key.Text),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_leave_unread_a_call_whose_text_a_comparison_through_a_conversion_the_flow_does_not_make_may_keep_from_the_lookup()
+    {
+        // Act — the four-letter text equals 4.0 once its length is a double, so it is never looked up.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string key) => key.Length == 4.0 ? key : locale[key].Value;
+
+                public string Show() => Text("Raw!");
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(forwarded.ByProject),
+            () => Assert.Single(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_check_a_calls_text_under_a_condition_on_something_other_than_the_key()
+    {
+        // Act — the condition is the object's, not the call's, so the text reaches the lookup as a key written under it would.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale, bool showKeys)
+            {
+                private string Text(string key) => showKeys ? key : locale[key].Value;
+
+                public string Show() => Text("Today");
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("Today", Assert.Single(Assert.Single(forwarded.ByProject).Value).Key.Text),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_settle_a_condition_on_another_parameter_by_what_each_call_passes()
+    {
+        // Act — the call passing false never looks its text up, and the call passing true does.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string text, bool localize) => localize ? locale[text].Value : text;
+
+                public string Show() => Text("Raw text", false) + Text("Today", true);
+            }
+            """);
+
+        // Assert
+        var site = Assert.Single(Assert.Single(forwarded.ByProject).Value);
+        Assert.Multiple(
+            () => Assert.Equal("Today", site.Key.Text),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_leave_complete_a_key_a_call_writes_as_an_expression_where_that_call_never_reaches_the_lookup()
+    {
+        // Act — the expression is passed with false, so it is never looked up.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string text, bool localize) => localize ? locale[text].Value : text;
+
+                public string Show(object column) => Text(column.ToString()!, false) + Text("Today", true);
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("Today", Assert.Single(Assert.Single(forwarded.ByProject).Value).Key.Text),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_carry_what_a_call_passes_through_a_method_passing_the_key_on()
+    {
+        // Act — the outer method passes the key on with a constant the inner one settles its condition by.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Raw(string text) => Text(text, false);
+
+                private string Localized(string text) => Text(text, true);
+
+                private string Text(string text, bool localize) => localize ? locale[text].Value : text;
+
+                public string Show() => Raw("Raw text") + Localized("Today");
+            }
+            """);
+
+        // Assert
+        var site = Assert.Single(Assert.Single(forwarded.ByProject).Value);
+        Assert.Multiple(
+            () => Assert.Equal("Today", site.Key.Text),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_check_a_calls_text_where_the_key_is_written_only_on_a_path_that_call_does_not_take()
+    {
+        // Act — the fallback is written only where the key is null, which this call's text is not.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string? key)
+                {
+                    key ??= "Fallback";
+
+                    return locale[key].Value;
+                }
+
+                public string Show() => Text("Today");
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("Today", Assert.Single(Assert.Single(forwarded.ByProject).Value).Key.Text),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_leave_unread_a_call_whose_text_the_lookup_reads_only_where_reading_it_throws()
+    {
+        // Act — the lookup runs only where parsing the text fails, which the text decides.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string key)
+                {
+                    try
+                    {
+                        return int.Parse(key).ToString();
+                    }
+                    catch (FormatException)
+                    {
+                    }
+
+                    return locale[key].Value;
+                }
+
+                public string Show() => Text("Today");
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(forwarded.ByProject),
+            () => Assert.Single(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_check_a_calls_text_a_lookup_reads_inside_a_try()
+    {
+        // Act
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string key)
+                {
+                    try
+                    {
+                        return locale[key].Value;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return key;
+                    }
+                }
+
+                public string Show() => Text("Today");
+            }
+            """);
+
+        // Assert
+        Assert.Equal("Today", Assert.Single(Assert.Single(forwarded.ByProject).Value).Key.Text);
+    }
+
+    [Fact]
+    public void Should_leave_unread_a_key_a_lambda_reads()
+    {
+        // Act — the lambda may never run, or run where the call's text is no longer what it looks up.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private Func<string> Text(string key) => () => locale[key].Value;
+
+                public string Show() => Text("Today")();
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(forwarded.ByProject),
+            () => Assert.Single(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_settle_a_Visual_Basic_condition_on_the_key_by_each_calls_text()
+    {
+        // Arrange — Visual Basic compares text with Nothing as it compares it with "", so neither call with them reads anything.
+        var compilation = CompilationTestFactory.ReferencedVisualBasic("""
+            Imports Forma.Framework.Localization
+
+            Namespace Scratch
+                Public NotInheritable Class Page
+                    Private ReadOnly Property L As IStringLocale(Of Page)
+
+                    Private Function Text(key As String) As String
+                        If key = "" Then
+                            Return key
+                        End If
+
+                        Return L(key).Value
+                    End Function
+
+                    Public Function Show() As String
+                        Return Text(Nothing) & Text("") & Text("Today")
+                    End Function
+                End Class
+            End Namespace
+            """);
+
+        // Act
+        var forwarded = LocaleFlowTestFactory.Forward(compilation);
+
+        // Assert
+        var site = Assert.Single(Assert.Single(forwarded.ByProject).Value);
+        Assert.Multiple(
+            () => Assert.Equal("Today", site.Key.Text),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_leave_out_a_call_whose_text_an_earlier_return_keeps_from_the_lookup()
+    {
+        // Act — the method returns before the lookup when its text is empty, so that call looks nothing up.
+        var forwarded = Forward("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                private string Text(string key)
+                {
+                    if (key.Length == 0)
+                    {
+                        return key;
+                    }
+
+                    return locale[key].Value;
+                }
+
+                public string Show() => Text("") + Text("Today");
+            }
+            """);
+
+        // Assert
+        var site = Assert.Single(Assert.Single(forwarded.ByProject).Value);
+        Assert.Multiple(
+            () => Assert.Equal("Today", site.Key.Text),
+            () => Assert.Empty(forwarded.Unforwarded));
     }
 
     [Fact]
@@ -2164,7 +2471,9 @@ public sealed class LocaleFlowTests
             """);
 
         // Assert
-        Assert.Empty(forwarded.ByProject);
+        Assert.Multiple(
+            () => Assert.Empty(forwarded.ByProject),
+            () => Assert.Single(forwarded.Unforwarded));
     }
 
     [Fact]
