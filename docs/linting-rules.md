@@ -562,12 +562,12 @@ Spanish reader, with every other check staying green.
 source language there.
 
 **Silent where.** The project's files and packs carry only one culture family; the type has no
-entries in any family, since it is unlocalized rather than uneven; a regional culture,
-`es-419` among them, answers where its neutral culture, `es`, does not, and the reverse, since
-one stands for the family; or the only entries a culture carries for the type come from a
-`$shared` block above it, a folder's or an outer type's, which answers for every type beneath
-and says nothing about this one. A `$shared` block in the type's own section or file is the
-type's own and counts.
+entries in any family, since it is unlocalized rather than uneven, which LOC0217 reports where a
+lookup reads it; a regional culture, `es-419` among them, answers where its neutral culture,
+`es`, does not, and the reverse, since one stands for the family; or the only entries a culture
+carries for the type come from a `$shared` block above it, a folder's or an outer type's, which
+answers for every type beneath and says nothing about this one. A `$shared` block in the type's
+own section or file is the type's own and counts.
 
 ### LOC0120 — Two files give an entry different texts
 
@@ -852,20 +852,21 @@ JSON `null`: `"Email": null`. A null entry is *found* — `ResourceNotFound` is 
 `RequireMatchingLocalization` passes, `GetAllStrings` lists it — so a key that has to read as
 genuinely missing cannot use it, and the warning is the honest answer there.
 
-**Silent where.** The type has no entries at all, since it is unlocalized rather than
-under-localized; no project of the run builds the type's assembly, so none of its entries can be
-read; the walk from the lookup reaches no type, as where a type is chosen at run time, a locale
-comes from a factory the code builds itself, one a test project registers for a lookup it holds,
-or a string-named one, a local is assigned more than once or by a deconstruction, a field is
-written where the walk cannot pair the write with the object read, or a service has no one
-implementation the walk can read, as where it is registered twice, as an instance, through a
-factory creating no one type, or by a call of the application's own handed the service
-collection, or declared outside the run's projects; the types the walk reaches are alternatives
-it cannot pair with the lookup, as both sides of a conditional, several returns, or a value a
-constructor or a later write may replace; the type member a hint names returns nothing the walk
-can read; a type derived from the lookup's own overrides the member holding the lookup, so its
-instances never run it; the lookup goes through Microsoft's `IStringLocalizer` where the run
-does not have Forma's adapter answer it, so it reads the localizer's own resources; a parent
+**Silent where.** The type has no entries at all in the culture, since it is unlocalized there
+rather than under-localized, which LOC0119 reports where another culture family localizes it and
+LOC0217 where no culture does; no project of the run builds the type's assembly, so none of its
+entries can be read; the walk from the lookup reaches no type, as where a type is chosen at run
+time, a locale comes from a factory the code builds itself, one a test project registers for a
+lookup it holds, or a string-named one, a local is assigned more than once or by a
+deconstruction, a field is written where the walk cannot pair the write with the object read, or
+a service has no one implementation the walk can read, as where it is registered twice, as an
+instance, through a factory creating no one type, or by a call of the application's own handed
+the service collection, or declared outside the run's projects; the types the walk reaches are
+alternatives it cannot pair with the lookup, as both sides of a conditional, several returns, or
+a value a constructor or a later write may replace; the type member a hint names returns nothing
+the walk can read; a type derived from the lookup's own overrides the member holding the lookup,
+so its instances never run it; the lookup goes through Microsoft's `IStringLocalizer` where the
+run does not have Forma's adapter answer it, so it reads the localizer's own resources; a parent
 culture answers, since `es-419` reads `es` for what it does not declare; or the run did not name
 the project's files.
 
@@ -940,3 +941,24 @@ less than it would, with no word why.
 
 **Silent where.** The project references no package, so restore gives it nothing to read; or its
 assets file is there, however old.
+
+### LOC0217 — A type lookups read is localized in no culture
+
+**Reports.** A type a lookup reads, with no entries in any culture its assembly's locale files and
+packs carry, nor in a parent of one, nor in the files the lookup's own application writes for
+that assembly: once per type per culture, at the first callsite reading it. The type is found as
+LOC0207 finds it, and the message names the path it was reached through, and the hint where a
+hint alone supplied it.
+
+**Why it matters.** A type with no entries reads as one left unlocalized on purpose, so LOC0207
+checks none of its keys and LOC0119 compares none of its cultures, and a new component whose
+section was never written renders every key in the source language with every other check
+green. Forma's runtime diagnostics report the same type as event 6, but only once a run renders
+it.
+
+**What fixes it.** Add the type's section, or its own file, to each culture's locale files.
+
+**Silent where.** The type has entries in any culture, a `$shared` block's above it among them,
+since LOC0207 and LOC0119 hold it to what it leaves out; its assembly's files carry no culture;
+no project of the run builds the type's assembly; or the walk from the lookup reaches no type,
+or only alternatives it cannot pair with the lookup, as for LOC0207.

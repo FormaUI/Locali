@@ -18,6 +18,7 @@ public static class ProjectLinterTestFactory
             new RootNamespaceWithoutTypesChecker(),
             new UnreachableLocalizationChecker(),
             new LocalizationCoverageChecker(),
+            new TypeLocalizationChecker(),
             new TypeNamedFolderChecker(),
             new CultureCoverageChecker(),
             new EntryConflictChecker(),

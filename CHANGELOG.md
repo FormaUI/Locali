@@ -12,6 +12,9 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   rather than to the type the host's factory would read for it, and a service is followed to the one implementation
   product code and the test register between them, so one the test registers otherwise than product code does has none.
   A lookup in product code never reads a test's registrations.
+- LOC0217 warns of a type lookups read that has no entries in any culture its assembly's locale files carry, once per
+  type and culture at the first lookup reading it. Such a type was taken for one left unlocalized on purpose, so a new
+  component whose section was never written rendered every key in the source language with no rule reporting it.
 
 ## `1.0.0-preview.23`
 
