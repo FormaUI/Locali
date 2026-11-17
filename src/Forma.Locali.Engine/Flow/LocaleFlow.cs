@@ -14,8 +14,8 @@ using Microsoft.CodeAnalysis.Operations;
 public sealed class LocaleFlow
 {
     private readonly FlowRun _run;
-    private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> _memo = new();
-    private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> _analysisMemo = new();
+    private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance, Compilation? Test), IReadOnlyList<FlowValue>> _memo = new();
+    private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance, Compilation? Test), IReadOnlyList<FlowValue>> _analysisMemo = new();
 
     /// <summary>Reads the run's projects and binds the hints it reads.</summary>
     /// <param name="projects">Every project the run loaded.</param>
@@ -83,7 +83,7 @@ public sealed class LocaleFlow
             return lookup with { Receiver = null, Gaps = [new LocaleGap(LocaleGapKind.Unsupported, node.ToString())] };
         }
 
-        var evaluator = new FlowEvaluator(_run, _memo, _analysisMemo);
+        var evaluator = new FlowEvaluator(_run, _memo, _analysisMemo, _run.IsTest(compilation) ? compilation : null);
         var values = evaluator.EntryFrames(compilation, enclosing, 0).SelectMany(frame => isHinted ? evaluator.LocaleOf(operation, frame) : evaluator.Evaluate(receiver, frame)).ToArray();
         if (values.Length == 0)
         {

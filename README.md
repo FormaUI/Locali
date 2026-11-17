@@ -238,14 +238,15 @@ goes back through locals assigned once, fields and properties as each object was
 parameters through every call the run makes to their method, or as the container passes them to
 a constructor no code calls, constructors, lambdas, local functions, delegates and lazy values,
 virtual calls on each type the instance can be, `base.` calls to the member they name, and
-services to the one implementation the run's product code registers, so `L["Details columns"]`
-in a component is held to the component's own files however its base reaches the factory. Where
-the walk cannot follow a value, such as a type chosen at run time, a factory the code builds
-itself, or a service registered in a way the walk cannot read, the path ends and the lookup is
-held to no type along it; alternatives the walk cannot pair with the lookup, such as both sides
-of a conditional, whether locales, objects holding them, or delegates returning them, are never
-held to it for certain. A lookup held to no type is counted unchecked, and the report lists it
-with where its path ended.
+services to the one implementation the run's product code registers, counting a test project's
+own registrations beside it for a lookup the test holds, so `L["Details columns"]` in a
+component is held to the component's own files however its base reaches the factory. Where the
+walk cannot follow a value, such as a type chosen at run time, a factory the code builds itself
+or a test project registers for its own lookups, or a service registered in a way the walk
+cannot read, the path ends and the lookup is held to no type along it; alternatives the walk
+cannot pair with the lookup, such as both sides of a conditional, whether locales, objects
+holding them, or delegates returning them, are never held to it for certain. A lookup held to no
+type is counted unchecked, and the report lists it with where its path ended.
 
 What the walk cannot read, a hint states: a member whose locale is read for the type another
 member of the same instance returns, as `FormaComponentBase.L` is for `LocaleSourceType`, or a

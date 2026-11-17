@@ -3,6 +3,16 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.24`
+
+*Unreleased*
+
+- A lookup in a test project is followed through the test's own registrations beside product code's. One reaching a
+  locale factory the test registers itself, as a stub answering its keys does, is held to no type and counted unchecked,
+  rather than to the type the host's factory would read for it, and a service is followed to the one implementation
+  product code and the test register between them, so one the test registers otherwise than product code does has none.
+  A lookup in product code never reads a test's registrations.
+
 ## `1.0.0-preview.23`
 
 *November 17, 2026*

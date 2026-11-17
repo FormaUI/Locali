@@ -823,16 +823,17 @@ further where a type of the run derives from `T`, since a locale for it may stan
 parameters at each call the run makes, or as the container passes them to a constructor no code
 calls, constructors, lambdas, local functions, delegates, lazy values, virtual calls on each
 type the instance can be, `base.` calls to the member they name, and services to the one
-implementation the run's product code registers. Where the walk reaches no type, a hint in the
-linting configuration may relate a member to the type member its locale is read for, read as
-each type of instance overrides it: `typeof(X)` names `X`, and `GetType()` the instance's own
-type. The instances are the lookup's own type, unless it is abstract, and every type of its
-project derived from it that keeps the member holding the lookup as it is. So `L["Details
-columns"]` in a component deriving from `FormaComponentBase` is held to the component's own
-files wherever Forma comes from, and a helper reading a locale its callers pass is held to each
-caller's type. A key the lookup takes from a parameter is held, at each call writing it as text,
-to the type the lookup reads when that call reaches it. The message names the path the type was
-reached through, and the hint where a hint alone supplied it.
+implementation the run's product code registers, counting a test project's own registrations
+beside it for a lookup the test holds. Where the walk reaches no type, a hint in the linting
+configuration may relate a member to the type member its locale is read for, read as each type
+of instance overrides it: `typeof(X)` names `X`, and `GetType()` the instance's own type. The
+instances are the lookup's own type, unless it is abstract, and every type of its project
+derived from it that keeps the member holding the lookup as it is. So `L["Details columns"]` in
+a component deriving from `FormaComponentBase` is held to the component's own files wherever
+Forma comes from, and a helper reading a locale its callers pass is held to each caller's type.
+A key the lookup takes from a parameter is held, at each call writing it as text, to the type
+the lookup reads when that call reaches it. The message names the path the type was reached
+through, and the hint where a hint alone supplied it.
 
 A lookup through Microsoft's `IStringLocalizer<T>` with a literal key is held to `T`'s entries
 where the run has Forma's adapter answer it: its product code calls
@@ -854,18 +855,19 @@ genuinely missing cannot use it, and the warning is the honest answer there.
 **Silent where.** The type has no entries at all, since it is unlocalized rather than
 under-localized; no project of the run builds the type's assembly, so none of its entries can be
 read; the walk from the lookup reaches no type, as where a type is chosen at run time, a locale
-comes from a factory the code builds itself or a string-named one, a local is assigned more than
-once or by a deconstruction, a field is written where the walk cannot pair the write with the
-object read, or a service has no one implementation the walk can read, as where it is registered
-twice, as an instance, through a factory creating no one type, or by a call of the application's
-own handed the service collection, or declared outside the run's projects; the types the walk
-reaches are alternatives it cannot pair with the lookup, as both sides of a conditional, several
-returns, or a value a constructor or a later write may replace; the type member a hint names
-returns nothing the walk can read; a type derived from the lookup's own overrides the member
-holding the lookup, so its instances never run it; the lookup goes through Microsoft's
-`IStringLocalizer` where the run does not have Forma's adapter answer it, so it reads the
-localizer's own resources; a parent culture answers, since `es-419` reads `es` for what it does
-not declare; or the run did not name the project's files.
+comes from a factory the code builds itself, one a test project registers for a lookup it holds,
+or a string-named one, a local is assigned more than once or by a deconstruction, a field is
+written where the walk cannot pair the write with the object read, or a service has no one
+implementation the walk can read, as where it is registered twice, as an instance, through a
+factory creating no one type, or by a call of the application's own handed the service
+collection, or declared outside the run's projects; the types the walk reaches are alternatives
+it cannot pair with the lookup, as both sides of a conditional, several returns, or a value a
+constructor or a later write may replace; the type member a hint names returns nothing the walk
+can read; a type derived from the lookup's own overrides the member holding the lookup, so its
+instances never run it; the lookup goes through Microsoft's `IStringLocalizer` where the run
+does not have Forma's adapter answer it, so it reads the localizer's own resources; a parent
+culture answers, since `es-419` reads `es` for what it does not declare; or the run did not name
+the project's files.
 
 ### LOC0209 — A key with holes and no words
 

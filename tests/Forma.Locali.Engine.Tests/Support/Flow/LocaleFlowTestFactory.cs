@@ -41,6 +41,17 @@ public static class LocaleFlowTestFactory
     public static IReadOnlyList<LocalizerLookup> Resolve(LoadedProject project, IReadOnlyList<LoadedProject> projects, IReadOnlyList<LocaleMemberHint>? hints = null)
         => Run(project, projects, hints ?? []).Lookups;
 
+    /// <summary>Every lookup each project's compilation makes, resolved project by project in the order given over one run of them all, so what one project's walks complete is there for the next.</summary>
+    /// <param name="projects">Every project of the run, in the order their lookups are resolved.</param>
+    public static IReadOnlyList<IReadOnlyList<LocalizerLookup>> ResolveInTurn(IReadOnlyList<LoadedProject> projects)
+    {
+        ArgumentNullException.ThrowIfNull(projects);
+
+        var flow = new LocaleFlow(projects, [], []);
+
+        return [.. projects.Select(project => flow.Resolve(project, [.. project.Compilation!.SyntaxTrees.SelectMany(tree => new SemanticCallsiteFinder().Find(project.Compilation!, tree).Lookups)]))];
+    }
+
     /// <summary>Every lookup the compilation makes, resolved with hints over a run holding it and the other compilations given, with what the flow found wrong in the hints.</summary>
     /// <param name="hints">The hints the run's configuration names.</param>
     /// <param name="compilation">The compilation whose lookups are resolved.</param>
@@ -82,7 +93,16 @@ public static class LocaleFlowTestFactory
         ArgumentNullException.ThrowIfNull(others);
 
         var project = new LoadedProject("Scratch.csproj", compilation, false, false);
-        LoadedProject[] projects = [project, .. others.Select((other, index) => new LoadedProject($"Other{index}.csproj", other, false, false))];
+
+        return Forward([project, .. others.Select((other, index) => new LoadedProject($"Other{index}.csproj", other, false, false))]);
+    }
+
+    /// <summary>The lookups the keys the projects' callsites take from parameters make at the calls writing them, over a run of the projects given.</summary>
+    /// <param name="projects">Every project of the run.</param>
+    public static ForwardedLookups Forward(IReadOnlyList<LoadedProject> projects)
+    {
+        ArgumentNullException.ThrowIfNull(projects);
+
         (LoadedProject, ForwardedKey)[] keys = [.. projects.SelectMany(each => each.Compilation!.SyntaxTrees.SelectMany(tree => new SemanticCallsiteFinder().Find(each.Compilation!, tree).ForwardedKeys).Select(key => (each, key)))];
 
         return new LocaleFlow(projects, [], []).Forward(keys);

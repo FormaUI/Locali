@@ -750,6 +750,95 @@ public sealed class LocaleFlowTests
     }
 
     [Fact]
+    public void Should_name_no_type_for_a_test_projects_lookup_through_a_locale_factory_the_test_registers_itself()
+    {
+        // Arrange — the product's lookup is resolved first, so its answer for the shared member is there to be wrongly reused.
+        var (product, tests) = TestedTexts(TestFactoryRegistration);
+
+        // Act
+        var resolved = LocaleFlowTestFactory.ResolveInTurn([product, tests]);
+
+        // Assert
+        var site = Single(resolved[1], "Bold");
+        Assert.Multiple(
+            () => Assert.Empty(site.Origins),
+            () => Assert.Contains(site.Gaps, gap => gap.Kind == LocaleGapKind.CustomFactory));
+    }
+
+    [Fact]
+    public void Should_keep_the_hosts_locale_factory_for_product_code_beside_a_test_registering_its_own()
+    {
+        // Arrange — the test's lookup is resolved first, so its answer for the shared member is there to be wrongly reused.
+        var (product, tests) = TestedTexts(TestFactoryRegistration);
+
+        // Act
+        var resolved = LocaleFlowTestFactory.ResolveInTurn([tests, product]);
+
+        // Assert
+        Assert.Equal("Panel", Assert.Single(Single(resolved[1], "Today").Origins).Type.Name);
+    }
+
+    [Fact]
+    public void Should_name_the_type_for_a_test_projects_lookup_through_the_hosts_locale_factory_where_the_test_registers_none()
+    {
+        // Arrange
+        var (product, tests) = TestedTexts(string.Empty);
+
+        // Act
+        var resolved = LocaleFlowTestFactory.ResolveInTurn([product, tests]);
+
+        // Assert
+        Assert.Equal("Panel", Assert.Single(Single(resolved[1], "Bold").Origins).Type.Name);
+    }
+
+    [Fact]
+    public void Should_name_no_type_for_a_key_a_test_writes_to_a_product_method_through_a_locale_factory_the_test_registers_itself()
+    {
+        // Arrange
+        var (product, tests) = TestedTexts(TestFactoryRegistration + """
+
+                public string Caption() => Scratch.Labels.Caption("Bold");
+            """);
+
+        // Act
+        var forwarded = LocaleFlowTestFactory.Forward([product, tests]);
+
+        // Assert
+        var site = Assert.Single(forwarded.ByProject[tests.Path], lookup => lookup.Key.Text == "Bold");
+        Assert.Multiple(
+            () => Assert.Empty(site.Origins),
+            () => Assert.Contains(site.Gaps, gap => gap.Kind == LocaleGapKind.CustomFactory));
+    }
+
+    [Fact]
+    public void Should_name_no_type_for_a_test_projects_lookup_through_a_service_the_test_registers_another_implementation_of()
+    {
+        // Arrange
+        var (product, tests) = TestedComponent("services.AddScoped<Scratch.IContextFactory, FakeContextFactory>()");
+
+        // Act
+        var site = Single(LocaleFlowTestFactory.ResolveInTurn([product, tests])[1], "Tested");
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(site.Origins),
+            () => Assert.Contains(site.Gaps, gap => gap.Kind == LocaleGapKind.Dispatch));
+    }
+
+    [Fact]
+    public void Should_name_the_type_for_a_test_projects_lookup_through_a_service_the_test_registers_as_product_code_does()
+    {
+        // Arrange
+        var (product, tests) = TestedComponent("services.AddScoped<Scratch.IContextFactory, Scratch.ContextFactory>()");
+
+        // Act
+        var site = Single(LocaleFlowTestFactory.ResolveInTurn([product, tests])[1], "Tested");
+
+        // Assert
+        Assert.Equal("TestedWidget", Assert.Single(site.Origins).Type.Name);
+    }
+
+    [Fact]
     public void Should_name_the_type_a_Visual_Basic_helper_is_called_with_at_its_callers()
     {
         // Arrange
@@ -2861,6 +2950,84 @@ public sealed class LocaleFlowTests
                 protected IStringLocale L => Context.Locale;
             }
         """;
+
+    private const string TestFactoryRegistration = """
+                public static void Register(IServiceCollection services) => services.AddSingleton<IStringLocaleFactory>(new StubLocaleFactory());
+        """;
+
+    // A product whose static method reads a locale from the host's factory, its own lookup through it, and a method passing a key to
+    // it; and a test project looking a key up through the same method, with the members given.
+    private static (LoadedProject Product, LoadedProject Tests) TestedTexts(string testMembers)
+    {
+        var product = CompilationTestFactory.Referenced(Usings + """
+            namespace Scratch;
+
+            public sealed class Panel;
+
+            public static class Services
+            {
+                public static IServiceProvider Provider { get; set; } = default!;
+            }
+
+            public static class Texts
+            {
+                public static IStringLocale Locale() => Services.Provider.GetStringLocaleFactory().Create(typeof(Panel));
+            }
+
+            public static class Labels
+            {
+                public static string Caption(string key) => Texts.Locale()[key].Value;
+            }
+
+            public sealed class Page
+            {
+                public string Show() => Texts.Locale()["Today"].Value;
+            }
+            """).WithAssemblyName("Contoso.Product");
+        var tests = CompilationTestFactory.Referenced(Usings + $$"""
+            namespace Scratch.Tests;
+
+            public sealed class StubLocaleFactory : IStringLocaleFactory
+            {
+                public IStringLocale Create(Type resourceSource) => throw new NotSupportedException();
+
+                public IStringLocale Create(string baseName, string location) => throw new NotSupportedException();
+            }
+
+            public sealed class TextsTests
+            {
+            {{testMembers}}
+
+                public string Read() => Scratch.Texts.Locale()["Bold"].Value;
+            }
+            """).WithAssemblyName("Contoso.Product.Tests").AddReferences(product.ToMetadataReference());
+
+        return (new LoadedProject("Product.csproj", product, false, false), new LoadedProject("Tests.csproj", tests, false, false) { IsTestProject = true });
+    }
+
+    // Forma's component model as a product registers it, and a test project's own component reading through it, with the test's
+    // registration of the context factory given.
+    private static (LoadedProject Product, LoadedProject Tests) TestedComponent(string registration)
+    {
+        var product = CompilationTestFactory.Referenced(Usings + ComponentModel + "}").WithAssemblyName("Contoso.Product");
+        var tests = CompilationTestFactory.Referenced(Usings + $$"""
+            namespace Scratch.Tests;
+
+            public sealed class FakeContextFactory : Scratch.IContextFactory
+            {
+                public Scratch.Context Create(Type componentType, Func<Type> localeSourceType) => throw new NotSupportedException();
+            }
+
+            public sealed class TestedWidget : Scratch.FormaLike
+            {
+                public static void Register(IServiceCollection services) => {{registration}};
+
+                public string Show() => L["Tested"].Value;
+            }
+            """).WithAssemblyName("Contoso.Product.Tests").AddReferences(product.ToMetadataReference());
+
+        return (new LoadedProject("Product.csproj", product, false, false), new LoadedProject("Tests.csproj", tests, false, false) { IsTestProject = true });
+    }
 
     private static IReadOnlyList<LocalizerLookup> Resolve(string declarations)
     {

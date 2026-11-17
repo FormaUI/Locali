@@ -713,7 +713,7 @@ public sealed class LintingServiceTests
             () => Assert.Empty(result.Diagnostics),
             () => Assert.Equal((source, 16), (entry.Path, entry.Line)),
             () => Assert.Equal(["customFactory"], entry.Reasons),
-            () => Assert.Contains("a factory the code builds itself", entry.Explanation, StringComparison.Ordinal));
+            () => Assert.Contains("a factory other than the host's", entry.Explanation, StringComparison.Ordinal));
     }
 
     [Fact]

@@ -144,7 +144,7 @@ internal static class LookupCoverages
         => kind switch
         {
             LocaleGapKind.CompiledCode => "compiled code",
-            LocaleGapKind.CustomFactory => "a factory the code builds itself",
+            LocaleGapKind.CustomFactory => "a factory other than the host's",
             LocaleGapKind.NamedByString => "a locale named by a string",
             LocaleGapKind.Dispatch => "a call no one implementation answers that the flow can tell",
             LocaleGapKind.Reflection => "a value the framework sets",

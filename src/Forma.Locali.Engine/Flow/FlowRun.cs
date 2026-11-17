@@ -32,6 +32,7 @@ internal sealed class FlowRun
     private static readonly string[] RegistrationNames = ["Add", "TryAdd", "Replace", "Decorate", "Scoped", "Singleton", "Transient", "Describe"];
 
     private readonly ConcurrentDictionary<SymbolKey, Lazy<IReadOnlyList<INamedTypeSymbol?>>> _registrations = new();
+    private readonly ConcurrentDictionary<(Compilation Test, SymbolKey Service), Lazy<IReadOnlyList<INamedTypeSymbol?>>> _testRegistrations = new();
     private readonly Lazy<bool> _usesStringLocalizer;
 
     /// <summary>Reads the run's projects.</summary>
@@ -188,10 +189,11 @@ internal sealed class FlowRun
         }
     }
 
-    /// <summary>The one implementation the run's product code registers for a service, where the service is a type of a project of the run, every registration naming it can be read, and they agree.</summary>
+    /// <summary>The one implementation the run's product code registers for a service, with a test project's own registrations beside it where the lookup runs in one, where the service is a type of a project of the run, every registration naming it can be read, and they agree.</summary>
     /// <param name="service">The service, an interface or a class.</param>
+    /// <param name="test">The test project's compilation the lookup runs in, or null for product code.</param>
     /// <param name="implementation">The implementation, when there is one.</param>
-    public bool TryGetImplementation(INamedTypeSymbol service, out INamedTypeSymbol implementation)
+    public bool TryGetImplementation(INamedTypeSymbol service, Compilation? test, out INamedTypeSymbol implementation)
     {
         ArgumentNullException.ThrowIfNull(service);
 
@@ -201,7 +203,8 @@ internal sealed class FlowRun
             return false;
         }
 
-        var registered = _registrations.GetOrAdd(SymbolKey.Of(service.OriginalDefinition), static (_, entry) => new(() => entry.Run.ReadRegistrations(entry.Service)), (Run: this, Service: service.OriginalDefinition)).Value;
+        var product = _registrations.GetOrAdd(SymbolKey.Of(service.OriginalDefinition), static (_, entry) => new(() => entry.Run.ReadRegistrations(entry.Service, entry.Run.Compilations.Where(compilation => !entry.Run.IsTest(compilation)))), (Run: this, Service: service.OriginalDefinition)).Value;
+        IReadOnlyList<INamedTypeSymbol?> registered = test is null ? product : [.. product, .. TestRegistrations(test, service)];
         if (registered.Count == 0 || registered.Any(candidate => candidate is null))
         {
             return false;
@@ -216,6 +219,20 @@ internal sealed class FlowRun
 
         return true;
     }
+
+    /// <summary>Whether a test project registers a service itself, which its container then gives in place of what product code registers.</summary>
+    /// <param name="test">The test project's compilation.</param>
+    /// <param name="service">The service, an interface or a class.</param>
+    public bool Registers(Compilation test, INamedTypeSymbol service)
+    {
+        ArgumentNullException.ThrowIfNull(test);
+        ArgumentNullException.ThrowIfNull(service);
+
+        return TestRegistrations(test, service).Count > 0;
+    }
+
+    private IReadOnlyList<INamedTypeSymbol?> TestRegistrations(Compilation test, INamedTypeSymbol service)
+        => _testRegistrations.GetOrAdd((test, SymbolKey.Of(service.OriginalDefinition)), static (key, entry) => new(() => entry.Run.ReadRegistrations(entry.Service, [key.Test])), (Run: this, Service: service.OriginalDefinition)).Value;
 
     /// <summary>Whether a class of the run derives from a type.</summary>
     /// <param name="type">The type.</param>
@@ -327,13 +344,13 @@ internal sealed class FlowRun
     // A registration names its service where it is written: as a type argument or a `typeof` of one of the container's own
     // registrations, or of a descriptor. Each call written around the service's name is read: a registration or a descriptor names
     // what implements it, or leaves that unknown where it passes an instance or a factory the flow cannot type, and any other call
-    // handed the service collection may register it as anything. Test projects register fakes, so only product code is read.
-    private List<INamedTypeSymbol?> ReadRegistrations(INamedTypeSymbol service)
+    // handed the service collection may register it as anything.
+    private List<INamedTypeSymbol?> ReadRegistrations(INamedTypeSymbol service, IEnumerable<Compilation> compilations)
     {
         var key = SymbolKey.Of(service);
         var registrations = new List<INamedTypeSymbol?>();
 
-        foreach (var compilation in Compilations.Where(compilation => !IsTest(compilation)))
+        foreach (var compilation in compilations)
         {
             var comparison = compilation.Language == LanguageNames.VisualBasic ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
             foreach (var tree in compilation.SyntaxTrees)
@@ -439,7 +456,7 @@ internal sealed class FlowRun
     // Whether every registration the run's product code writes for a contract is one the adapter makes.
     private bool Answers(string contractMetadataName, Func<INamedTypeSymbol, bool> isAdapters)
         => Compilations.Select(compilation => compilation.GetTypeByMetadataName(contractMetadataName)).FirstOrDefault(found => found is not null) is not { } contract
-            || ReadRegistrations(contract).All(implementation => implementation is not null && isAdapters(implementation));
+            || ReadRegistrations(contract, Compilations.Where(compilation => !IsTest(compilation))).All(implementation => implementation is not null && isAdapters(implementation));
 
     // The call the service's name is written in: the nearest creation or invocation above it.
     private static IOperation? RegistrationAbove(SemanticModel model, SyntaxToken token)

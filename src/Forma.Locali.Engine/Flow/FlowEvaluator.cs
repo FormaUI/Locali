@@ -15,10 +15,12 @@ using VisualBasic = Microsoft.CodeAnalysis.VisualBasic.Syntax;
 /// <param name="run">What the flow reads across the run.</param>
 /// <param name="memo">The answers earlier walks completed, shared across lookups.</param>
 /// <param name="analysisMemo">The answers earlier walks completed without hints, shared across lookups.</param>
+/// <param name="test">The test project's compilation the lookup is written in, whose own registrations count beside product code's; null for a lookup in product code.</param>
 internal sealed class FlowEvaluator(
     FlowRun run,
-    ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> memo,
-    ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> analysisMemo)
+    ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance, Compilation? Test), IReadOnlyList<FlowValue>> memo,
+    ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance, Compilation? Test), IReadOnlyList<FlowValue>> analysisMemo,
+    Compilation? test = null)
 {
     private const int MaxDepth = 24;
     private const int MaxForwardDepth = 4;
@@ -30,15 +32,18 @@ internal sealed class FlowEvaluator(
     private const string CascadingParameterAttributeName = "Microsoft.AspNetCore.Components.CascadingParameterAttribute";
 
     private readonly FlowRun _run = run ?? throw new ArgumentNullException(nameof(run));
-    private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> _memo = memo ?? throw new ArgumentNullException(nameof(memo));
-    private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> _analysisMemo = analysisMemo ?? throw new ArgumentNullException(nameof(analysisMemo));
+    private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance, Compilation? Test), IReadOnlyList<FlowValue>> _memo = memo ?? throw new ArgumentNullException(nameof(memo));
+    private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance, Compilation? Test), IReadOnlyList<FlowValue>> _analysisMemo = analysisMemo ?? throw new ArgumentNullException(nameof(analysisMemo));
     private readonly HashSet<(SymbolKey Member, SymbolKey? Instance, int Arguments)> _following = [];
     private readonly Dictionary<FlowValue.Allocated, Dictionary<SymbolKey, FlowFrame>> _constructorsRun = [with(ReferenceEqualityComparer.Instance)];
 
     // How deep the walk is in following a hinted member without its hint, where no hint applies and answers are kept apart.
     private int _verifying;
 
-    private ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> Memo
+    // The test project the path being followed runs in, whose container gives what it registers; answers are kept apart by it.
+    private Compilation? _test = test;
+
+    private ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance, Compilation? Test), IReadOnlyList<FlowValue>> Memo
         => _verifying > 0 ? _analysisMemo : _memo;
 
     /// <summary>What an operation's value can be in a frame.</summary>
@@ -142,6 +147,7 @@ internal sealed class FlowEvaluator(
             return false;
         }
 
+        var outerTest = _test;
         try
         {
             // A hint the body bears out answers for a library's consumers, whose runs read the calls they make, so the method's key is
@@ -151,6 +157,8 @@ internal sealed class FlowEvaluator(
             var reaches = isAnswered;
             foreach (var compilation in _run.Compilations)
             {
+                // A call a test makes runs in that test's container, and so does every path followed from it.
+                _test = _run.IsTest(compilation) ? compilation : outerTest;
                 foreach (var call in _run.CallsOf(sourceMethod, compilation))
                 {
                     if (call is not IInvocationOperation invocation || Enclosing(invocation, compilation) is not { } enclosing)
@@ -196,6 +204,7 @@ internal sealed class FlowEvaluator(
         }
         finally
         {
+            _test = outerTest;
             following.Remove(key);
         }
     }
@@ -334,7 +343,7 @@ internal sealed class FlowEvaluator(
 
         // A body entered with no arguments on an instance of a known type gives the same answer however it was reached.
         SymbolKey? instanceKey = frame.This is FlowValue.Instance instance ? SymbolKey.Of(instance.Type) : null;
-        var memoKey = (SymbolKey.Of(method), instanceKey);
+        var memoKey = (SymbolKey.Of(method), instanceKey, _test);
         var memoizable = frame.Arguments.Count == 0 && frame.TypeArguments.Count == 0 && (frame.This is null or FlowValue.Instance)
             && method.MethodKind is not (MethodKind.LocalFunction or MethodKind.AnonymousFunction);
         if (memoizable && Memo.TryGetValue(memoKey, out var known))
@@ -555,7 +564,7 @@ internal sealed class FlowEvaluator(
     // path the code holding the lookup really runs on.
     private IReadOnlyList<FlowValue> Callers(IMethodSymbol method, IParameterSymbol parameter, FlowFrame frame)
     {
-        var memoKey = (SymbolKey.Of(parameter), (SymbolKey?)null);
+        var memoKey = (SymbolKey.Of(parameter), (SymbolKey?)null, _test);
         if (Memo.TryGetValue(memoKey, out var known))
         {
             return known;
@@ -995,7 +1004,7 @@ internal sealed class FlowEvaluator(
 
         if (containing == ServiceProviderExtensionsMetadataName && method.Name == "GetStringLocaleFactory")
         {
-            return [new FlowValue.Factory(true, "GetStringLocaleFactory()")];
+            return [RegisteredFactory("GetStringLocaleFactory()")];
         }
 
         if (method.Name == "WithCulture" && Implements(method.ContainingType, LocalizerContract.MetadataName))
@@ -1194,7 +1203,7 @@ internal sealed class FlowEvaluator(
 
         if (receiver is FlowValue.Service service)
         {
-            return _run.TryGetImplementation(service.Interface, out var implementation)
+            return _run.TryGetImplementation(service.Interface, _test, out var implementation)
                 ? Dispatch(method, new FlowValue.Allocated(implementation, null, null))
                 : null;
         }
@@ -1343,7 +1352,7 @@ internal sealed class FlowEvaluator(
 
         if (type.ToDisplayString() == LocaleFactoryMetadataName)
         {
-            return [new FlowValue.Factory(true, $"the injected {where.Name}")];
+            return [RegisteredFactory($"the injected {where.Name}")];
         }
 
         if (type is INamedTypeSymbol { TypeKind: TypeKind.Interface } service)
@@ -1353,7 +1362,7 @@ internal sealed class FlowEvaluator(
 
         if (type is INamedTypeSymbol { TypeKind: TypeKind.Class } requested)
         {
-            if (_run.TryGetImplementation(requested.OriginalDefinition, out var implementation))
+            if (_run.TryGetImplementation(requested.OriginalDefinition, _test, out var implementation))
             {
                 return [new FlowValue.Allocated(implementation, null, null)];
             }
@@ -1365,6 +1374,12 @@ internal sealed class FlowEvaluator(
 
         return [new FlowValue.Gap(LocaleGapKind.Reflection, where.Name)];
     }
+
+    // The factory the host registers reads the files the run reads, unless the test the path runs in registers a factory of its own.
+    private FlowValue RegisteredFactory(string detail)
+        => _test is { } test && test.GetTypeByMetadataName(LocaleFactoryMetadataName) is { } factory && _run.Registers(test, factory)
+            ? new FlowValue.Gap(LocaleGapKind.CustomFactory, $"the {factory.Name} {test.AssemblyName} registers")
+            : new FlowValue.Factory(true, detail);
 
     private static ITypeSymbol? Requested(IInvocationOperation invocation)
         => invocation.TargetMethod.TypeArguments is [var typeArgument]
