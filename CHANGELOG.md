@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.25`
 
-*Unreleased*
+*November 17, 2026*
 
 - LOC0217 holds a type to entries of its own, as LOC0119 does. A type that a `$shared` block above it reaches in one
   culture and nothing reaches in another is reported in the second, where the block's entries kept every rule silent
