@@ -17,20 +17,28 @@ public sealed class LocaleFlow
     private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> _memo = new();
     private readonly ConcurrentDictionary<(SymbolKey Member, SymbolKey? Instance), IReadOnlyList<FlowValue>> _analysisMemo = new();
 
-    /// <summary>Reads the run's projects and binds the hints its configuration names.</summary>
+    /// <summary>Reads the run's projects and binds the hints it reads.</summary>
     /// <param name="projects">Every project the run loaded.</param>
-    /// <param name="hints">Every member hint the run's configuration names.</param>
-    public LocaleFlow(IReadOnlyList<LoadedProject> projects, IReadOnlyList<LocaleMemberHint> hints)
+    /// <param name="hints">Every member hint the run reads.</param>
+    /// <param name="keyHints">Every key hint the run reads.</param>
+    public LocaleFlow(IReadOnlyList<LoadedProject> projects, IReadOnlyList<LocaleMemberHint> hints, IReadOnlyList<LocaleKeyHint> keyHints)
     {
         ArgumentNullException.ThrowIfNull(projects);
         ArgumentNullException.ThrowIfNull(hints);
+        ArgumentNullException.ThrowIfNull(keyHints);
 
-        _run = new FlowRun(projects, hints);
+        _run = new FlowRun(projects, hints, keyHints);
+        KeyedMethods = _run.KeyHints.IsEmpty
+            ? KeyedMethods.None
+            : new KeyedMethods(_run.KeyHints.Compiled.Select(keyed => keyed.Method.Name).ToHashSet(StringComparer.Ordinal), method => _run.KeyHints.Of(method)?.KeyOrdinal);
     }
 
-    /// <summary>What is wrong in the hints, and where the flow contradicts one, as far as the lookups resolved so far tell.</summary>
+    /// <summary>The methods a key hint binds that no project of the run builds, each call to which is a lookup of its key.</summary>
+    public KeyedMethods KeyedMethods { get; }
+
+    /// <summary>What is wrong in the hints, and where the flow or a method's body contradicts one, as far as the lookups resolved so far tell.</summary>
     public IReadOnlyList<LintingDiagnostic> GetDiagnostics()
-        => _run.Hints.GetDiagnostics();
+        => [.. _run.Hints.GetDiagnostics(), .. _run.KeyHints.GetDiagnostics()];
 
     /// <summary>The lookups a project's callsites made, each with the types its locale reads and the paths that ended before reaching one.</summary>
     /// <param name="project">The project, one of the run's.</param>
@@ -59,20 +67,24 @@ public sealed class LocaleFlow
     {
         var node = lookup.Receiver!;
         var model = _run.ModelOf(compilation, node.SyntaxTree);
-        var receiver = model.GetOperation(node) switch
+        var operation = model.GetOperation(node);
+
+        // A hinted call reads its locale where the hint says, and any other lookup through its receiver.
+        var isHinted = operation is IInvocationOperation called && _run.KeyHints.Of(called.TargetMethod) is not null;
+        var receiver = operation switch
         {
             IPropertyReferenceOperation indexer => indexer.Instance,
             IInvocationOperation invocation => invocation.Instance,
             _ => null,
         };
 
-        if (receiver is null || Enclosing(model, node.SpanStart) is not { } enclosing)
+        if (operation is null || receiver is null && !isHinted || Enclosing(model, node.SpanStart) is not { } enclosing)
         {
             return lookup with { Receiver = null, Gaps = [new LocaleGap(LocaleGapKind.Unsupported, node.ToString())] };
         }
 
         var evaluator = new FlowEvaluator(_run, _memo, _analysisMemo);
-        var values = evaluator.EntryFrames(compilation, enclosing, 0).SelectMany(frame => evaluator.Evaluate(receiver, frame)).ToArray();
+        var values = evaluator.EntryFrames(compilation, enclosing, 0).SelectMany(frame => isHinted ? evaluator.LocaleOf(operation, frame) : evaluator.Evaluate(receiver, frame)).ToArray();
         if (values.Length == 0)
         {
             return lookup with { Receiver = null };
@@ -165,13 +177,14 @@ public sealed class LocaleFlow
         return (origins, gaps);
     }
 
-    // The parameter a lookup writes as its key, its first argument.
-    private static IParameterSymbol? KeyParameter(IOperation lookup)
+    // The parameter a lookup writes as its key: its first argument, or the one a hint names.
+    private IParameterSymbol? KeyParameter(IOperation lookup)
     {
         IOperation? key = lookup switch
         {
             IPropertyReferenceOperation indexer => indexer.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Value,
-            IInvocationOperation invocation => invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == 0)?.Value,
+            IInvocationOperation invocation when (_run.KeyHints.Of(invocation.TargetMethod)?.KeyOrdinal ?? 0) is var ordinal
+                => invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Ordinal == ordinal)?.Value,
             _ => null,
         };
         while (key is IConversionOperation conversion)

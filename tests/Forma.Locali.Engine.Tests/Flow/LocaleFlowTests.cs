@@ -2506,6 +2506,303 @@ public sealed class LocaleFlowTests
         Assert.Empty(forwarded.ByProject);
     }
 
+    [Fact]
+    public void Should_check_a_call_to_a_compiled_method_a_hint_says_looks_its_key_up_for_the_type_its_type_argument_names()
+    {
+        // Arrange — the run holds the library's reference assembly alone, so only the hint tells what its method looks up.
+        var compilation = ReferencingLibrary("""
+            public sealed class Page
+            {
+                public LocalizableText Show() => Contoso.Widgets.Labels.Text<Page>("Today");
+            }
+            """);
+
+        // Act
+        var (lookups, _, diagnostics) = LocaleFlowTestFactory.Keyed([LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Labels", "Text", typeParameter: "TSource")], compilation);
+
+        // Assert
+        var site = Assert.Single(lookups);
+        Assert.Multiple(
+            () => Assert.Equal("Today", site.Key.Text),
+            () => Assert.Equal("Page", Assert.Single(site.Origins).Type.Name),
+            () => Assert.Equal(LocalizerArguments.Unknown, site.Arguments),
+            () => Assert.Empty(diagnostics));
+    }
+
+    [Fact]
+    public void Should_check_a_call_to_a_compiled_method_a_hint_says_looks_its_key_up_in_a_member_of_its_receiver()
+    {
+        // Arrange
+        var compilation = ReferencingLibrary("""
+            public sealed class Page(Contoso.Widgets.Toolbar toolbar)
+            {
+                public string Show() => toolbar.Label("Save");
+            }
+            """);
+
+        // Act
+        var (lookups, _, _) = LocaleFlowTestFactory.Keyed([LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Toolbar", "Label", locale: "L")], compilation);
+
+        // Assert
+        var site = Assert.Single(lookups);
+        Assert.Multiple(
+            () => Assert.Equal("Save", site.Key.Text),
+            () => Assert.Equal("Toolbar", Assert.Single(site.Origins).Type.Name));
+    }
+
+    [Fact]
+    public void Should_check_a_call_to_a_compiled_method_a_hint_says_looks_its_key_up_in_a_locale_it_is_passed()
+    {
+        // Arrange
+        var compilation = ReferencingLibrary("""
+            public sealed class Page(IStringLocale<Page> locale)
+            {
+                public string Show() => Contoso.Widgets.Labels.Translate(locale, "Close");
+            }
+            """);
+
+        // Act
+        var (lookups, _, _) = LocaleFlowTestFactory.Keyed([LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Labels", "Translate", locale: "locale")], compilation);
+
+        // Assert
+        var site = Assert.Single(lookups);
+        Assert.Multiple(
+            () => Assert.Equal("Close", site.Key.Text),
+            () => Assert.Equal("Page", Assert.Single(site.Origins).Type.Name));
+    }
+
+    [Fact]
+    public void Should_follow_a_key_a_method_passes_on_to_a_compiled_method_a_hint_names()
+    {
+        // Arrange
+        var compilation = ReferencingLibrary("""
+            public sealed class Page
+            {
+                private static LocalizableText Title(string key) => Contoso.Widgets.Labels.Text<Page>(key);
+
+                public LocalizableText Show() => Title("Today");
+            }
+            """);
+
+        // Act
+        var (_, forwarded, _) = LocaleFlowTestFactory.Keyed([LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Labels", "Text", typeParameter: "TSource")], compilation);
+
+        // Assert
+        var site = Assert.Single(Assert.Single(forwarded.ByProject).Value);
+        Assert.Multiple(
+            () => Assert.Equal("Today", site.Key.Text),
+            () => Assert.Equal("Page", Assert.Single(site.Origins).Type.Name),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_check_a_call_to_each_overload_of_a_compiled_method_a_hint_names()
+    {
+        // Arrange
+        var compilation = ReferencingLibrary("""
+            public sealed class Page
+            {
+                public string Show() => Contoso.Widgets.Captions.Caption<Page>("Today") + Contoso.Widgets.Captions.Caption<Page>("Stored {Count}", 3);
+            }
+            """);
+
+        // Act
+        var (lookups, _, diagnostics) = LocaleFlowTestFactory.Keyed([LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Captions", "Caption", typeParameter: "TSource")], compilation);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(["Stored {Count}", "Today"], lookups.Select(site => site.Key.Text).Order(StringComparer.Ordinal)),
+            () => Assert.All(lookups, site => Assert.Equal("Page", Assert.Single(site.Origins).Type.Name)),
+            () => Assert.Empty(diagnostics));
+    }
+
+    [Fact]
+    public void Should_leave_a_call_to_a_compiled_method_no_hint_names_unread()
+    {
+        // Arrange
+        var compilation = ReferencingLibrary("""
+            public sealed class Page
+            {
+                public LocalizableText Show() => Contoso.Widgets.Labels.Text<Page>("Today");
+            }
+            """);
+
+        // Act
+        var (lookups, _, _) = LocaleFlowTestFactory.Keyed([], compilation);
+
+        // Assert
+        Assert.Empty(lookups);
+    }
+
+    [Fact]
+    public void Should_answer_for_a_librarys_consumers_where_a_hint_its_method_bears_out_says_the_method_looks_its_key_up()
+    {
+        // Act — the run's own call is checked, and the hint answers for the calls its consumers make, which their own runs read.
+        var (_, forwarded, diagnostics) = LocaleFlowTestFactory.Keyed(
+            [LocaleFlowTestFactory.KeyHint("Scratch", "Scratch.Labels", "Label", typeParameter: "TSource")],
+            CompilationTestFactory.Referenced($$"""
+                {{Usings}}namespace Scratch;
+
+                public static class Labels
+                {
+                    public static LocalizableText Label<TSource>(string key) => LocalizableText.For<TSource>(key);
+                }
+
+                internal sealed class Page
+                {
+                    public LocalizableText Show() => Labels.Label<Page>("Today");
+                }
+                """));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("Today", Assert.Single(Assert.Single(forwarded.ByProject).Value).Key.Text),
+            () => Assert.Empty(forwarded.Unforwarded),
+            () => Assert.Empty(diagnostics));
+    }
+
+    [Fact]
+    public void Should_bear_out_a_hint_for_a_method_passing_its_key_on_to_one_that_looks_it_up()
+    {
+        // Act — the public method passes the key and its type on to a private one, which looks it up.
+        var (_, forwarded, diagnostics) = LocaleFlowTestFactory.Keyed(
+            [LocaleFlowTestFactory.KeyHint("Scratch", "Scratch.Labels", "Label", typeParameter: "TSource")],
+            CompilationTestFactory.Referenced($$"""
+                {{Usings}}namespace Scratch;
+
+                public static class Labels
+                {
+                    public static LocalizableText Label<TSource>(string key) => Text<TSource>(key);
+
+                    private static LocalizableText Text<TPage>(string text) => LocalizableText.For<TPage>(text);
+                }
+                """));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(diagnostics),
+            () => Assert.Empty(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_report_a_hint_for_a_method_passing_its_key_on_with_another_type()
+    {
+        // Act
+        var (_, _, diagnostics) = LocaleFlowTestFactory.Keyed(
+            [LocaleFlowTestFactory.KeyHint("Scratch", "Scratch.Labels", "Label", typeParameter: "TSource")],
+            CompilationTestFactory.Referenced($$"""
+                {{Usings}}namespace Scratch;
+
+                public static class Labels
+                {
+                    public static LocalizableText Label<TSource>(string key) => Text<Other>(key);
+
+                    private static LocalizableText Text<TPage>(string text) => LocalizableText.For<TPage>(text);
+                }
+
+                public sealed class Other;
+                """));
+
+        // Assert
+        Assert.Contains("looks 'key' up in another locale", Assert.Single(diagnostics).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_report_a_hint_a_methods_body_contradicts_and_leave_its_key_unread()
+    {
+        // Act — the body looks the key up only when it is not raw text, which the text decides and the flow cannot tell.
+        var (_, forwarded, diagnostics) = LocaleFlowTestFactory.Keyed(
+            [LocaleFlowTestFactory.KeyHint("Scratch", "Scratch.Labels", "Label", locale: "locale")],
+            CompilationTestFactory.Referenced($$"""
+                {{Usings}}namespace Scratch;
+
+                public static class Labels
+                {
+                    public static string Label(IStringLocale locale, string key) => key.StartsWith("raw:") ? key[4..] : locale[key].Value;
+                }
+                """));
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.ConflictingHint, diagnostic.Code),
+            () => Assert.Contains("disagrees with its body", diagnostic.Message, StringComparison.Ordinal),
+            () => Assert.Single(forwarded.Unforwarded));
+    }
+
+    [Fact]
+    public void Should_report_a_hint_naming_a_method_whose_body_reads_its_locale_elsewhere()
+    {
+        // Act
+        var (_, _, diagnostics) = LocaleFlowTestFactory.Keyed(
+            [LocaleFlowTestFactory.KeyHint("Scratch", "Scratch.Labels", "Label", locale: "first")],
+            CompilationTestFactory.Referenced($$"""
+                {{Usings}}namespace Scratch;
+
+                public static class Labels
+                {
+                    public static string Label(IStringLocale first, IStringLocale second, string key) => second[key].Value;
+                }
+                """));
+
+        // Assert
+        Assert.Contains("looks 'key' up in another locale", Assert.Single(diagnostics).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_report_a_hint_naming_a_method_its_type_does_not_declare()
+    {
+        // Arrange
+        var compilation = ReferencingLibrary("public sealed class Page;");
+
+        // Act
+        var (_, _, diagnostics) = LocaleFlowTestFactory.Keyed([LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Labels", "Missing", typeParameter: "TSource")], compilation);
+
+        // Assert
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.InvalidHint, diagnostic.Code),
+            () => Assert.Equal("'Missing' is not a method of 'Contoso.Widgets.Labels' taking text as 'key', so the hint relates nothing.", diagnostic.Message));
+    }
+
+    [Fact]
+    public void Should_report_a_hint_naming_a_method_a_call_may_run_an_override_of()
+    {
+        // Arrange
+        var compilation = ReferencingLibrary("public sealed class Page;");
+
+        // Act
+        var (_, _, diagnostics) = LocaleFlowTestFactory.Keyed([LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Toolbar", "Hint", locale: "L")], compilation);
+
+        // Assert
+        Assert.Equal(LintingCodes.InvalidHint, Assert.Single(diagnostics).Code);
+    }
+
+    [Fact]
+    public void Should_report_two_hints_relating_one_method_differently_and_apply_neither()
+    {
+        // Arrange
+        var compilation = ReferencingLibrary("""
+            public sealed class Page
+            {
+                public LocalizableText Show() => Contoso.Widgets.Labels.Pair<Page, Page>("Today");
+            }
+            """);
+
+        // Act
+        var (lookups, _, diagnostics) = LocaleFlowTestFactory.Keyed(
+            [
+                LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Labels", "Pair", typeParameter: "TSource", line: 1),
+                LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Labels", "Pair", typeParameter: "TOther", line: 2),
+            ],
+            compilation);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(lookups),
+            () => Assert.Equal(2, diagnostics.Count(diagnostic => diagnostic.Code == LintingCodes.ConflictingHint)));
+    }
+
     private const string Usings = """
         using System;
 
@@ -2616,6 +2913,43 @@ public sealed class LocaleFlowTests
                 public void Show() => _ = L["Today"];
             }
             """);
+
+    // A library whose methods look a key up, compiled to the reference assembly the build hands its consumers, holding no body.
+    private static Compilation ReferencingLibrary(string declarations)
+    {
+        var library = CompilationTestFactory.Referenced("""
+            using Forma.Framework.Localization;
+
+            namespace Contoso.Widgets;
+
+            public static class Labels
+            {
+                public static LocalizableText Text<TSource>(string key) => LocalizableText.For<TSource>(key);
+
+                public static LocalizableText Pair<TSource, TOther>(string key) => LocalizableText.For<TOther>(key);
+
+                public static string Translate(IStringLocale locale, string key) => locale[key].Value;
+            }
+
+            public static class Captions
+            {
+                public static string Caption<TSource>(string key) => LocalizableText.For<TSource>(key).ToString()!;
+
+                public static string Caption<TSource>(string key, params object[] values) => LocalizableText.For<TSource>(key, values).ToString()!;
+            }
+
+            public class Toolbar(IStringLocale<Toolbar> locale)
+            {
+                public IStringLocale<Toolbar> L => locale;
+
+                public string Label(string key) => L[key].Value;
+
+                public virtual string Hint(string key) => L[key].Value;
+            }
+            """).WithAssemblyName("Contoso.Widgets");
+
+        return CompilationTestFactory.Referenced($"{Usings}namespace Scratch;\n\n{declarations}").AddReferences(CompilationTestFactory.MetadataOf(library));
+    }
 
     private static Compilation ComponentLibrary()
         => CompilationTestFactory.Referenced($$"""

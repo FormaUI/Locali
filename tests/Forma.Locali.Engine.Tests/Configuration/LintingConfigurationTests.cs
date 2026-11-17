@@ -404,6 +404,31 @@ public sealed class LintingConfigurationTests
     }
 
     [Fact]
+    public void Should_read_the_key_hints_a_package_carries_and_leave_out_one_naming_an_assembly_it_does_not_ship()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(Path.Combine("packages", "contoso.widgets", "1.0.0", LocaleHintsFile.FileName), """
+            {
+              "localeKeys": [
+                { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Component", "method": "T", "parameter": "key", "locale": "L" },
+                { "assembly": "Contoso.Other", "type": "Contoso.Other.Component", "method": "T", "parameter": "key", "locale": "L" }
+              ]
+            }
+            """);
+
+        // Act
+        var hints = new LintingConfiguration(directory.Root).ReadHints([Package(directory)]);
+
+        // Assert
+        var hint = Assert.Single(hints.LocaleKeys);
+        var diagnostic = Assert.Single(hints.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(("Contoso.Widgets.Component.T", true), (hint.MethodName, hint.IsPackaged)),
+            () => Assert.Equal((LintingCodes.InvalidHint, LintingSeverity.Warning), (diagnostic.Code, diagnostic.Severity)));
+    }
+
+    [Fact]
     public void Should_report_a_librarys_hint_naming_an_assembly_the_library_does_not_build()
     {
         // Arrange — the hints a library ships speak for its own code alone.

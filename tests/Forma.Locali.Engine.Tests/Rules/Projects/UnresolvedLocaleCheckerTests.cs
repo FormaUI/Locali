@@ -149,6 +149,6 @@ public sealed class UnresolvedLocaleCheckerTests
             .Lint(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)], TestContext.Current.CancellationToken)
             .Callsites;
 
-        return ProjectLinterTestFactory.Check(new UnresolvedLocaleChecker(), project, localizationFiles, new LocaleFlow([project], hints).Resolve(project, sites));
+        return ProjectLinterTestFactory.Check(new UnresolvedLocaleChecker(), project, localizationFiles, new LocaleFlow([project], hints, []).Resolve(project, sites));
     }
 }

@@ -19,4 +19,11 @@ public interface ISourceLinter
     /// <param name="forwarded">The lookups the calls make.</param>
     /// <param name="unforwarded">The keys some call writes otherwise, or that no call of the run writes at all.</param>
     IReadOnlyList<LintingDiagnostic> Lint(IReadOnlyList<LocalizerLookup> forwarded, IReadOnlyList<ForwardedKey> unforwarded);
+
+    /// <summary>Lints a project's calls to the methods a hint states look a parameter up as a key, which no project of the run builds, as lookups of their keys.</summary>
+    /// <param name="project">The loaded project.</param>
+    /// <param name="files">The files the run reports on, as full paths.</param>
+    /// <param name="keyed">The methods the hints state look a key up.</param>
+    /// <param name="cancellationToken">Stops the walk.</param>
+    SourceLintResult LintKeyed(LoadedProject project, IReadOnlyCollection<string> files, KeyedMethods keyed, CancellationToken cancellationToken = default);
 }

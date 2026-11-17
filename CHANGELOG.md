@@ -18,6 +18,13 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   with nothing to write, and what is wrong in a package's file is reported as a warning, since the run cannot change it.
   A library's file, at its project or its package, names only the assemblies the library builds or ships, and LOC0028
   reports a hint for another.
+- A `localeKeys` hint names a method that looks a parameter up as a key, every overload alike, and where the locale it
+  reads comes from: a `locale` parameter or member, or a `typeParameter`. Where a project of the run builds the method,
+  the hint is held to its body, LOC0029 reporting one the body does not bear out, and a hint it bears out answers for a
+  library's consumers, so LOC0208 no longer reports a public helper's key as one they may write. Where the run only
+  references the method, as an application restoring the library's package, every call to it is a lookup of its key,
+  checked in that locale, followed through a method passing its own parameter on, and reported as LOC0208 where it is an
+  expression.
 
 ## `1.0.0-preview.21`
 

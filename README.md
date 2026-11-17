@@ -200,10 +200,10 @@ one way it goes, so a call the method returns from before the lookup looks nothi
 condition on anything but the key leaves the lookup as reachable as one written under it. The
 key is reported as an expression where a call reaching the lookup writes it otherwise; where
 calls the run cannot see may write it: through a delegate, a base or an interface method, or
-from outside a library; and where a call's text may not be what the lookup reads: a condition on
-the key the flow cannot settle, such as `key.StartsWith("raw:")`, stands between the call and
-the lookup, or the method writes the parameter first, or reads it in a lambda, a local function
-or a handler.
+from outside a library, unless a key hint the method's body bears out names it; and where a
+call's text may not be what the lookup reads: a condition on the key the flow cannot settle,
+such as `key.StartsWith("raw:")`, stands between the call and the lookup, or the method writes
+the parameter first, or reads it in a lambda, a local function or a handler.
 
 A lookup through Microsoft's `IStringLocalizer`, written as `localizer["Checkout"]` with a
 literal key, is a lookup of Forma's where the run has Forma's adapter answer it: its product
@@ -232,14 +232,18 @@ of a conditional, whether locales, objects holding them, or delegates returning 
 held to it for certain.
 
 What the walk cannot read, a hint states: a member whose locale is read for the type another
-member of the same instance returns, as `FormaComponentBase.L` is for `LocaleSourceType`. The
-walk still runs first, without hints, and a hint is verified where it reaches the same type, set
-aside and reported where it reaches another, and used where it reaches none, as over a compiled
-library, where the type member's getter is read in the compiled code of the assembly the build
-runs. An application writes its own hints in `.locali.json`; a library keeps its hints in a
-`.locali-hints.json` at its project's root, which a run building the library reads and holds to
-its code, and ships it at its package's root, where every run restoring the package reads it
-unasked; a library's file speaks for its own assemblies alone. Nothing is written into the code.
+member of the same instance returns, as `FormaComponentBase.L` is for `LocaleSourceType`, or a
+method that looks a parameter up as a key, in the locale a parameter or a member holds or for
+the type a type parameter names. The walk still runs first, without hints, and a hint is
+verified where it reaches the same type, set aside and reported where it reaches another, and
+used where it reaches none, as over a compiled library, where the type member's getter is read
+in the compiled code of the assembly the build runs. A key hint is held to the method's body
+where the run builds it, and answers there for the calls a library's consumers make; where the
+run only references the method, every call to it is a lookup of its key. An application writes
+its own hints in `.locali.json`; a library keeps its hints in a `.locali-hints.json` at its
+project's root, which a run building the library reads and holds to its code, and ships it at
+its package's root, where every run restoring the package reads it unasked; a library's file
+speaks for its own assemblies alone. Nothing is written into the code.
 
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no

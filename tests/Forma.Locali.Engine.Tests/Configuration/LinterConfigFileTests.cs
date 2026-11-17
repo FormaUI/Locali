@@ -38,6 +38,53 @@ public sealed class LinterConfigFileTests
     }
 
     [Fact]
+    public void Should_read_the_hints_entrys_key_hints()
+    {
+        // Arrange
+        var document = LinterConfigFileTestFactory.Read("""
+            {
+              "hints": {
+                "localeKeys": [
+                  { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Component", "method": "T", "parameter": "key", "locale": "L" },
+                  { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Labels", "method": "Text", "parameter": "key", "typeParameter": "TSource" }
+                ]
+              }
+            }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(
+                [("T", "key", "L", null), ("Text", "key", null, "TSource")],
+                document.LocaleKeys.Select(key => (key.Method, key.Parameter, key.Locale, key.TypeParameter))),
+            () => Assert.Empty(document.MalformedValues));
+    }
+
+    [Fact]
+    public void Should_flag_a_key_hint_naming_both_a_locale_and_a_type_parameter()
+    {
+        // Arrange
+        var document = LinterConfigFileTestFactory.Read("""
+            { "hints": { "localeKeys": [{ "assembly": "Contoso", "type": "Contoso.Labels", "method": "Text", "parameter": "key", "locale": "L", "typeParameter": "TSource" }] } }
+            """);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(document.LocaleKeys),
+            () => Assert.StartsWith("a method names both its 'locale' and its 'typeParameter'", Assert.Single(document.MalformedValues).Reason, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Should_flag_a_key_hint_naming_where_its_locale_comes_from_nowhere()
+    {
+        // Arrange
+        var document = LinterConfigFileTestFactory.Read("""{ "hints": { "localeKeys": [{ "assembly": "Contoso", "type": "Contoso.Labels", "method": "Text", "parameter": "key" }] } }""");
+
+        // Assert
+        Assert.StartsWith("a method names neither its 'locale' nor its 'typeParameter'", Assert.Single(document.MalformedValues).Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Should_flag_a_member_hint_naming_no_type_member()
     {
         // Arrange

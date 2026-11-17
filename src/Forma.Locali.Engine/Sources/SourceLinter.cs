@@ -59,10 +59,28 @@ public sealed class SourceLinter(
             return new SourceLintResult(diagnostics, []);
         }
 
-        var lookups = Walk(compilation, files, cancellationToken);
+        return Checked(Walk(compilation, files, static (finder, compilation, tree) => finder.Find(compilation, tree), cancellationToken), diagnostics, cancellationToken);
+    }
 
-        // Each site parses its own key, so the rules run as wide as the walk that found them; a lookup through Microsoft's localizer
-        // reads its key by that contract, which the rules do not read.
+    /// <inheritdoc />
+    public SourceLintResult LintKeyed(LoadedProject project, IReadOnlyCollection<string> files, KeyedMethods keyed, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(keyed);
+
+        if (keyed.IsEmpty || project.Compilation is not { } compilation)
+        {
+            return new SourceLintResult([], []);
+        }
+
+        return Checked(Walk(compilation, files, (finder, compilation, tree) => finder.FindKeyed(compilation, tree, keyed), cancellationToken), [], cancellationToken);
+    }
+
+    // Each site parses its own key, so the rules run as wide as the walk that found them; a lookup through Microsoft's localizer reads its
+    // key by that contract, which the rules do not read.
+    private SourceLintResult Checked(LocalizerLookups lookups, List<LintingDiagnostic> diagnostics, CancellationToken cancellationToken)
+    {
         diagnostics.AddRange(lookups.Lookups
             .Where(site => !site.UsesStringLocalizer)
             .AsParallel()
@@ -113,7 +131,7 @@ public sealed class SourceLinter(
             LintingCodes.InterpolatedKey,
             "The lookup's key is an interpolated string, so the formatted text becomes the key and no entry matches it; write the key as a literal and pass the values positionally.");
 
-    private LocalizerLookups Walk(Compilation compilation, IReadOnlyCollection<string> files, CancellationToken cancellationToken)
+    private LocalizerLookups Walk(Compilation compilation, IReadOnlyCollection<string> files, Func<ILocalizerCallsiteFinder, Compilation, SyntaxTree, LocalizerLookups> find, CancellationToken cancellationToken)
     {
         // The semantic finder is asked first, so a syntactic one answers only where the contract does not bind.
         if (_finders.FirstOrDefault(candidate => candidate.CanRead(compilation)) is not { } finder)
@@ -125,7 +143,7 @@ public sealed class SourceLinter(
         var found = compilation.SyntaxTrees
             .AsParallel()
             .WithCancellation(cancellationToken)
-            .Select(tree => finder.Find(compilation, tree))
+            .Select(tree => find(finder, compilation, tree))
             .ToArray();
 
         // A forwarded key is kept whichever file holds it, since a call in a file the run named may write it.

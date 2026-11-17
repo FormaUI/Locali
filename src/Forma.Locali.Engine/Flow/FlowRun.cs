@@ -36,11 +36,13 @@ internal sealed class FlowRun
 
     /// <summary>Reads the run's projects.</summary>
     /// <param name="projects">Every project the run loaded.</param>
-    /// <param name="hints">Every member hint the run's configuration names.</param>
-    public FlowRun(IReadOnlyList<LoadedProject> projects, IReadOnlyList<LocaleMemberHint> hints)
+    /// <param name="hints">Every member hint the run reads.</param>
+    /// <param name="keyHints">Every key hint the run reads.</param>
+    public FlowRun(IReadOnlyList<LoadedProject> projects, IReadOnlyList<LocaleMemberHint> hints, IReadOnlyList<LocaleKeyHint> keyHints)
     {
         ArgumentNullException.ThrowIfNull(projects);
         ArgumentNullException.ThrowIfNull(hints);
+        ArgumentNullException.ThrowIfNull(keyHints);
 
         foreach (var project in projects.OrderBy(project => project.Path, StringComparer.Ordinal))
         {
@@ -53,6 +55,7 @@ internal sealed class FlowRun
         Compilations = [.. _projects.Keys];
         Hints = new LocaleMemberHints(Compilations, hints);
         _usesStringLocalizer = new(ReadUsesStringLocalizer);
+        KeyHints = new LocaleKeyHints(this, keyHints);
     }
 
     /// <summary>The compilation of every project of the run, ordered by the project's path.</summary>
@@ -60,6 +63,9 @@ internal sealed class FlowRun
 
     /// <summary>The member hints the run applies.</summary>
     public LocaleMemberHints Hints { get; }
+
+    /// <summary>The key hints the run applies.</summary>
+    public LocaleKeyHints KeyHints { get; }
 
     /// <summary>Whether the run uses Microsoft's string localizer through Forma's adapter: its product code registers the adapter, ahead of any of Microsoft's localization, and registers neither contract in the adapter's place.</summary>
     public bool UsesStringLocalizer

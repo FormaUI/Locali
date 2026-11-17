@@ -383,7 +383,7 @@ public sealed class LocalizationCoverageCheckerTests
             .Lint(project, [.. project.Compilation!.SyntaxTrees.Select(tree => tree.FilePath)], TestContext.Current.CancellationToken)
             .Callsites;
 
-        return ProjectLinterTestFactory.Check(new LocalizationCoverageChecker(), project, localizationFiles, new LocaleFlow([project], [LocaleFlowTestFactory.Hint("Scratch", "Scratch.Widget")]).Resolve(project, sites));
+        return ProjectLinterTestFactory.Check(new LocalizationCoverageChecker(), project, localizationFiles, new LocaleFlow([project], [LocaleFlowTestFactory.Hint("Scratch", "Scratch.Widget")], []).Resolve(project, sites));
     }
 
     private static ValueTask<IReadOnlyList<LintingDiagnostic>> LintAsync(

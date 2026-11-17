@@ -334,12 +334,17 @@ public sealed class MSBuildProjectLoaderTests
                 protected virtual Type LocaleSourceType => GetType();
 
                 protected IStringLocale L => null!;
+
+                protected string T(string key) => L[key].Value;
             }
             """);
         directory.Write(Path.Combine("Library", ".locali-hints.json"), """
             {
               "localeMembers": [
                 { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Component", "member": "L", "typeMember": "LocaleSourceType" }
+              ],
+              "localeKeys": [
+                { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Component", "method": "T", "parameter": "key", "locale": "L" }
               ]
             }
             """);
@@ -362,6 +367,8 @@ public sealed class MSBuildProjectLoaderTests
             public sealed class Widget : Contoso.Widgets.Component
             {
                 public string Show() => L["Tomorrow"].Value;
+
+                public string Label() => T("Yesterday");
             }
             """);
         directory.Write(Path.Combine("App", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
@@ -379,6 +386,7 @@ public sealed class MSBuildProjectLoaderTests
             () => Assert.Equal(1, exitCode),
             () => Assert.Contains(LintingCodes.MissingLocalization.Id, output, StringComparison.Ordinal),
             () => Assert.Contains("'Tomorrow' has no entry", output, StringComparison.Ordinal),
+            () => Assert.Contains("'Yesterday' has no entry", output, StringComparison.Ordinal),
             () => Assert.Contains(Path.Combine("contoso.widgets", "1.0.0", ".locali-hints.json") + ":3'", output, StringComparison.Ordinal));
     }
 

@@ -151,7 +151,21 @@ public sealed class LintingService(
         // A lookup's locale is followed across the projects of the run, so its types wait for every project as well, with the hints
         // each project carries and those of each package the run's projects restored, found where they restored it.
         var hints = _lintingConfiguration.ReadHints(Libraries(projects.All));
-        var flow = new LocaleFlow(projects.All, hints.LocaleMembers);
+        var flow = new LocaleFlow(projects.All, hints.LocaleMembers, hints.LocaleKeys);
+
+        // A call to a method a hint states looks a parameter up as a key, which no project of the run builds, is a lookup of its key.
+        if (!flow.KeyedMethods.IsEmpty)
+        {
+            for (var index = 0; index < linted.Count; index++)
+            {
+                var (project, sources) = linted[index];
+                var keyed = _sources.LintKeyed(project, wanted, flow.KeyedMethods, cancellationToken);
+                linted[index] = (project, new SourceLintResult([.. sources.Diagnostics, .. keyed.Diagnostics], [.. sources.Callsites, .. keyed.Callsites])
+                {
+                    ForwardedKeys = [.. sources.ForwardedKeys, .. keyed.ForwardedKeys],
+                });
+            }
+        }
 
         // A type's entries are read from its own assembly's project, so every project's files are resolved before any rule reads them.
         var localizations = RunLocalizations.Resolve(_localeFormat.RuntimeFormat, projects.All, target.LocalizationFilesOf, packs, builtAssemblies);

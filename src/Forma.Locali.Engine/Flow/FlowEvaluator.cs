@@ -144,8 +144,11 @@ internal sealed class FlowEvaluator(
 
         try
         {
-            var isComplete = !IsCalledUnseen(sourceMethod, methodCompilation);
-            var reaches = false;
+            // A hint the body bears out answers for a library's consumers, whose runs read the calls they make, so the method's key is
+            // written whether or not the run calls it.
+            var isAnswered = IsLibraryMember(sourceMethod, methodCompilation) && _run.KeyHints.Answers(sourceMethod);
+            var isComplete = !IsDispatched(sourceMethod) && (!IsLibraryMember(sourceMethod, methodCompilation) || isAnswered);
+            var reaches = isAnswered;
             foreach (var compilation in _run.Compilations)
             {
                 foreach (var call in _run.CallsOf(sourceMethod, compilation))
@@ -254,22 +257,55 @@ internal sealed class FlowEvaluator(
         }
     }
 
-    // The locale a lookup reads in a frame: its receiver's, or the type LocalizableText.For names.
-    private IReadOnlyList<FlowValue> LocaleOf(IOperation lookup, FlowFrame frame)
+    /// <summary>The locale a lookup reads in a frame: its receiver's, the type <c>LocalizableText.For</c> names, or where a hint says a hinted call reads it.</summary>
+    /// <param name="lookup">The lookup: an indexer, a call to Resolve or to <c>LocalizableText.For</c>, or a call to a hinted method.</param>
+    /// <param name="frame">The frame the lookup runs in.</param>
+    public IReadOnlyList<FlowValue> LocaleOf(IOperation lookup, FlowFrame frame)
         => lookup switch
         {
+            IInvocationOperation invocation when _run.KeyHints.Of(invocation.TargetMethod) is { } keyed => KeyedLocale(invocation, keyed, frame),
             IInvocationOperation { TargetMethod: { Name: LocalizerContract.LocalizableTextMethod, TypeArguments: [var type] } } => Locale(Named(type, frame, $"LocalizableText.For<{type.Name}>")),
             IPropertyReferenceOperation { Instance: { } receiver } => Evaluate(receiver, frame),
             IInvocationOperation { Instance: { } receiver } => Evaluate(receiver, frame),
             _ => [new FlowValue.Gap(LocaleGapKind.Unsupported, Describe(lookup))],
         };
 
-    // A virtual method, one implementing an interface, or a public one of a library, is called where the run's calls of it do not show.
-    private static bool IsCalledUnseen(IMethodSymbol method, Compilation compilation)
+    // The locale a hinted call reads, where its hint says: the type a type argument names, the locale a parameter is passed, or the locale
+    // a member of the call's receiver holds, which a generic locale names outright.
+    private IReadOnlyList<FlowValue> KeyedLocale(IInvocationOperation invocation, KeyedMethod keyed, FlowFrame frame)
+    {
+        if (keyed.TypeParameter is { } typeParameter)
+        {
+            var type = invocation.TargetMethod.TypeArguments[typeParameter];
+
+            return Locale(Named(type, frame, $"{invocation.TargetMethod.Name}<{type.Name}>"));
+        }
+
+        if (keyed.LocaleParameter is { } localeParameter)
+        {
+            return ArgumentFor(invocation.Arguments, localeParameter) is { } argument
+                ? Evaluate(argument, frame)
+                : [new FlowValue.Gap(LocaleGapKind.Unsupported, Describe(invocation))];
+        }
+
+        var member = keyed.LocaleMember!;
+        if (Generic(member is IPropertySymbol { Type: var propertyType } ? propertyType : ((IFieldSymbol)member).Type) is { } generic)
+        {
+            return Locale(Named(generic, frame, $"IStringLocale<{generic.Name}>"));
+        }
+
+        return member is IPropertySymbol property ? EvaluateProperty(property, invocation.Instance, frame) : EvaluateMember(member, invocation.Instance, frame);
+    }
+
+    // A virtual method, or one implementing an interface, is called through a declaration the run's calls of it do not name.
+    private static bool IsDispatched(IMethodSymbol method)
         => method.IsVirtual || method.IsOverride || method.IsAbstract
-            || IsReachableFromOutside(method) && compilation.Options.OutputKind == OutputKind.DynamicallyLinkedLibrary
             || method.ContainingType.AllInterfaces.SelectMany(face => face.GetMembers()).OfType<IMethodSymbol>()
                 .Any(member => SymbolEqualityComparer.Default.Equals(method.ContainingType.FindImplementationForInterfaceMember(member), method));
+
+    // A public method of a library is called by its consumers, outside the run.
+    private static bool IsLibraryMember(IMethodSymbol method, Compilation compilation)
+        => IsReachableFromOutside(method) && compilation.Options.OutputKind == OutputKind.DynamicallyLinkedLibrary;
 
     private static IOperation? Unconverted(IOperation? operation)
     {
@@ -609,10 +645,11 @@ internal sealed class FlowEvaluator(
     }
 
     private IReadOnlyList<FlowValue> EvaluateProperty(IPropertyReferenceOperation reference, FlowFrame frame)
-    {
-        var property = reference.Property;
+        => EvaluateProperty(reference.Property, reference.Instance, frame);
 
-        IReadOnlyList<FlowValue> receivers = reference.Instance is null ? [] : Evaluate(reference.Instance, frame);
+    private IReadOnlyList<FlowValue> EvaluateProperty(IPropertySymbol property, IOperation? instance, FlowFrame frame)
+    {
+        IReadOnlyList<FlowValue> receivers = instance is null ? [] : Evaluate(instance, frame);
 
         if (property.Name == "Value" && IsType(property.ContainingType, "System", "Lazy`1"))
         {
@@ -623,11 +660,11 @@ internal sealed class FlowEvaluator(
 
         if (_verifying == 0 && _run.Hints.Of(property) is { } hint)
         {
-            return [.. (reference.Instance is null ? [frame.This ?? new FlowValue.Gap(LocaleGapKind.Unsupported, property.Name)] : receivers)
-                .SelectMany(receiver => From(receiver, Hinted(property, hint, reference.Instance, receiver, frame)))];
+            return [.. (instance is null ? [frame.This ?? new FlowValue.Gap(LocaleGapKind.Unsupported, property.Name)] : receivers)
+                .SelectMany(receiver => From(receiver, Hinted(property, hint, instance, receiver, frame)))];
         }
 
-        return EvaluateMember(property, reference.Instance, frame, receivers);
+        return EvaluateMember(property, instance, frame, receivers);
     }
 
     // A hint is held to the flow, followed without hints so that none vouches for itself or another: where the flow reaches the type

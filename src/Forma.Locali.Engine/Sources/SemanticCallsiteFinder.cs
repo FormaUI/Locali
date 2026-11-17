@@ -29,7 +29,38 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
 
         var contract = compilation.GetTypeByMetadataName(LocalizerContract.MetadataName);
 
-        return contract is null ? LocalizerLookups.Empty : Walk(compilation, tree, contract);
+        if (contract is null)
+        {
+            return LocalizerLookups.Empty;
+        }
+
+        var generic = compilation.GetTypeByMetadataName(LocalizerContract.GenericMetadataName);
+        var stringLocalizer = new StringLocalizerTypes(compilation.GetTypeByMetadataName(LocalizerContract.StringLocalizerMetadataName), compilation.GetTypeByMetadataName(LocalizerContract.StringLocalizerGenericMetadataName));
+
+        return Walk(compilation, tree, contract, Candidates(compilation, tree), operation => Lookup(operation, contract, generic, stringLocalizer));
+    }
+
+    /// <inheritdoc />
+    public LocalizerLookups FindKeyed(Compilation compilation, SyntaxTree tree, KeyedMethods keyed)
+    {
+        ArgumentNullException.ThrowIfNull(compilation);
+        ArgumentNullException.ThrowIfNull(tree);
+        ArgumentNullException.ThrowIfNull(keyed);
+
+        if (keyed.IsEmpty || compilation.GetTypeByMetadataName(LocalizerContract.MetadataName) is not { } contract)
+        {
+            return LocalizerLookups.Empty;
+        }
+
+        // A hinted call's locale is followed from the call itself, and the values it passes beside its key are the method's to use.
+        return Walk(
+            compilation,
+            tree,
+            contract,
+            KeyedCandidates(compilation, tree, keyed.Names),
+            operation => operation is IInvocationOperation invocation && keyed.KeyOrdinal(invocation.TargetMethod) is { } ordinal
+                ? new BoundLookup(invocation.Arguments, ordinal, ([], invocation.Syntax), KeyedMethod: invocation.TargetMethod, IsHinted: true)
+                : null);
     }
 
     // The operation tree is what the compiler bound, in the same shape for every language it reads, so the
@@ -51,22 +82,20 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
             _ => null,
         };
 
-    private static LocalizerLookups Walk(Compilation compilation, SyntaxTree tree, INamedTypeSymbol contract)
+    private static LocalizerLookups Walk(Compilation compilation, SyntaxTree tree, INamedTypeSymbol contract, IEnumerable<SyntaxNode> candidates, Func<IOperation, BoundLookup?> bind)
     {
         var model = compilation.GetSemanticModel(tree);
-        var generic = compilation.GetTypeByMetadataName(LocalizerContract.GenericMetadataName);
-        var stringLocalizer = new StringLocalizerTypes(compilation.GetTypeByMetadataName(LocalizerContract.StringLocalizerMetadataName), compilation.GetTypeByMetadataName(LocalizerContract.StringLocalizerGenericMetadataName));
         var lookups = new List<LocalizerLookup>();
         var unreadable = new List<FileLinePositionSpan>();
         var interpolated = new List<FileLinePositionSpan>();
         var forwarded = new List<ForwardedKey>();
 
-        foreach (var node in Candidates(compilation, tree))
+        foreach (var node in candidates)
         {
             // A lookup is read at the node its operation stands on, so a node inside it does not read it again.
             if (model.GetOperation(node) is not { } operation
                 || operation.Syntax != node
-                || Lookup(operation, contract, generic, stringLocalizer) is not { } lookup)
+                || bind(operation) is not { } lookup)
             {
                 continue;
             }
@@ -75,7 +104,9 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
             {
                 var resolved = site with { Origins = lookup.Resources.Origins, Receiver = lookup.Resources.Receiver, UsesStringLocalizer = lookup.UsesStringLocalizer };
 
-                lookups.Add(lookup.KeyedMethod is { } method ? Keyed(resolved, method, lookup.KeyOrdinal) : resolved);
+                lookups.Add(lookup.IsHinted ? resolved with { Arguments = LocalizerArguments.Unknown, IsFormatString = false }
+                    : lookup.KeyedMethod is { } method ? Keyed(resolved, method, lookup.KeyOrdinal)
+                    : resolved);
             }
             // Microsoft's localizer reads its key as its own contract defines, so only a literal one is read for an entry.
             else if (!lookup.UsesStringLocalizer
@@ -124,6 +155,18 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
         };
     }
 
+    private static IEnumerable<SyntaxNode> KeyedCandidates(Compilation compilation, SyntaxTree tree, IReadOnlySet<string> names)
+    {
+        var nodes = tree.GetRoot().DescendantNodes();
+
+        return compilation.Language switch
+        {
+            LanguageNames.CSharp => nodes.Where(node => node is CSharp.InvocationExpressionSyntax invocation && Invoked(invocation.Expression) is { } name && names.Contains(name)),
+            LanguageNames.VisualBasic => nodes.Where(IsVisualBasicCandidate),
+            _ => nodes,
+        };
+    }
+
     private static bool IsCSharpCandidate(SyntaxNode node)
         => node switch
         {
@@ -152,14 +195,15 @@ public sealed class SemanticCallsiteFinder : ILocalizerCallsiteFinder
             : generic is not null && LocalizerContract.ResourceOf(receiver.Type, generic) is { } resource ? ([new LocaleOrigin(resource, $"IStringLocale<{resource.Name}>")], lookup.Syntax)
             : ([], lookup.Syntax);
 
-    // A lookup as the compiler bound it: its arguments, the ordinal its key binds to, the types its key is read in,
-    // and the LocalizableText.For a call binds to.
+    // A lookup as the compiler bound it: its arguments, the ordinal its key binds to, the types its key is read in, the LocalizableText.For
+    // or the hinted method a call binds to, and whether it goes through Microsoft's localizer.
     private readonly record struct BoundLookup(
         ImmutableArray<IArgumentOperation> Arguments,
         int KeyOrdinal,
         (IReadOnlyList<LocaleOrigin> Origins, SyntaxNode? Receiver) Resources,
         IMethodSymbol? KeyedMethod,
-        bool UsesStringLocalizer = false);
+        bool UsesStringLocalizer = false,
+        bool IsHinted = false);
 
     // Microsoft's localizer and its generic form, where the compilation binds them.
     private readonly record struct StringLocalizerTypes(INamedTypeSymbol? Contract, INamedTypeSymbol? Generic);

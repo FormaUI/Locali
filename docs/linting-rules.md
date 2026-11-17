@@ -36,6 +36,15 @@ of its own into.
         "member": "L",
         "typeMember": "LocaleSourceType"
       }
+    ],
+    "localeKeys": [
+      {
+        "assembly": "Forma.Blazor",
+        "type": "Forma.Blazor.Components.FormaComponentBase",
+        "method": "T",
+        "parameter": "key",
+        "locale": "L"
+      }
     ]
   }
 }
@@ -71,26 +80,39 @@ generic, declaring the member; `member`, the property returning `IStringLocale`;
 written for that one declaration: a member overriding or hiding it is a declaration of its own,
 read by the flow alone, while an instance that keeps it reads the type member as its own type
 overrides it, in source or in the compiled code of the assembly the build runs, so
-`typeof(Panel)` names `Panel` and `GetType()` the instance's own type.
+`typeof(Panel)` names `Panel` and `GetType()` the instance's own type. `localeKeys` lists
+methods that look a parameter up as a key: the assembly and the type declaring the method;
+`method`, its name, every overload taking text as the parameter alike; `parameter`, the key; and
+where the locale it reads comes from, either `locale`, a parameter of the method or a property
+or field of its type returning `IStringLocale`, or `typeParameter`, a type parameter of the
+method naming the type, as `LocalizableText.For<TSource>` names it. A method a call may run an
+override of is never one: it is virtual or abstract, or an override left open.
 
 A library keeps the hints for its own members in a `.locali-hints.json` at its project's root,
-an object holding a `localeMembers` list, and ships it at its package's root: `<None
-Include=".locali-hints.json" Pack="true" PackagePath="" />`. The hints travel with the library:
-a run building it reads the file for each project of the run, unasked, so the hints are held to
-the code they describe, and a run restoring it reads the copy each package carries, unasked,
-from where each project of the run restored the version it references. A library's file names
-only the assemblies the library builds or ships, and a hint for another library's assembly is
-written in the application's `.locali.json`. What is wrong in a package's file is reported as a
-warning, since the run restoring the package cannot change it. A repository's `.locali.json`
+an object holding a `localeMembers` list and a `localeKeys` list, and ships it at its package's
+root: `<None Include=".locali-hints.json" Pack="true" PackagePath="" />`. The hints travel with
+the library: a run building it reads the file for each project of the run, unasked, so the hints
+are held to the code they describe, and a run restoring it reads the copy each package carries,
+unasked, from where each project of the run restored the version it references. A library's file
+names only the assemblies the library builds or ships, and a hint for another library's assembly
+is written in the application's `.locali.json`. What is wrong in a package's file is reported as
+a warning, since the run restoring the package cannot change it. A repository's `.locali.json`
 never travels with its packages.
 
 The flow follows a hinted member without any hint first, so no hint vouches for itself or
 another. Where it reaches the member's type on its own, the hint is verified when it reads the
 same type and set aside, which LOC0029 reports, when it reads another; where it reaches none, as
 over a compiled library, the hint's type is the one read, and a finding resting on it names the
-hint. LOC0028 reports a hint naming what is not there, LOC0029 two hints relating one member to
-different type members, which leaves it to neither, and LOC0021 a hint naming an assembly the
-run neither builds nor references.
+hint. A key hint for a method the run builds is held to the method's body, and to the body of
+each method of the run it passes the key on to: every lookup of the parameter there must be
+reached with the call's text as written on every path that text does not decide, in the locale
+the hint names, and a body that does not bear the hint out sets it aside, which LOC0029 reports.
+A hint the body bears out answers for the calls a library's consumers make, which their own runs
+read, so the method's key is not reported as one they may write; and in a run that only
+references the method, every call to it is a lookup of the key it passes, in the locale the hint
+names. LOC0028 reports a hint naming what is not there, LOC0029 two hints relating one member to
+different type members, or one method differently, which leaves it to neither, and LOC0021 a
+hint naming an assembly the run neither builds nor references.
 
 ### LOC0020 — The linting configuration cannot be read
 
@@ -272,9 +294,11 @@ repeating it is that culture again rather than part of the name. A locale file o
 **Reports.** A hint whose type is not one its assembly declares, whose member is not a property
 of that type returning `IStringLocale` or is abstract, so every instance reads an override or an
 implementation the hint was not written for, or whose type member is not a property of that
-type, or of one it derives from, returning `Type`; or a hint in a library's `.locali-hints.json`
-naming an assembly the library neither builds nor ships. It is reported where the hint is
-written, as a warning where that is a restored package's file.
+type, or of one it derives from, returning `Type`; a key hint naming no method of that type
+taking text as its parameter, a method a call may run an override of, or a locale or type
+parameter one of its overloads lacks; or a hint in a library's `.locali-hints.json` naming an
+assembly the library neither builds nor ships. It is reported where the hint is written, as a
+warning where that is a restored package's file.
 
 **Why it matters.** A hint naming nothing relates nothing, and the lookups it was written for go
 unchecked without a word, which is exactly what a typo in a member's name or a renamed type
@@ -289,18 +313,22 @@ LOC0021 reports, since the hint may be written for a run that does.
 
 ### LOC0029 — A hint disagrees
 
-**Reports.** Two hints relating one member to different type members, at each; or a hint the
-flow contradicts: where the flow, followed without hints, reaches one type for the member's
-locale on an instance, and the type member the hint names reads another, once per hint, naming
-both and the instance.
+**Reports.** Two hints relating one member to different type members, or one method's key
+differently, at each; or a hint the code contradicts: where the flow, followed without hints,
+reaches one type for the member's locale on an instance, and the type member the hint names
+reads another, once per hint, naming both and the instance; or where the body of a method a key
+hint names, in a project of the run, looks the parameter up nowhere, itself or through a method
+of the run it passes it to, only on paths its text decides or after changing it, or in another
+locale than the hint names.
 
 **Why it matters.** A run over the library's source checks the flow's type, but a run that
 cannot follow the flow, as one over the compiled library in an application, has the hint alone,
-and would hold every lookup through the member to the wrong type's files. Two disagreeing hints
-leave the member to neither, so its lookups go unchecked.
+and would hold every lookup through the member to the wrong type's files, or every call of the
+method to a key it never looks up. Two disagreeing hints leave the member to neither, so its
+lookups go unchecked.
 
-**What fixes it.** Relate the member to the type member its locale is really read for, or delete
-the hint the code no longer follows.
+**What fixes it.** Relate the member to the type member its locale is really read for, name the
+locale a method really looks its key up in, or delete the hint the code no longer follows.
 
 **Silent where.** The flow reaches no type on its own, or the type member tells none, since
 nothing then contradicts the hint; the instance overrides the hinted member, whose override the
@@ -676,11 +704,11 @@ one way it goes, so a call the method returns from before the lookup looks nothi
 condition on anything but the key leaves the lookup as reachable as one written under it. The
 key is reported as an expression where a call reaching the lookup writes it otherwise; where
 calls the run cannot see may write it: through a delegate, a base or an interface method, or
-from outside a library; and where a call's text may not be what the lookup reads: a condition on
-the key the flow cannot settle, such as `key.StartsWith("raw:")`, stands between the call and
-the lookup, or the method writes the parameter first, or reads it in a lambda, a local function
-or a handler. The values such a call passes are left uncounted, since the method may fill the
-holes itself:
+from outside a library, unless a key hint the method's body bears out names it; and where a
+call's text may not be what the lookup reads: a condition on the key the flow cannot settle,
+such as `key.StartsWith("raw:")`, stands between the call and the lookup, or the method writes
+the parameter first, or reads it in a lambda, a local function or a handler. The values such a
+call passes are left uncounted, since the method may fill the holes itself:
 
 ```csharp
 LocalizableText Title(string key) => LocalizableText.For<SectionMenu>(key);
@@ -833,11 +861,11 @@ what it does not declare; or the run did not name the project's files.
 parameter of its own method is reported where a call reaching the lookup writes it as an
 expression, or where calls the run cannot see may write it: the method is passed as a delegate,
 is virtual, implements an interface, or is a public method of a library, which its consumers
-call; or where a call's text may not be what the lookup reads: a condition on the key the flow
-cannot settle stands between the call and the lookup, where it settles a test of the text for
-being null, empty or blank, of its length, of its equality with a constant, and an ordinal test
-of its start, its end or a part of it; or the method writes the parameter first, or reads it in
-a lambda, a local function or a handler.
+call, and no key hint its body bears out names it; or where a call's text may not be what the
+lookup reads: a condition on the key the flow cannot settle stands between the call and the
+lookup, where it settles a test of the text for being null, empty or blank, of its length, of
+its equality with a constant, and an ordinal test of its start, its end or a part of it; or the
+method writes the parameter first, or reads it in a lambda, a local function or a handler.
 
 **Why it matters.** No rule can judge the key and no coverage check can count it; leaving it
 silent would let a run read as complete when part of it was never looked at.
@@ -848,7 +876,8 @@ rule reads.
 **Silent where.** The lookup sits inside a type that implements `IStringLocale`, which forwards
 the key its own caller wrote; or the key is a parameter every call reaching the lookup writes as
 text, which is checked at those calls instead, where a call writing it otherwise is one the
-method never reaches the lookup for.
+method never reaches the lookup for, and where the method is a library's public one a key hint
+its body bears out names, whose consumers' runs read the calls they make.
 
 ### LOC0209 — A key with holes and no words
 

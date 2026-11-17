@@ -103,6 +103,6 @@ public sealed class UnreadLocaleSourceCheckerTests
             .Lint(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)], TestContext.Current.CancellationToken)
             .Callsites;
 
-        return ProjectLinterTestFactory.Check(new UnreadLocaleSourceChecker(), project, localizationFiles, new LocaleFlow([project], [LocaleFlowTestFactory.Hint("Scratch", "Scratch.Component")]).Resolve(project, sites));
+        return ProjectLinterTestFactory.Check(new UnreadLocaleSourceChecker(), project, localizationFiles, new LocaleFlow([project], [LocaleFlowTestFactory.Hint("Scratch", "Scratch.Component")], []).Resolve(project, sites));
     }
 }

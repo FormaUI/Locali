@@ -35,6 +35,7 @@ public sealed class LinterConfigFile
         ExcludeFiles = excludeFiles;
         LocaleSources = localeSources;
         LocaleMembers = hints.LocaleMembers;
+        LocaleKeys = hints.LocaleKeys;
         MalformedValues = malformedValues;
     }
 
@@ -55,6 +56,9 @@ public sealed class LinterConfigFile
 
     /// <summary>Every item of the <c>localeMembers</c> list of the file's <c>hints</c> entry, in the order written.</summary>
     public IReadOnlyList<ConfigLocaleMember> LocaleMembers { get; }
+
+    /// <summary>Every item of the <c>localeKeys</c> list of the file's <c>hints</c> entry, in the order written.</summary>
+    public IReadOnlyList<ConfigLocaleKey> LocaleKeys { get; }
 
     /// <summary>Every value in the file that does not follow the shape it is read for.</summary>
     public IReadOnlyList<ConfigMalformedValue> MalformedValues { get; }
@@ -163,7 +167,7 @@ public sealed class LinterConfigFile
     {
         if (reader.TokenType != JsonTokenType.StartObject)
         {
-            malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{HintsKey}' is not an object; it holds '{LocaleHintsFile.LocaleMembersKey}'."));
+            malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{HintsKey}' is not an object; it holds '{LocaleHintsFile.LocaleMembersKey}' and '{LocaleHintsFile.LocaleKeysKey}'."));
             reader.Skip();
 
             return;
@@ -184,8 +188,11 @@ public sealed class LinterConfigFile
                 case LocaleHintsFile.LocaleMembersKey:
                     LocaleHintsFile.ReadLocaleMembers(ref reader, hints.LocaleMembers, malformedValues);
                     break;
+                case LocaleHintsFile.LocaleKeysKey:
+                    LocaleHintsFile.ReadLocaleKeys(ref reader, hints.LocaleKeys, malformedValues);
+                    break;
                 default:
-                    malformedValues.Add(new ConfigMalformedValue(nameOffset, $"'{name}' is not an entry '{HintsKey}' defines; it reads '{LocaleHintsFile.LocaleMembersKey}'."));
+                    malformedValues.Add(new ConfigMalformedValue(nameOffset, $"'{name}' is not an entry '{HintsKey}' defines; it reads '{LocaleHintsFile.LocaleMembersKey}' and '{LocaleHintsFile.LocaleKeysKey}'."));
                     reader.Skip();
                     break;
             }
@@ -334,5 +341,6 @@ public sealed class LinterConfigFile
     {
         public List<ConfigLocaleMember> LocaleMembers { get; } = [];
 
+        public List<ConfigLocaleKey> LocaleKeys { get; } = [];
     }
 }

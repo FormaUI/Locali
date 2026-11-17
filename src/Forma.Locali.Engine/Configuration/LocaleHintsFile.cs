@@ -12,17 +12,23 @@ public sealed class LocaleHintsFile
     public const string FileName = ".locali-hints.json";
 
     internal const string LocaleMembersKey = "localeMembers";
+    internal const string LocaleKeysKey = "localeKeys";
 
     private const string AssemblyKey = "assembly";
     private const string TypeKey = "type";
     private const string MemberKey = "member";
     private const string TypeMemberKey = "typeMember";
+    private const string MethodKey = "method";
+    private const string ParameterKey = "parameter";
+    private const string LocaleKey = "locale";
+    private const string TypeParameterKey = "typeParameter";
 
-    private LocaleHintsFile(string path, TextMap map, IReadOnlyList<ConfigLocaleMember> localeMembers, IReadOnlyList<ConfigMalformedValue> malformedValues)
+    private LocaleHintsFile(string path, TextMap map, IReadOnlyList<ConfigLocaleMember> localeMembers, IReadOnlyList<ConfigLocaleKey> localeKeys, IReadOnlyList<ConfigMalformedValue> malformedValues)
     {
         Path = path;
         Map = map;
         LocaleMembers = localeMembers;
+        LocaleKeys = localeKeys;
         MalformedValues = malformedValues;
     }
 
@@ -34,6 +40,9 @@ public sealed class LocaleHintsFile
 
     /// <summary>Every item of the file's <c>localeMembers</c> entry, in the order written.</summary>
     public IReadOnlyList<ConfigLocaleMember> LocaleMembers { get; }
+
+    /// <summary>Every item of the file's <c>localeKeys</c> entry, in the order written.</summary>
+    public IReadOnlyList<ConfigLocaleKey> LocaleKeys { get; }
 
     /// <summary>Every value in the file that does not follow the shape it is read for.</summary>
     public IReadOnlyList<ConfigMalformedValue> MalformedValues { get; }
@@ -53,6 +62,7 @@ public sealed class LocaleHintsFile
 
         var utf8 = LinterConfigFile.WithoutByteOrderMark(content);
         var localeMembers = new List<ConfigLocaleMember>();
+        var localeKeys = new List<ConfigLocaleKey>();
         var malformedValues = new List<ConfigMalformedValue>();
 
         try
@@ -75,14 +85,18 @@ public sealed class LocaleHintsFile
                     break;
                 }
 
-                if (name == LocaleMembersKey)
+                switch (name)
                 {
-                    ReadLocaleMembers(ref reader, localeMembers, malformedValues);
-                }
-                else
-                {
-                    malformedValues.Add(new ConfigMalformedValue(nameOffset, $"'{name}' is not an entry a hints file defines; it reads '{LocaleMembersKey}'."));
-                    reader.Skip();
+                    case LocaleMembersKey:
+                        ReadLocaleMembers(ref reader, localeMembers, malformedValues);
+                        break;
+                    case LocaleKeysKey:
+                        ReadLocaleKeys(ref reader, localeKeys, malformedValues);
+                        break;
+                    default:
+                        malformedValues.Add(new ConfigMalformedValue(nameOffset, $"'{name}' is not an entry a hints file defines; it reads '{LocaleMembersKey}' and '{LocaleKeysKey}'."));
+                        reader.Skip();
+                        break;
                 }
             }
         }
@@ -93,7 +107,7 @@ public sealed class LocaleHintsFile
             return false;
         }
 
-        document = new LocaleHintsFile(path, new TextMap(utf8), localeMembers, malformedValues);
+        document = new LocaleHintsFile(path, new TextMap(utf8), localeMembers, localeKeys, malformedValues);
 
         return true;
     }
@@ -167,6 +181,74 @@ public sealed class LocaleHintsFile
             }
 
             localeMembers.Add(new ConfigLocaleMember(parts[AssemblyKey], parts[TypeKey], parts[MemberKey], parts[TypeMemberKey], itemOffset));
+        }
+    }
+
+    // An item names its method's four parts as text and where the locale comes from, a locale or a type parameter and never both, and
+    // one that does not is reported without stopping the list.
+    internal static void ReadLocaleKeys(ref Utf8JsonReader reader, List<ConfigLocaleKey> localeKeys, List<ConfigMalformedValue> malformedValues)
+    {
+        string[] required = [AssemblyKey, TypeKey, MethodKey, ParameterKey];
+        var shape = $"names its '{AssemblyKey}', '{TypeKey}', '{MethodKey}' and '{ParameterKey}', and its '{LocaleKey}' or its '{TypeParameterKey}'";
+        if (reader.TokenType != JsonTokenType.StartArray)
+        {
+            malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{LocaleKeysKey}' is not a list; it lists methods, each of which {shape}."));
+            reader.Skip();
+
+            return;
+        }
+
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+        {
+            var itemOffset = (int)reader.TokenStartIndex;
+            if (reader.TokenType != JsonTokenType.StartObject)
+            {
+                malformedValues.Add(new ConfigMalformedValue(itemOffset, $"a method is not an object; it {shape}."));
+                reader.Skip();
+                continue;
+            }
+
+            var parts = new Dictionary<string, string>(StringComparer.Ordinal);
+            while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
+            {
+                var partOffset = (int)reader.TokenStartIndex;
+                var part = reader.GetString() ?? string.Empty;
+
+                if (!reader.Read())
+                {
+                    return;
+                }
+
+                if (part is not (AssemblyKey or TypeKey or MethodKey or ParameterKey or LocaleKey or TypeParameterKey))
+                {
+                    malformedValues.Add(new ConfigMalformedValue(partOffset, $"'{part}' is not a part a method names; it {shape}."));
+                    reader.Skip();
+                }
+                else if (reader.TokenType != JsonTokenType.String || reader.GetString() is not { Length: > 0 } value)
+                {
+                    malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{part}' is not text naming something."));
+                    reader.Skip();
+                }
+                else
+                {
+                    parts[part] = value;
+                }
+            }
+
+            string[] missing = [.. required.Where(part => !parts.ContainsKey(part))];
+            if (missing.Length > 0)
+            {
+                malformedValues.Add(new ConfigMalformedValue(itemOffset, $"a method names no {string.Join(" or ", missing.Select(part => $"'{part}'"))}, so it relates nothing."));
+                continue;
+            }
+
+            if (parts.ContainsKey(LocaleKey) == parts.ContainsKey(TypeParameterKey))
+            {
+                malformedValues.Add(new ConfigMalformedValue(itemOffset, $"a method names {(parts.ContainsKey(LocaleKey) ? "both" : "neither")} its '{LocaleKey}' {(parts.ContainsKey(LocaleKey) ? "and" : "nor")} its '{TypeParameterKey}', so where its key is looked up is not told; it names one."));
+                continue;
+            }
+
+            localeKeys.Add(new ConfigLocaleKey(parts[AssemblyKey], parts[TypeKey], parts[MethodKey], parts[ParameterKey], parts.GetValueOrDefault(LocaleKey), parts.GetValueOrDefault(TypeParameterKey), itemOffset));
         }
     }
 }

@@ -145,6 +145,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
         ArgumentNullException.ThrowIfNull(libraries);
 
         var hints = new List<LocaleMemberHint>();
+        var keys = new List<LocaleKeyHint>();
         var diagnostics = new List<LintingDiagnostic>();
 
         // A library's hints describe its own code and travel with it: a run building the library reads them from its project, and a
@@ -154,20 +155,21 @@ public sealed class LintingConfiguration : ILintingConfiguration
             var path = Path.Combine(library.Path, LocaleHintsFile.FileName);
             if (File.Exists(path))
             {
-                Import(path, library, hints, diagnostics);
+                Import(path, library, hints, keys, diagnostics);
             }
         }
 
         if (_file.Value is { File: { } config })
         {
             hints.AddRange(config.LocaleMembers.Select(member => Hint(member, config.Path, config.Map, isPackaged: false)));
+            keys.AddRange(config.LocaleKeys.Select(key => Hint(key, config.Path, config.Map, isPackaged: false)));
         }
 
-        return new LocaleHints(hints, diagnostics);
+        return new LocaleHints(hints, keys, diagnostics);
     }
 
     // What is wrong in a package's file is the package's to fix, so the run restoring it hears of it as a warning.
-    private static void Import(string path, HintsFolder library, List<LocaleMemberHint> hints, List<LintingDiagnostic> diagnostics)
+    private static void Import(string path, HintsFolder library, List<LocaleMemberHint> hints, List<LocaleKeyHint> keys, List<LintingDiagnostic> diagnostics)
     {
         var severity = library.IsPackage ? LintingSeverity.Warning : LintingCodes.MalformedConfiguration.DefaultSeverity;
         byte[] content;
@@ -199,17 +201,37 @@ public sealed class LintingConfiguration : ILintingConfiguration
                 continue;
             }
 
-            diagnostics.Add(hint.Diagnose(
-                LintingCodes.InvalidHint,
-                $"'{hint.Assembly}' is not an assembly the library this file belongs to builds or ships, so the hint relates nothing; a library's hints speak for its own code, and an application states the rest in its .locali.json."));
+            diagnostics.Add(hint.Diagnose(LintingCodes.InvalidHint, ForeignAssembly(hint.Assembly)));
+        }
+
+        foreach (var key in file.LocaleKeys)
+        {
+            var hint = Hint(key, file.Path, file.Map, library.IsPackage);
+            if (library.Assemblies.Contains(hint.Assembly, StringComparer.Ordinal))
+            {
+                keys.Add(hint);
+                continue;
+            }
+
+            diagnostics.Add(hint.Diagnose(LintingCodes.InvalidHint, ForeignAssembly(hint.Assembly)));
         }
     }
+
+    private static string ForeignAssembly(string assembly)
+        => $"'{assembly}' is not an assembly the library this file belongs to builds or ships, so the hint relates nothing; a library's hints speak for its own code, and an application states the rest in its .locali.json.";
 
     private static LocaleMemberHint Hint(ConfigLocaleMember member, string path, TextMap map, bool isPackaged)
     {
         var (line, column) = map.Locate(member.Offset);
 
         return new LocaleMemberHint(member.Assembly, member.Type, member.Member, member.TypeMember, path, line, column) { IsPackaged = isPackaged };
+    }
+
+    private static LocaleKeyHint Hint(ConfigLocaleKey key, string path, TextMap map, bool isPackaged)
+    {
+        var (line, column) = map.Locate(key.Offset);
+
+        return new LocaleKeyHint(key.Assembly, key.Type, key.Method, key.Parameter, key.Locale, key.TypeParameter, path, line, column) { IsPackaged = isPackaged };
     }
 
     private static void DiagnoseFile(TrackedFile tracked, List<LintingDiagnostic> diagnostics)

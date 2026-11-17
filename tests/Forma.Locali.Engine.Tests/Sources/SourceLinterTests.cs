@@ -1,6 +1,8 @@
 namespace Forma.Locali.Tests.Sources;
 
+using Forma.Locali.Flow;
 using Forma.Locali.Projects;
+using Forma.Locali.Tests.Support.Flow;
 
 using Microsoft.CodeAnalysis;
 
@@ -315,6 +317,40 @@ public sealed class SourceLinterTests
             () => Assert.Equal(LintingCodes.NotRestored, diagnostic.Code),
             () => Assert.Equal(LintingSeverity.Error, diagnostic.Severity),
             () => Assert.Equal("Scratch.csproj", diagnostic.Path));
+    }
+
+    [Fact]
+    public void Should_report_a_call_to_a_hinted_method_writing_its_key_as_an_expression()
+    {
+        // Arrange — the library's method looks its key up, which only the hint tells, and the call writes the key as an expression.
+        var library = CompilationTestFactory.Referenced("""
+            using Forma.Framework.Localization;
+
+            namespace Contoso.Widgets;
+
+            public static class Labels
+            {
+                public static LocalizableText Text<TSource>(string key) => LocalizableText.For<TSource>(key);
+            }
+            """).WithAssemblyName("Contoso.Widgets");
+        var compilation = CompilationTestFactory.Referenced("""
+            namespace Scratch;
+
+            public sealed class Page
+            {
+                public object Show(object column) => Contoso.Widgets.Labels.Text<Page>(column.ToString()!);
+            }
+            """).AddReferences(CompilationTestFactory.MetadataOf(library));
+        var project = new LoadedProject("Scratch.csproj", compilation, HasGeneratedSources: false, HasRazorMarkup: false);
+        var keyed = new LocaleFlow([project], [], [LocaleFlowTestFactory.KeyHint("Contoso.Widgets", "Contoso.Widgets.Labels", "Text", typeParameter: "TSource")]).KeyedMethods;
+
+        // Act
+        var diagnostics = new SourceLinter(SourceLinterTestFactory.Finders(), SourceLinterTestFactory.Checkers())
+            .LintKeyed(project, [.. compilation.SyntaxTrees.Select(tree => tree.FilePath)], keyed, TestContext.Current.CancellationToken)
+            .Diagnostics;
+
+        // Assert
+        Assert.Equal(LintingCodes.KeyNotAnalysed, Assert.Single(diagnostics).Code);
     }
 
     private static IReadOnlyList<LintingDiagnostic> Lint(string body)
