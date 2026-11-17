@@ -32,8 +32,8 @@ public sealed record LoadedProject(
     /// <summary>Whether the project's packages were restored, or it references none; a project loaded without its restore output reads none of the types its packages declare.</summary>
     public bool IsRestored { get; init; } = true;
 
-    /// <summary>The folder each package the project compiles against was restored into, by the package's identifier.</summary>
-    public IReadOnlyDictionary<string, string> PackageRoots { get; init; } = new Dictionary<string, string>();
+    /// <summary>Each package the project compiles against, with the folder it was restored into and the assemblies it ships.</summary>
+    public IReadOnlyList<RestoredPackage> Packages { get; init; } = [];
 
     /// <summary>The culture the name a satellite assembly holds a file under gives it where that is not the satellite's culture, so the runtime reads the file under no name, or null where the runtime reads it.</summary>
     /// <param name="fullPath">The file, as a full path.</param>

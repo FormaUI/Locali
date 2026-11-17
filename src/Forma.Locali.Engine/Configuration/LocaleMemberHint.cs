@@ -12,6 +12,9 @@ using Forma.Locali.Diagnostics;
 /// <param name="Column">The column the hint starts at, from 1.</param>
 public sealed record LocaleMemberHint(string Assembly, string Type, string Member, string TypeMember, string Path, int Line, int Column)
 {
+    /// <summary>Whether the hint is written in a restored package's file, which the run cannot change, so what is wrong in it is reported as a warning.</summary>
+    public bool IsPackaged { get; init; }
+
     /// <summary>The member the hint is written for, by its type's full name.</summary>
     public string MemberName
         => $"{Type}.{Member}";
@@ -23,6 +26,6 @@ public sealed record LocaleMemberHint(string Assembly, string Type, string Membe
     {
         ArgumentNullException.ThrowIfNull(code);
 
-        return new LintingDiagnostic(Path, Line, Column, code.DefaultSeverity, code, message);
+        return new LintingDiagnostic(Path, Line, Column, IsPackaged ? LintingSeverity.Warning : code.DefaultSeverity, code, message);
     }
 }

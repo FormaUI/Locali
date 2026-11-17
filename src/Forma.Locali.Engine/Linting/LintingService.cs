@@ -149,8 +149,8 @@ public sealed class LintingService(
         var builtAssemblies = BuiltAssemblies.ResolveAll(projects);
 
         // A lookup's locale is followed across the projects of the run, so its types wait for every project as well, with the hints
-        // each project carries and those of the packages the configuration names, found where the run's projects restored them.
-        var hints = _lintingConfiguration.ReadHints(ProjectFolders(projects.All), PackageRoots(projects.All));
+        // each project carries and those of each package the run's projects restored, found where they restored it.
+        var hints = _lintingConfiguration.ReadHints(Libraries(projects.All));
         var flow = new LocaleFlow(projects.All, hints.LocaleMembers);
 
         // A type's entries are read from its own assembly's project, so every project's files are resolved before any rule reads them.
@@ -241,15 +241,20 @@ public sealed class LintingService(
     private static string Camel(string name)
         => string.Concat(char.ToLowerInvariant(name[0]).ToString(), name[1..]);
 
-    private static string[] ProjectFolders(IReadOnlyList<LoadedProject> projects)
-        => [.. projects.Select(project => Path.GetDirectoryName(Path.GetFullPath(project.Path))!).Distinct(StringComparer.OrdinalIgnoreCase)];
+    // Each project's folder and each restored package's root, once, with the assemblies the library there builds or ships.
+    private static HintsFolder[] Libraries(IReadOnlyList<LoadedProject> projects)
+    {
+        var projectFolders = projects
+            .GroupBy(project => Path.GetDirectoryName(Path.GetFullPath(project.Path))!, StringComparer.OrdinalIgnoreCase)
+            .Select(folder => new HintsFolder(
+                folder.Key,
+                [.. folder.Select(project => project.Compilation?.AssemblyName ?? Path.GetFileNameWithoutExtension(project.Path)).Distinct(StringComparer.Ordinal)],
+                IsPackage: false));
+        var packageRoots = projects
+            .SelectMany(project => project.Packages)
+            .GroupBy(package => Path.GetFullPath(package.Root), StringComparer.OrdinalIgnoreCase)
+            .Select(root => new HintsFolder(root.Key, [.. root.SelectMany(package => package.Assemblies).Distinct(StringComparer.Ordinal)], IsPackage: true));
 
-    private static Dictionary<string, IReadOnlyCollection<string>> PackageRoots(IReadOnlyList<LoadedProject> projects)
-        => projects
-            .SelectMany(project => project.PackageRoots)
-            .GroupBy(root => root.Key, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                package => package.Key,
-                IReadOnlyCollection<string> (package) => [.. package.Select(root => root.Value).Distinct(StringComparer.OrdinalIgnoreCase)],
-                StringComparer.OrdinalIgnoreCase);
+        return [.. projectFolders, .. packageRoots];
+    }
 }

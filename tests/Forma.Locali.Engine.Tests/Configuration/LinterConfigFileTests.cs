@@ -7,7 +7,7 @@ using Forma.Locali.Configuration;
 public sealed class LinterConfigFileTests
 {
     [Fact]
-    public void Should_read_the_hints_entrys_members_and_packages()
+    public void Should_read_the_hints_entrys_members()
     {
         // Arrange
         var document = LinterConfigFileTestFactory.Read("""
@@ -15,8 +15,7 @@ public sealed class LinterConfigFileTests
               "hints": {
                 "localeMembers": [
                   { "assembly": "Forma.Blazor", "type": "Forma.Blazor.Components.FormaComponentBase", "member": "L", "typeMember": "LocaleSourceType" }
-                ],
-                "packages": ["FormaUI.NET-Blazor"]
+                ]
               }
             }
             """);
@@ -25,8 +24,17 @@ public sealed class LinterConfigFileTests
         var member = Assert.Single(document.LocaleMembers);
         Assert.Multiple(
             () => Assert.Equal(("Forma.Blazor", "Forma.Blazor.Components.FormaComponentBase", "L", "LocaleSourceType"), (member.Assembly, member.Type, member.Member, member.TypeMember)),
-            () => Assert.Equal(["FormaUI.NET-Blazor"], document.HintPackages.Select(package => package.Id)),
             () => Assert.Empty(document.MalformedValues));
+    }
+
+    [Fact]
+    public void Should_flag_a_list_of_packages_as_an_entry_the_hints_entry_does_not_define()
+    {
+        // Arrange — a package's hints travel with it, so no configuration names packages to read them from.
+        var document = LinterConfigFileTestFactory.Read("""{ "hints": { "packages": ["FormaUI.NET-Blazor"] } }""");
+
+        // Assert
+        Assert.StartsWith("'packages' is not an entry 'hints' defines", Assert.Single(document.MalformedValues).Reason, StringComparison.Ordinal);
     }
 
     [Fact]

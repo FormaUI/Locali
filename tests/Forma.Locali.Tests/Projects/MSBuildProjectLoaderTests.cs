@@ -296,7 +296,7 @@ public sealed class MSBuildProjectLoaderTests
     public async Task Should_read_the_hints_a_package_carries_where_its_consumer_restored_it()
     {
         // Arrange — a library ships the hint for its compiled locale member in its package, and an application compiling against
-        // the package imports it by the package's identifier.
+        // the package reads it unasked.
         using var directory = new TempDirectory();
         var localization = typeof(IStringLocale).Assembly.Location;
         var token = TestContext.Current.CancellationToken;
@@ -365,7 +365,6 @@ public sealed class MSBuildProjectLoaderTests
             }
             """);
         directory.Write(Path.Combine("App", ".locales", "Widget.he.json"), LocalizationFileFakeData.Valid);
-        directory.Write(Path.Combine("App", ".locali.json"), """{ "hints": { "packages": ["Contoso.Widgets"] } }""");
 
         var packed = await DotnetRunner.RunAsync(directory.Root, token, "pack", library, "--output", "feed");
         Assert.True(packed.ExitCode == 0, packed.Output);

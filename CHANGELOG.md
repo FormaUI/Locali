@@ -13,6 +13,11 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   before the lookup, such as `Text("")` past `if (key.Length == 0) return key;`, is no longer checked as a key, and a
   key looked up past such a condition is checked at its calls in place of LOC0208, which stays where a condition on the
   key the flow cannot settle stands between a call and the lookup, or the method writes the parameter first.
+- Breaking: `hints.packages` is gone. A library's `.locali-hints.json` travels with its package: every run restoring the
+  package reads it unasked, so an application deriving from a library's component is checked through the library's hints
+  with nothing to write, and what is wrong in a package's file is reported as a warning, since the run cannot change it.
+  A library's file, at its project or its package, names only the assemblies the library builds or ships, and LOC0028
+  reports a hint for another.
 
 ## `1.0.0-preview.21`
 

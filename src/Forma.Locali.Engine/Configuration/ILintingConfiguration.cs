@@ -23,8 +23,7 @@ public interface ILintingConfiguration
     /// <summary>What the configuration got wrong, and which of its entries applied to no file the run reached.</summary>
     IReadOnlyList<LintingDiagnostic> GetDiagnostics();
 
-    /// <summary>The hints a run reads: each project's own <c>.locali-hints.json</c>, the configuration's <c>hints</c>, and the <c>.locali-hints.json</c> of each package it names, with what is wrong in them.</summary>
-    /// <param name="projectFolders">The folder of each project of the run.</param>
-    /// <param name="packageRoots">The folder of each version of each package the run's projects reference, by the package's identifier.</param>
-    LocaleHints ReadHints(IReadOnlyCollection<string> projectFolders, IReadOnlyDictionary<string, IReadOnlyCollection<string>> packageRoots);
+    /// <summary>The hints a run reads: the <c>.locali-hints.json</c> of each library it builds or restores, and the configuration's <c>hints</c>, with what is wrong in them.</summary>
+    /// <param name="libraries">The folder of each project of the run and of each package its projects restored, with the assemblies each builds or ships.</param>
+    LocaleHints ReadHints(IReadOnlyCollection<HintsFolder> libraries);
 }

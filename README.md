@@ -238,8 +238,8 @@ aside and reported where it reaches another, and used where it reaches none, as 
 library, where the type member's getter is read in the compiled code of the assembly the build
 runs. An application writes its own hints in `.locali.json`; a library keeps its hints in a
 `.locali-hints.json` at its project's root, which a run building the library reads and holds to
-its code, and ships it at its package's root, where an application reads it by naming the
-package. Nothing is written into the code.
+its code, and ships it at its package's root, where every run restoring the package reads it
+unasked; a library's file speaks for its own assemblies alone. Nothing is written into the code.
 
 Almost every callsite lives in `.razor`, which reaches Roslyn only through the Razor source
 generator. The linter runs that generator itself, so nothing has to be emitted to disk and no
@@ -319,7 +319,7 @@ root namespace `Forma.Locali`, so a folder's namespace is the same in either pro
 | Project | Folder | Holds |
 |---------|--------|-------|
 | Engine | `Cli/` | Target resolution, the options a run takes, the shared glob matcher |
-| Engine | `Configuration/` | Reading `.locali.json` into the linting configuration a run applies, with the hints it states and imports, and `.locale.json` for the runtime's rule |
+| Engine | `Configuration/` | Reading `.locali.json` into the linting configuration a run applies, with the hints it states and those each library of the run carries, and `.locale.json` for the runtime's rule |
 | Engine | `Diagnostics/` | `LintingCode`, the `LintingCodes` catalogue, `LintingDiagnostic`, and what a run found and how far it checked its lookups |
 | Engine | `Documents/` | The locale format, `ILocaleFormat`, and its JSON implementation, which reads a locale file into ordered entries with offsets |
 | Engine | `Linting/` | The services that drive file and schema linting |

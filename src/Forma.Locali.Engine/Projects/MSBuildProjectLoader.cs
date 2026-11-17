@@ -179,7 +179,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             references,
             GetRuntimeAssemblyPaths(instance),
             instance.GetPropertyValue("IsTestProject").Equals("true", StringComparison.OrdinalIgnoreCase),
-            GetPackageRoots(instance),
+            GetPackages(instance),
             IsRestored(instance)));
     }
 
@@ -267,7 +267,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         await lanes.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var result = Load(project, standIns, cancellationToken) with { RuntimeAssemblyPaths = project.RuntimeAssemblyPaths ?? new Dictionary<string, string>(), IsTestProject = project.IsTestProject, PackageRoots = project.PackageRoots ?? new Dictionary<string, string>(), IsRestored = project.IsRestored };
+            var result = Load(project, standIns, cancellationToken) with { RuntimeAssemblyPaths = project.RuntimeAssemblyPaths ?? new Dictionary<string, string>(), IsTestProject = project.IsTestProject, Packages = project.Packages ?? [], IsRestored = project.IsRestored };
             loaded.TryWrite(result);
 
             return result;
@@ -452,9 +452,9 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
             || File.Exists(assets);
 
     // A package's folder is where a compile-time assembly it ships sits, less the path the assembly has inside the package.
-    private static Dictionary<string, string> GetPackageRoots(ProjectInstance instance)
+    private static List<RestoredPackage> GetPackages(ProjectInstance instance)
     {
-        var roots = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var packages = new Dictionary<string, (string Root, HashSet<string> Assemblies)>(StringComparer.OrdinalIgnoreCase);
         foreach (var reference in instance.GetItems("ReferencePath"))
         {
             if (reference.GetMetadataValue("NuGetPackageId") is not { Length: > 0 } package || reference.GetMetadataValue("PathInPackage") is not { Length: > 0 } pathInPackage)
@@ -464,13 +464,21 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
 
             var fullPath = Path.GetFullPath(reference.GetMetadataValue("FullPath"));
             var inPackage = pathInPackage.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
-            if (fullPath.EndsWith(Path.DirectorySeparatorChar + inPackage, StringComparison.OrdinalIgnoreCase))
+            if (!fullPath.EndsWith(Path.DirectorySeparatorChar + inPackage, StringComparison.OrdinalIgnoreCase))
             {
-                roots.TryAdd(package, fullPath[..^(inPackage.Length + 1)]);
+                continue;
             }
+
+            if (!packages.TryGetValue(package, out var found))
+            {
+                found = (fullPath[..^(inPackage.Length + 1)], new HashSet<string>(StringComparer.Ordinal));
+                packages[package] = found;
+            }
+
+            found.Assemblies.Add(Path.GetFileNameWithoutExtension(fullPath));
         }
 
-        return roots;
+        return [.. packages.Select(package => new RestoredPackage(package.Key, package.Value.Root, package.Value.Assemblies))];
     }
 
     // What the build handed back for a project, and the projects built first because their compilations stand in for assemblies it lacks.
@@ -486,7 +494,7 @@ public sealed class MSBuildProjectLoader(IOptions<LinterOptions> options) : IPro
         IReadOnlyList<BuiltProject> References,
         IReadOnlyDictionary<string, string>? RuntimeAssemblyPaths = null,
         bool IsTestProject = false,
-        IReadOnlyDictionary<string, string>? PackageRoots = null,
+        IReadOnlyList<RestoredPackage>? Packages = null,
         bool IsRestored = true);
 
     // The collection every project of one load is evaluated in, what the load has evaluated so far, and where a built project goes.

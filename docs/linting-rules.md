@@ -36,8 +36,7 @@ of its own into.
         "member": "L",
         "typeMember": "LocaleSourceType"
       }
-    ],
-    "packages": ["FormaUI.NET-Blazor"]
+    ]
   }
 }
 ```
@@ -72,16 +71,18 @@ generic, declaring the member; `member`, the property returning `IStringLocale`;
 written for that one declaration: a member overriding or hiding it is a declaration of its own,
 read by the flow alone, while an instance that keeps it reads the type member as its own type
 overrides it, in source or in the compiled code of the assembly the build runs, so
-`typeof(Panel)` names `Panel` and `GetType()` the instance's own type. `packages` names packages
-whose hints the run reads.
+`typeof(Panel)` names `Panel` and `GetType()` the instance's own type.
 
 A library keeps the hints for its own members in a `.locali-hints.json` at its project's root,
 an object holding a `localeMembers` list, and ships it at its package's root: `<None
-Include=".locali-hints.json" Pack="true" PackagePath="" />`. A run building the library reads it
-for each project of the run, unasked, so the hints are held to the code they describe; an
-application reads the copy a package carries where its `.locali.json` names the package in
-`packages`, from where each project of the run restored the version it references. A
-repository's `.locali.json` never travels with its packages.
+Include=".locali-hints.json" Pack="true" PackagePath="" />`. The hints travel with the library:
+a run building it reads the file for each project of the run, unasked, so the hints are held to
+the code they describe, and a run restoring it reads the copy each package carries, unasked,
+from where each project of the run restored the version it references. A library's file names
+only the assemblies the library builds or ships, and a hint for another library's assembly is
+written in the application's `.locali.json`. What is wrong in a package's file is reported as a
+warning, since the run restoring the package cannot change it. A repository's `.locali.json`
+never travels with its packages.
 
 The flow follows a hinted member without any hint first, so no hint vouches for itself or
 another. Where it reaches the member's type on its own, the hint is verified when it reads the
@@ -89,12 +90,14 @@ same type and set aside, which LOC0029 reports, when it reads another; where it 
 over a compiled library, the hint's type is the one read, and a finding resting on it names the
 hint. LOC0028 reports a hint naming what is not there, LOC0029 two hints relating one member to
 different type members, which leaves it to neither, and LOC0021 a hint naming an assembly the
-run neither builds nor references, or a package no project of the run references.
+run neither builds nor references.
 
 ### LOC0020 — The linting configuration cannot be read
 
 **Reports.** A `.locali.json` or a `.locali-hints.json` that is not readable JSON or does not
 follow its shape, or a `.locali.json` naming a rule this linter does not define, in either list.
+A restored package's `.locali-hints.json` is reported as a warning, since the run cannot change
+it.
 
 **Why it matters.** A typo in a rule identifier would silence nothing and say nothing; the file
 is refused instead. The rule over `.locali.json` itself can never be named in its own
@@ -107,8 +110,7 @@ is refused instead. The rule over `.locali.json` itself can never be named in it
 **Reports.** A glob in `ignoreDiagnostics` or `excludeFiles` that matched no file the run
 reached, a `localeSources` line that is the last match for no locale file the run reached,
 because none matches it or a later line claims every file it matches, a hint naming an assembly
-no project of the run builds or references, or a package in `hints` no project of the run
-references.
+no project of the run builds or references.
 
 **Why it matters.** A file moved out of the tree is exactly when its exceptions go stale, and an
 exception that names nothing sits unnoticed until it excuses the wrong file. A `localeSources`
@@ -270,16 +272,17 @@ repeating it is that culture again rather than part of the name. A locale file o
 **Reports.** A hint whose type is not one its assembly declares, whose member is not a property
 of that type returning `IStringLocale` or is abstract, so every instance reads an override or an
 implementation the hint was not written for, or whose type member is not a property of that
-type, or of one it derives from, returning `Type`; or a package `packages` names that carries no
-`.locali-hints.json`. It is reported where the hint or the package is written.
+type, or of one it derives from, returning `Type`; or a hint in a library's `.locali-hints.json`
+naming an assembly the library neither builds nor ships. It is reported where the hint is
+written, as a warning where that is a restored package's file.
 
 **Why it matters.** A hint naming nothing relates nothing, and the lookups it was written for go
 unchecked without a word, which is exactly what a typo in a member's name or a renamed type
 would do.
 
 **What fixes it.** Correct the name the message quotes, from the type's full metadata name in
-the assembly that declares it; ship the library's `.locali-hints.json` in its package, or drop
-the package from `packages`.
+the assembly that declares it, and write a hint for another library's assembly in the
+application's `.locali.json`; a package's file is corrected in the library and shipped again.
 
 **Silent where.** The hint names an assembly the run neither builds nor references, which
 LOC0021 reports, since the hint may be written for a run that does.
