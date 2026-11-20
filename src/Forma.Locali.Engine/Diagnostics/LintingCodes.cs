@@ -58,6 +58,8 @@ public static class LintingCodes
             ReformattedLookup,
             NotRestored,
             UnlocalizedType,
+            MissingGenderOther,
+            UnsuppliedGenderArgument,
         ];
 
     /// <summary>The identifiers of the rules this linter has retired, which a linting configuration may still name and no run reports.</summary>
@@ -356,4 +358,16 @@ public static class LintingCodes
         "LOC0217",
         LintingSeverity.Warning,
         "A type lookups read has no entries of its own in any culture its assembly's locale files carry, so every key read for it renders in the source language in each culture no other entry reaches it in.");
+
+    /// <summary>A gender expression omits the field every gender it does not name falls back to.</summary>
+    public static LintingCode MissingGenderOther { get; } = new(
+        "LOC0218",
+        LintingSeverity.Warning,
+        "A gender expression omits 'other', so a gender its fields do not name, or none at all, renders as nothing.");
+
+    /// <summary>A gender expression names an argument the lookup never supplies.</summary>
+    public static LintingCode UnsuppliedGenderArgument { get; } = new(
+        "LOC0219",
+        LintingSeverity.Error,
+        "A gender expression names an argument the lookup does not supply, so it always selects its 'other' field.");
 }

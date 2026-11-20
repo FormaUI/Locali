@@ -45,8 +45,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICallsiteRuleChecker, MalformedExpressionChecker>();
         services.AddSingleton<ICallsiteRuleChecker, ValueCountChecker>();
         services.AddSingleton<ICallsiteRuleChecker, PluralArgumentChecker>();
+        services.AddSingleton<ICallsiteRuleChecker, GenderArgumentChecker>();
         services.AddSingleton<ICallsiteRuleChecker, SoleArgumentChecker>();
         services.AddSingleton<ICallsiteRuleChecker, PluralOtherFieldChecker>();
+        services.AddSingleton<ICallsiteRuleChecker, GenderOtherFieldChecker>();
         services.AddSingleton<ICallsiteRuleChecker, HoleShapeChecker>();
         services.AddSingleton<ICallsiteRuleChecker, BareHoleKeyChecker>();
         services.AddSingleton<ICallsiteRuleChecker, BareExpressionKeyChecker>();

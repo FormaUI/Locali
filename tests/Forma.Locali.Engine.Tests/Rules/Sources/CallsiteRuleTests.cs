@@ -145,6 +145,28 @@ public sealed class CallsiteRuleTests
     }
 
     [Fact]
+    public void Should_report_a_gender_expression_reading_a_name_the_lookup_supplies_no_value_for()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Read() => locale["[$ [Rider] gender; female: She won; other: They won; $]"];""");
+
+        // Assert
+        Assert.Equal([LintingCodes.UnsuppliedGenderArgument], diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_report_a_gender_expression_that_omits_the_fallback_field()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Read() => locale["[$ [Rider] gender; female: She won; male: He won; $]", "female"];""");
+
+        // Assert
+        Assert.Equal([LintingCodes.MissingGenderOther], diagnostics.Codes());
+    }
+
+    [Fact]
     public void Should_accept_a_gender_expression_naming_no_argument_when_one_value_is_supplied()
     {
         // Act

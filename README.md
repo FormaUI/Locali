@@ -326,6 +326,8 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0213 | Error | A lookup supplies `string.Format`'s format text |
 | LOC0216 | Error | A project referencing packages was loaded without its restore output |
 | LOC0217 | Warning | A type lookups read has no entries of its own in any culture its assembly's locale files carry |
+| LOC0218 | Warning | A gender expression omits `other` |
+| LOC0219 | Error | A gender expression reads a name nothing supplies |
 
 ## Contributing
 

@@ -983,3 +983,22 @@ leaves out; a culture where a `$shared` block above it gives it entries, to whic
 its keys, or where a parent culture or the lookup's application gives it any; its assembly's
 files carry no culture; no project of the run builds the type's assembly; or the walk from the
 lookup reaches no type, or only alternatives it cannot pair with the lookup, as for LOC0207.
+
+### LOC0218 — A gender expression without `other`
+
+**Reports.** A gender expression that omits the `other` field.
+
+**Why it matters.** A gender its fields do not name, a missing argument, null, or a value that is
+neither an enum nor a string, renders as nothing.
+
+**What fixes it.** Add `other`, which every gender the expression leaves out falls back to.
+
+### LOC0219 — A gender expression reads a name nothing supplies
+
+**Reports.** A gender expression naming an argument, `[$ [Rider] gender; …]`, in a key looked up
+with no value.
+
+**Why it matters.** The expression always renders its `other` field, so the genders it names are
+never written.
+
+**What fixes it.** Supply the gender: `L[key, rider.Gender]`.

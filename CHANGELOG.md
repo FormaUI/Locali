@@ -12,7 +12,9 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   `L["Found [$ [count] plural; …; $]", 1]` is right and a gendered key taking its gender and a name takes two values,
   and LOC0200 no longer reports an argument a value pairs with.
 - `gender` is a keyword the linter reads: a field it does not define is LOC0203, an expression naming no argument is
-  LOC0202's as a plural one is, and LOC0210 reads its fields. LOC0200 reports plural expressions alone.
+  LOC0202's as a plural one is, and LOC0210 reads its fields. LOC0218 warns of a gender expression that omits `other`,
+  which renders nothing for a gender its fields do not name, and LOC0219 reports a gender argument a lookup with no
+  values never supplies, which always selects `other`. LOC0200 reports plural expressions alone.
 
 ## `1.0.0-preview.25`
 
