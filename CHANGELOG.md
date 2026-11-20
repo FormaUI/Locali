@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.26`
 
-*Unreleased*
+*November 20, 2026*
 
 - Breaking: a lookup's values pair with the arguments its key's expressions name as well as its holes, in the order
   each name first appears, as Forma's runtime pairs them since its `gender` expression. LOC0201 counts both, so
