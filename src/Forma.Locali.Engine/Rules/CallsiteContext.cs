@@ -10,7 +10,7 @@ using Forma.Locali.Sources;
 public sealed class CallsiteContext(LocalizerLookup lookup, LocaleParseResult expression)
 {
     private readonly List<LintingDiagnostic> _reported = [];
-    private List<string>? _holes;
+    private List<string>? _names;
 
     /// <summary>The lookup being checked.</summary>
     public LocalizerLookup Lookup { get; } = lookup ?? throw new ArgumentNullException(nameof(lookup));
@@ -18,9 +18,18 @@ public sealed class CallsiteContext(LocalizerLookup lookup, LocaleParseResult ex
     /// <summary>The key's expressions, parsed once for every rule.</summary>
     public LocaleParseResult Expression { get; } = expression;
 
-    /// <summary>The distinct names the key's holes read, in the order they first appear.</summary>
-    public IReadOnlyList<string> Holes
-        => _holes ??= HoleNames.Distinct(Lookup.Key.Text);
+    /// <summary>The distinct names the key's values pair with: the names its holes read and the arguments its expressions name.</summary>
+    public IReadOnlyList<string> Names
+        => _names ??= HoleNames.Filled(Lookup.Key.Text);
+
+    /// <summary>The names the lookup supplies a value for: none where it supplies no value, every name the key pairs values with where it supplies them by position, and null where its overload is unknown.</summary>
+    public IReadOnlyList<string>? SuppliedNames
+        => Lookup.Arguments.Kind switch
+        {
+            LocalizerArgumentKind.None => [],
+            LocalizerArgumentKind.Positional => Names,
+            _ => null,
+        };
 
     /// <summary>Everything the rules reported.</summary>
     public IReadOnlyList<LintingDiagnostic> Reported

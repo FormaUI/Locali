@@ -3,6 +3,17 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.26`
+
+*Unreleased*
+
+- Breaking: a lookup's values pair with the arguments its key's expressions name as well as its holes, in the order
+  each name first appears, as Forma's runtime pairs them since its `gender` expression. LOC0201 counts both, so
+  `L["Found [$ [count] plural; …; $]", 1]` is right and a gendered key taking its gender and a name takes two values,
+  and LOC0200 no longer reports an argument a value pairs with.
+- `gender` is a keyword the linter reads: a field it does not define is LOC0203, an expression naming no argument is
+  LOC0202's as a plural one is, and LOC0210 reads its fields. LOC0200 reports plural expressions alone.
+
 ## `1.0.0-preview.25`
 
 *November 17, 2026*

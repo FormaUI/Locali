@@ -31,7 +31,7 @@ public sealed class BareExpressionKeyChecker : ICallsiteRuleChecker
 
         context.Report(
             Code,
-            "The expression carries no words in any field, only the count; format the value directly instead.");
+            "The expression carries no words in any field, so it names no text to localize; format the value directly instead.");
     }
 
     private static bool WordsInAField(IReadOnlyList<LocaleExpression> expressions, string key)

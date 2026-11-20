@@ -432,9 +432,9 @@ read for, and the entry has to agree.
 **Why it matters.** The runtime renders `{stord}` literally, in front of a user, and nothing else
 complains.
 
-**What fixes it.** Name the holes the key names. A name may be written as a brace hole or as a
-plural expression's bracketed argument, the two are equivalent, and a text may reorder or
-drop a name freely.
+**What fixes it.** Name the holes the key names. A name may be written as a brace hole or as an
+expression's bracketed argument, the two are equivalent, and a text may reorder or drop a name
+freely.
 
 ### LOC0110 — A text writes something shaped like a hole the runtime cannot read
 
@@ -727,8 +727,9 @@ LocalizableText Title(string key) => LocalizableText.For<SectionMenu>(key);
 Title("Results")                                                  // checked: "Results" in SectionMenu's entries
 ```
 
-Values pair to a key's distinct holes by position, in the order the holes first appear, and a
-plural expression's bracketed argument names a value the way a brace hole does:
+Values pair by position to a key's distinct names, its holes and the arguments its expressions
+name, in the order each name first appears, so a plural or gender expression's bracketed argument
+takes a value the way a brace hole does:
 
 ```csharp
 L["Stored {stored} of {total}.", written, allowed]        // right: one value per distinct hole
@@ -739,22 +740,35 @@ L["Saved."]                                               // right: no holes, no
 L[$"Stored {stored} of {total}."]                         // LOC0211: the key is interpolated
 ```
 
-### LOC0200 — An expression reads a name nothing supplies
+A gender expression, `[$ [Rider] gender; female: …; male: …; other: …; $]`, renders the field its
+argument's enum value or string spells, whatever its case, and `other` for anything else, a
+missing argument and null among them. Its argument takes a value like any other name, and an
+expression naming no argument reads the lookup's one value:
 
-**Reports.** A plural expression naming an argument, `[$ [count] plural; …]`, whose key names no
-such hole and whose lookup supplies no such value.
+```csharp
+L["[$ [Rider] gender; female: {Name} won her stage; other: {Name} won the stage; $]", rider.Gender, rider.Name]
+L["[$ gender; female: She climbs; other: They climb; $]", rider.Gender]  // right: the one value
+```
+
+### LOC0200 — A plural expression reads a name nothing supplies
+
+**Reports.** A plural expression naming an argument, `[$ [count] plural; …]`, in a key looked up
+with no value. A lookup supplying values pairs one with the argument, or throws, which LOC0201
+reports.
 
 **Why it matters.** The count reads as zero, silently.
 
-**What fixes it.** Name the argument the lookup supplies.
+**What fixes it.** Supply the count: `L[key, count]`.
 
-### LOC0201 — The value count does not match the key's holes
+### LOC0201 — The value count does not match the key's holes and arguments
 
-**Reports.** A lookup supplying more or fewer values than its key has distinct holes.
+**Reports.** A lookup supplying more or fewer values than its key has distinct names: its holes
+and the arguments its expressions name.
 
 **Why it matters.** The lookup throws.
 
-**What fixes it.** One value per distinct hole; a repeated hole counts once.
+**What fixes it.** One value per distinct name, in the order each first appears; a repeated name
+counts once, whether written as a hole or as an argument.
 
 **Silent where.** The values arrive as one collection, `object?[]` into `params
 ReadOnlySpan<object?>`, whose count only the run knows; an `int[]` in the same position cannot
@@ -763,8 +777,8 @@ overload resolved.
 
 ### LOC0202 — An expression naming no argument is given no value
 
-**Reports.** A key whose plural expression names no argument, `[$ plural; …]`, looked up with no
-value.
+**Reports.** A key whose expression names no argument, `[$ plural; …]` or `[$ gender; …]`,
+looked up with no value.
 
 **Why it matters.** Such an expression reads the single value the lookup supplies, and throws
 without one.
@@ -773,11 +787,14 @@ without one.
 
 ### LOC0203 — A malformed expression at a callsite
 
-**Reports.** A key written at a callsite whose `[$ … $]` expression does not parse.
+**Reports.** A key written at a callsite whose `[$ … $]` expression does not parse, or names a
+keyword or a field the runtime does not define.
 
 **Why it matters.** The expression renders as written, silently.
 
-**What fixes it.** Write `[$ [Name] plural; category: text; …; $]`, the trailing `;` included.
+**What fixes it.** Write `[$ [Name] plural; category: text; …; $]` or `[$ [Name] gender; female:
+text; male: text; other: text; $]`, with fields the keyword defines and the trailing `;`
+included.
 
 ### LOC0204 — A plural expression without `other`
 
@@ -883,7 +900,8 @@ clears the rule.
 
 ### LOC0210 — An expression key with no words in any field
 
-**Reports.** A plural expression whose fields carry only `#`, `"[$ plural; other: #; $]"`.
+**Reports.** An expression whose fields carry no words, as a plural one carrying only `#`,
+`"[$ plural; other: #; $]"`, with no words around it either.
 
 **Why it matters.** As LOC0209: a number formatted, not a sentence localized.
 

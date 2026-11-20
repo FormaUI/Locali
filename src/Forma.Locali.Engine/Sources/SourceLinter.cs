@@ -16,7 +16,6 @@ public sealed class SourceLinter(
     IEnumerable<ILocalizerCallsiteFinder> finders,
     IEnumerable<ICallsiteRuleChecker> checkers) : ISourceLinter
 {
-    private static readonly LocaleKeywords Known = new(PluralExpressionEvaluator.Keyword);
 
     private readonly IReadOnlyList<ILocalizerCallsiteFinder> _finders = finders?.ToArray() ?? throw new ArgumentNullException(nameof(finders));
     private readonly IEnumerable<ICallsiteRuleChecker> _checkers = checkers ?? throw new ArgumentNullException(nameof(checkers));
@@ -141,7 +140,7 @@ public sealed class SourceLinter(
     private IReadOnlyList<LintingDiagnostic> Check(LocalizerLookup site)
     {
         // The key parses once here rather than inside each rule that reads its expressions.
-        var context = new CallsiteContext(site, LocaleExpressionParser.Parse(site.Key.Text, Known));
+        var context = new CallsiteContext(site, LocaleExpressionParser.Parse(site.Key.Text, LocaleExpressionEvaluator.Keywords));
 
         foreach (var checker in _checkers)
         {

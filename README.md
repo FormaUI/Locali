@@ -311,8 +311,8 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0122 | Warning | A part of a locale file's name is a culture written in another case than .NET names it, and names no type |
 | LOC0123 | Warning | A part of a locale file's name is a culture other than the file's own, and names no type |
 | LOC0124 | Error | A satellite assembly holds a locale file under a name whose culture is not the satellite's |
-| LOC0200 | Error | An expression reads a name nothing supplies |
-| LOC0201 | Error | The value count does not match the key's distinct holes |
+| LOC0200 | Error | A plural expression reads a name nothing supplies |
+| LOC0201 | Error | The value count does not match the key's distinct holes and expression arguments |
 | LOC0202 | Error | An expression naming no argument is given no value |
 | LOC0203 | Error | A key carries a malformed expression |
 | LOC0204 | Warning | A plural expression omits `other` |
@@ -372,10 +372,12 @@ callsite rule reports outside its family's range. The range rule means the same 
 both sides of a call needs two codes, one per family, as LOC0110 and LOC0206 show. A rule that
 needs to report two different things is two rules regardless of family.
 
-`HoleNames` reads the names a format refers to its values by, and matches the runtime's
-`LocalizedFormat.Names`. Use it rather than scanning for braces; a plural expression names its
-argument in brackets, and escaped braces are literal text. A rule that depends on how values
-reach the callsite reads `context.Site.Arguments` and returns when it is `Unknown`.
+`HoleNames` reads the names a format refers to its values by, its holes and the arguments its
+expressions name, with the runtime's own parsers and keywords, so they are the names
+`LocalizedFormat.Bind` pairs a lookup's values with. Use it rather than scanning for braces; an
+expression names its argument in brackets, and escaped braces are literal text. A rule that
+depends on how values reach the callsite reads `context.Lookup.Arguments`, or
+`context.SuppliedNames`, and returns where the overload is `Unknown`.
 
 ### Build and Test
 

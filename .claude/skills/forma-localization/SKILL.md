@@ -1,6 +1,6 @@
 ---
 name: forma-localization
-description: The Forma localization format this linter reads — IStringLocale lookups keyed by source text, the .locales/{culture}.json files read by the paths in force from the root down to the type's full name, the $localization metadata entry, brace holes and plural expressions, null entries, and parent-culture fallback. Use when writing or changing a rule, a fixture, or anything that parses the format, and to keep straight what the runtime defines versus what the linter merely reports.
+description: The Forma localization format this linter reads — IStringLocale lookups keyed by source text, the .locales/{culture}.json files read by the paths in force from the root down to the type's full name, the $localization metadata entry, brace holes, plural and gender expressions, null entries, and parent-culture fallback. Use when writing or changing a rule, a fixture, or anything that parses the format, and to keep straight what the runtime defines versus what the linter merely reports.
 ---
 
 # The localization format
@@ -10,7 +10,7 @@ The runtime lives in the sibling Forma repository as `Forma.Framework.Localizati
 ## Lookups
 
 - A consumer injects `IStringLocale<T>` and reads strings as `L["A sentence in the source language"]`; the key **is** the source text, in the language `SourceLanguage` names, English by default, and an absent entry falls back to the key, silently.
-- A lookup takes one form: a literal key with values paired to its distinct holes by position, in the order the holes first appear — `L["Stored {stored} of {total}.", written, allowed]`. A wrong count throws (LOC0201).
+- A lookup takes one form: a literal key with values paired by position to its distinct names, its holes and the arguments its expressions name, in the order each name first appears — `L["Stored {stored} of {total}.", written, allowed]`, `L["[$ [Rider] gender; other: {Name} won the stage; $]", rider.Gender, rider.Name]`. A wrong count throws (LOC0201). A key naming nothing takes at most one value, which an expression naming no argument reads.
 - An interpolated key — `L[$"…{stored}…"]` — formats before the lookup, so the runtime receives the formatted text as the key and no entry matches it; LOC0211 reports every such callsite as an error.
 - Consumers name holes in PascalCase as a matter of style; the linter does not enforce it, and no rule should start to — a hole name is legal wherever the runtime reads it.
 
@@ -30,7 +30,9 @@ The runtime lives in the sibling Forma repository as `Forma.Framework.Localizati
 ## Holes and expressions
 
 - A brace hole `{Name}` names a value; a repeated name still takes one value, because that is how the runtime pairs them.
-- A plural expression names its argument in brackets: `[$ plural; one: # file; other: # files; $][count]` — `#` renders the count, and `other` is the category the rest fall back to.
-- A brace hole and a bracketed plural argument are equivalent ways of naming a value, so a key and its text may mix them freely.
+- A plural expression names its argument in brackets: `[$ [count] plural; one: # file; other: # files; $]` — `#` renders the count, and `other` is the category the rest fall back to.
+- A gender expression names its argument the same way: `[$ [Rider] gender; female: …; male: …; other: …; $]`. Its fields are fixed; an enum value or a string selects the field its name spells, whatever its case, and anything else, a missing argument and null among them, selects `other`. Gender and plural expressions may stand side by side in one text, but not nested.
+- The keywords and their fields are the runtime's, `LocaleExpressionEvaluator.Keywords`; a rule parses an expression with them and never with a list of its own.
+- A brace hole and a bracketed expression argument are equivalent ways of naming a value, so a key and its text may mix them freely.
 - Escaped braces are literal text, and brace text containing a space is prose the runtime renders as written.
 - Do use the runtime's own `LocalizedFormat` parsing (through `HoleNames`) to read the names a format refers to; scanning for braces by hand re-implements the runtime and will disagree with it.

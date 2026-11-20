@@ -3,7 +3,7 @@ namespace Forma.Locali.Rules.Sources;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Sources;
 
-/// <summary>Checks that a lookup supplies one value for each hole its key names.</summary>
+/// <summary>Checks that a lookup supplies one value for each name its key's values pair with, its holes and its expressions' arguments.</summary>
 public sealed class ValueCountChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
@@ -21,15 +21,15 @@ public sealed class ValueCountChecker : ICallsiteRuleChecker
             return;
         }
 
-        var holes = context.Holes.Count;
+        var names = context.Names.Count;
 
-        if (holes == 0 && supplied > 1)
+        if (names == 0 && supplied > 1)
         {
-            context.Report(Code, $"The key names no hole, so it takes at most one value, but {supplied} are supplied.");
+            context.Report(Code, $"The key names no hole or argument, so it takes at most one value, but {supplied} are supplied.");
         }
-        else if (holes != 0 && supplied != holes)
+        else if (names != 0 && supplied != names)
         {
-            context.Report(Code, $"The key names {holes} hole(s) but {supplied} value(s) are supplied.");
+            context.Report(Code, $"The key names {names} hole(s) and argument(s) but {supplied} value(s) are supplied.");
         }
     }
 }

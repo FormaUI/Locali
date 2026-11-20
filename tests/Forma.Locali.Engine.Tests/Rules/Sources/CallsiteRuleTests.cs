@@ -112,6 +112,83 @@ public sealed class CallsiteRuleTests
     }
 
     [Fact]
+    public void Should_pair_a_value_with_the_argument_an_expression_names_where_no_hole_names_it()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Read() => locale["Found [$ [count] plural; one: # file; other: # files; $]", 1];""");
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_fewer_values_than_the_key_names_holes_and_arguments()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Read() => locale["[$ [Rider] gender; female: {Name} won her stage; other: {Name} won the stage; $]", "female"];""");
+
+        // Assert
+        Assert.Equal([LintingCodes.ValueCountMismatch], diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_accept_one_value_for_each_hole_and_argument_the_key_names()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Read() => locale["[$ [Rider] gender; female: {Name} won her stage; other: {Name} won the stage; $]", "female", "Ana"];""");
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_accept_a_gender_expression_naming_no_argument_when_one_value_is_supplied()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Read() => locale["[$ gender; female: She climbs; other: They climb; $]", "female"];""");
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_a_gender_expression_naming_no_argument_when_no_value_is_supplied()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Read() => locale["[$ gender; female: She climbs; other: They climb; $]"];""");
+
+        // Assert
+        Assert.Equal([LintingCodes.SoleArgumentExpected], diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_report_a_gender_field_the_keyword_does_not_define()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Read() => locale["[$ [Rider] gender; femal: She won; other: They won; $]", "female"];""");
+
+        // Assert
+        Assert.Equal([LintingCodes.MalformedSourceExpression], diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_report_a_gender_expression_key_carrying_no_words_in_any_field()
+    {
+        // Act
+        var diagnostics = SourceLinterTestFactory.Lint(
+            """public string Read() => locale["[$ [Rider] gender; female: ♀; other: ⚥; $]", "female"];""");
+
+        // Assert
+        Assert.Equal([LintingCodes.BareExpressionKey], diagnostics.Codes());
+    }
+
+    [Fact]
     public void Should_leave_an_interpolated_key_with_no_holes_to_the_compiler_to_fold()
     {
         // Act

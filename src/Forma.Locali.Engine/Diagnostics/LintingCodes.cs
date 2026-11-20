@@ -267,17 +267,17 @@ public static class LintingCodes
         LintingSeverity.Error,
         "A satellite assembly holds a locale file under a name whose culture is not the satellite's, so the runtime reads none of its entries.");
 
-    /// <summary>An expression names an argument the lookup never supplies.</summary>
+    /// <summary>A plural expression names an argument the lookup never supplies.</summary>
     public static LintingCode UnsuppliedPluralArgument { get; } = new(
         "LOC0200",
         LintingSeverity.Error,
-        "An expression names an argument the lookup does not supply, so it counts as zero.");
+        "A plural expression names an argument the lookup does not supply, so it counts as zero.");
 
-    /// <summary>The lookup supplies a different number of values than its key names holes.</summary>
+    /// <summary>The lookup supplies a different number of values than its key names holes and expression arguments.</summary>
     public static LintingCode ValueCountMismatch { get; } = new(
         "LOC0201",
         LintingSeverity.Error,
-        "A lookup supplies a different number of values than its key names holes, so it throws.");
+        "A lookup supplies a different number of values than its key names holes and expression arguments, so it throws.");
 
     /// <summary>An expression naming no argument is not given the single value it reads.</summary>
     public static LintingCode SoleArgumentExpected { get; } = new(
@@ -321,7 +321,7 @@ public static class LintingCodes
         LintingSeverity.Warning,
         "A key carries holes but no words anywhere else, so it names no text to localize.");
 
-    /// <summary>The expression key carries no words in any field, only the count.</summary>
+    /// <summary>The expression key carries no words in any field.</summary>
     public static LintingCode BareExpressionKey { get; } = new(
         "LOC0210",
         LintingSeverity.Warning,

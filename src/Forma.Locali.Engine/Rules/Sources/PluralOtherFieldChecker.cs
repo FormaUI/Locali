@@ -1,14 +1,11 @@
 namespace Forma.Locali.Rules.Sources;
 
 using Forma.Framework.Localization.Language;
-using Forma.Framework.Localization.Parser.Syntax;
 using Forma.Locali.Diagnostics;
 
 /// <summary>Checks that a plural expression carries the category the others fall back to.</summary>
 public sealed class PluralOtherFieldChecker : ICallsiteRuleChecker
 {
-    private const string Fallback = "other";
-
     /// <inheritdoc />
     public LintingCode Code
         => LintingCodes.MissingPluralOther;
@@ -23,30 +20,13 @@ public sealed class PluralOtherFieldChecker : ICallsiteRuleChecker
             return;
         }
 
+        var key = context.Lookup.Key.Text;
         foreach (var expression in context.Expression.Expressions)
         {
-            if (!expression.KeywordSpan.Slice(context.Lookup.Key.Text).SequenceEqual(PluralExpressionEvaluator.Keyword.Name))
+            if (LocaleExpressions.Names(expression, key, LocaleExpressionEvaluator.PluralKeyword) && !LocaleExpressions.Declares(expression, key, LocaleExpressions.OtherField))
             {
-                continue;
-            }
-
-            if (!Declares(expression.Fields, context.Lookup.Key.Text))
-            {
-                context.Report(Code, $"The plural expression omits '{Fallback}', so a count its categories miss renders as nothing.");
+                context.Report(Code, $"The plural expression omits '{LocaleExpressions.OtherField}', so a count its categories miss renders as nothing.");
             }
         }
-    }
-
-    private static bool Declares(IReadOnlyList<LocaleField> fields, string key)
-    {
-        foreach (var field in fields)
-        {
-            if (field.NameSpan.Slice(key).SequenceEqual(Fallback))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

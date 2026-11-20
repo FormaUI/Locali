@@ -1,9 +1,9 @@
 namespace Forma.Locali.Rules.Sources;
 
+using Forma.Framework.Localization.Language;
 using Forma.Locali.Diagnostics;
-using Forma.Locali.Sources;
 
-/// <summary>Checks that an expression naming an argument is given one.</summary>
+/// <summary>Checks that a plural expression naming an argument is given one.</summary>
 public sealed class PluralArgumentChecker : ICallsiteRuleChecker
 {
     /// <inheritdoc />
@@ -15,20 +15,20 @@ public sealed class PluralArgumentChecker : ICallsiteRuleChecker
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        if (Supplied(context) is not { } supplied || !context.Expression.IsValid)
+        if (context.SuppliedNames is not { } supplied || !context.Expression.IsValid)
         {
             return;
         }
 
+        var key = context.Lookup.Key.Text;
         foreach (var expression in context.Expression.Expressions)
         {
-            if (expression.NameSpan.IsEmpty)
+            if (expression.NameSpan.IsEmpty || !LocaleExpressions.Names(expression, key, LocaleExpressionEvaluator.PluralKeyword))
             {
                 continue;
             }
 
-            var name = expression.NameSpan.Slice(context.Lookup.Key.Text).ToString();
-
+            var name = expression.NameSpan.Slice(key).ToString();
             if (!supplied.Contains(name, StringComparer.Ordinal))
             {
                 context.Report(
@@ -37,13 +37,4 @@ public sealed class PluralArgumentChecker : ICallsiteRuleChecker
             }
         }
     }
-
-    // Values paired by position are named after the key's holes.
-    private static IReadOnlyList<string>? Supplied(CallsiteContext context)
-        => context.Lookup.Arguments.Kind switch
-        {
-            LocalizerArgumentKind.None => [],
-            LocalizerArgumentKind.Positional => context.Holes,
-            _ => null,
-        };
 }
