@@ -121,15 +121,13 @@ public sealed class LinterConfigFileTests
     }
 
     [Fact]
-    public void Should_read_the_exclude_files_globs_with_their_offsets()
+    public void Should_read_the_exclude_files_globs()
     {
         // Arrange
         var document = LinterConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*"] }""");
 
         // Assert
-        var entry = Assert.Single(document.ExcludeFiles);
-
-        Assert.Equal("*/Fixtures/*", entry.Glob);
+        Assert.Equal(["*/Fixtures/*"], document.ExcludeFiles);
     }
 
     [Fact]
@@ -334,7 +332,7 @@ public sealed class LinterConfigFileTests
         var document = LinterConfigFileTestFactory.Read("""{ "excludeFiles": ["*/Fixtures/*", 5] }""");
 
         // Assert
-        Assert.Equal(["*/Fixtures/*"], document.ExcludeFiles.Select(entry => entry.Glob));
+        Assert.Equal(["*/Fixtures/*"], document.ExcludeFiles);
         Assert.Single(document.MalformedValues);
     }
 

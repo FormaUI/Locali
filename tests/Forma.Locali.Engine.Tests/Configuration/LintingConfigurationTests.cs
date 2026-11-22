@@ -208,20 +208,20 @@ public sealed class LintingConfigurationTests
     }
 
     [Fact]
-    public void Should_count_a_file_exclude_the_command_line_also_names_as_applied()
+    public void Should_leave_an_exclusion_that_matched_no_file_unreported()
     {
-        // Arrange — the gate command passes the same glob the file holds; the file's entry is asked first and always, so it is not stale.
+        // Arrange — a folder an exclusion names may exist on one machine alone, as a sandbox does, so the file's globs are held to no more than the command line's.
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "excludeFiles": ["*/Fixtures/*"] }""");
-        var file = directory.Write(Path.Combine("Suite", "Fixtures", "Broken.he.json"), "{}");
-        var configuration = new LintingConfiguration(directory.Root, ["*/Fixtures/*"]);
+        directory.Write(".locali.json", """{ "excludeFiles": ["*/.sandbox/*"] }""");
+        var file = directory.Write("Widget.he.json", "{}");
+        var configuration = new LintingConfiguration(directory.Root);
 
         // Act
         var excluded = configuration.IsExcluded(file);
 
         // Assert
         Assert.Multiple(
-            () => Assert.True(excluded),
+            () => Assert.False(excluded),
             () => Assert.Empty(configuration.GetDiagnostics()));
     }
 
@@ -242,17 +242,16 @@ public sealed class LintingConfigurationTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Nowhere.he.json": ["LOC0113"] }, "excludeFiles": ["Nowhere/*"] }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Nowhere.he.json": ["LOC0113"] } }""");
         var file = directory.Write("Widget.he.json", "{}");
         var configuration = new LintingConfiguration(directory.Root);
         configuration.GetIgnoredCodes(file);
-        configuration.IsExcluded(file);
 
         // Act
         var diagnostics = configuration.GetDiagnostics();
 
         // Assert
-        Assert.Equal([LintingCodes.StaleConfigurationEntry, LintingCodes.StaleConfigurationEntry], diagnostics.Codes());
+        Assert.Equal([LintingCodes.StaleConfigurationEntry], diagnostics.Codes());
     }
 
     [Fact]
@@ -260,11 +259,10 @@ public sealed class LintingConfigurationTests
     {
         // Arrange
         using var directory = new TempDirectory();
-        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] }, "excludeFiles": ["Widget.he.json"] }""");
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Widget.he.json": ["LOC0113"] } }""");
         var file = directory.Write("Widget.he.json", "{}");
         var configuration = new LintingConfiguration(directory.Root);
         configuration.GetIgnoredCodes(file);
-        configuration.IsExcluded(file);
 
         // Act
         var diagnostics = configuration.GetDiagnostics();

@@ -6,7 +6,7 @@ using Forma.Locali.Cli;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 
-/// <summary>The configuration a run applies: the one <c>.locali.json</c> nearest at or above the path the run was given, merged with the globs the command line excludes, holding every entry of the file to having applied to something.</summary>
+/// <summary>The configuration a run applies: the one <c>.locali.json</c> nearest at or above the path the run was given, merged with the globs the command line excludes, holding each of the file's exceptions and source lines to having applied to something.</summary>
 public sealed class LintingConfiguration : ILintingConfiguration
 {
     /// <summary>The name a linting configuration file is read under.</summary>
@@ -30,32 +30,19 @@ public sealed class LintingConfiguration : ILintingConfiguration
     public string? FilePath
         => _file.Value?.Path;
 
-    // The file's entries are asked first and always, so one the command line also names still counts as applied.
     /// <inheritdoc />
     public bool IsExcluded(string file)
     {
         ArgumentException.ThrowIfNullOrEmpty(file);
 
         var full = Path.GetFullPath(file);
-        var matched = false;
 
-        if (_file.Value is { File: { } config } tracked)
+        if (_file.Value is { File: { } config } tracked && config.ExcludeFiles.Any(glob => GlobPattern.Matches(glob, Relative(tracked, full))))
         {
-            var relative = Relative(tracked, full);
-
-            foreach (var entry in config.ExcludeFiles)
-            {
-                if (!GlobPattern.Matches(entry.Glob, relative))
-                {
-                    continue;
-                }
-
-                tracked.UsedExclude.TryAdd(entry.Offset, true);
-                matched = true;
-            }
+            return true;
         }
 
-        return matched || _commandLineExcludes.Any(pattern => GlobPattern.Matches(pattern, full));
+        return _commandLineExcludes.Any(pattern => GlobPattern.Matches(pattern, full));
     }
 
     /// <inheritdoc />
@@ -284,17 +271,6 @@ public sealed class LintingConfiguration : ILintingConfiguration
             }
         }
 
-        foreach (var entry in config.ExcludeFiles)
-        {
-            if (!tracked.UsedExclude.ContainsKey(entry.Offset))
-            {
-                diagnostics.Add(config.Diagnose(
-                    entry.Offset,
-                    LintingCodes.StaleConfigurationEntry,
-                    $"'{entry.Glob}' matched no file the run reached, so it excludes nothing."));
-            }
-        }
-
         // A line matching no locale file, or one every later line overrides for each file it matches, governs nothing.
         foreach (var entry in config.LocaleSources)
         {
@@ -364,8 +340,6 @@ public sealed class LintingConfiguration : ILintingConfiguration
         public string? ReadError { get; } = readError;
 
         public ConcurrentDictionary<int, bool> UsedIgnore { get; } = new();
-
-        public ConcurrentDictionary<int, bool> UsedExclude { get; } = new();
 
         public ConcurrentDictionary<int, bool> UsedLocaleSources { get; } = new();
     }

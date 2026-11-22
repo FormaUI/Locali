@@ -129,11 +129,11 @@ is refused instead. The rule over `.locali.json` itself can never be named in it
 
 ### LOC0021 — An entry applied to nothing
 
-**Reports.** A glob in `ignoreDiagnostics` or `excludeFiles` that matched no file the run
-reached, a `localeSources` line that is the last match for no locale file the run reached,
-because none matches it or a later line claims every file it matches, a hint naming an assembly
-no project of the run builds or references, or an `ignoreDiagnostics` line naming a rule this
-linter has retired, which no run reports.
+**Reports.** A glob in `ignoreDiagnostics` that matched no file the run reached, a
+`localeSources` line that is the last match for no locale file the run reached, because none
+matches it or a later line claims every file it matches, a hint naming an assembly no project of
+the run builds or references, or an `ignoreDiagnostics` line naming a rule this linter has
+retired, which no run reports.
 
 **Why it matters.** A file moved out of the tree is exactly when its exceptions go stale, and an
 exception that names nothing sits unnoticed until it excuses the wrong file. A `localeSources`
@@ -145,8 +145,10 @@ error, so a configuration keeps its run passing past that release until the line
 **What fixes it.** Delete the entry, point it at the file's new place, or move the line after
 the broader one that overrides it.
 
-**Silent where.** Nowhere by design: a narrower `--path` leaves the entries for the rest of
-the tree matching nothing, and they are reported all the same, which is why the rule is a
+**Silent where.** An `excludeFiles` glob is held to nothing, as `--exclude` is: the folder it
+names, such as a sandbox or a build's output, may exist on one machine alone. Every other entry
+is reported wherever it applies to nothing: a narrower `--path` leaves the entries for the rest
+of the tree matching nothing, and they are reported all the same, which is why the rule is a
 warning rather than an error and why a gate lints the whole solution. An `ignoreDiagnostics`
 glob is held to every file beneath the path, read or not, so one written for a project that
 another solution in the same folder builds counts as applied in either solution's run. A

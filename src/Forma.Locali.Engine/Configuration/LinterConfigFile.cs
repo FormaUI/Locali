@@ -24,7 +24,7 @@ public sealed class LinterConfigFile
         string path,
         TextMap map,
         IReadOnlyList<ConfigIgnoreDiagnostic> ignoreDiagnostics,
-        IReadOnlyList<ConfigExcludeFile> excludeFiles,
+        IReadOnlyList<string> excludeFiles,
         IReadOnlyList<ConfigLocaleSource> localeSources,
         Hints hints,
         IReadOnlyList<ConfigMalformedValue> malformedValues)
@@ -49,7 +49,7 @@ public sealed class LinterConfigFile
     public IReadOnlyList<ConfigIgnoreDiagnostic> IgnoreDiagnostics { get; }
 
     /// <summary>Every glob the file's <c>excludeFiles</c> entry names.</summary>
-    public IReadOnlyList<ConfigExcludeFile> ExcludeFiles { get; }
+    public IReadOnlyList<string> ExcludeFiles { get; }
 
     /// <summary>Every line of the file's <c>localeSources</c> entry, in the order written.</summary>
     public IReadOnlyList<ConfigLocaleSource> LocaleSources { get; }
@@ -78,7 +78,7 @@ public sealed class LinterConfigFile
 
         var utf8 = WithoutByteOrderMark(content);
         var ignoreDiagnostics = new List<ConfigIgnoreDiagnostic>();
-        var excludeFiles = new List<ConfigExcludeFile>();
+        var excludeFiles = new List<string>();
         var malformedValues = new List<ConfigMalformedValue>();
         var localeSources = new List<ConfigLocaleSource>();
         var hints = new Hints();
@@ -126,7 +126,7 @@ public sealed class LinterConfigFile
             ? content[3..]
             : content;
 
-    private static void ReadRoot(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnostic> ignoreDiagnostics, List<ConfigExcludeFile> excludeFiles, List<ConfigLocaleSource> localeSources, Hints hints, List<ConfigMalformedValue> malformedValues)
+    private static void ReadRoot(ref Utf8JsonReader reader, List<ConfigIgnoreDiagnostic> ignoreDiagnostics, List<string> excludeFiles, List<ConfigLocaleSource> localeSources, Hints hints, List<ConfigMalformedValue> malformedValues)
     {
         while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
         {
@@ -312,7 +312,7 @@ public sealed class LinterConfigFile
         return allowed;
     }
 
-    private static void ReadExcludeFiles(ref Utf8JsonReader reader, List<ConfigExcludeFile> excludeFiles, List<ConfigMalformedValue> malformedValues)
+    private static void ReadExcludeFiles(ref Utf8JsonReader reader, List<string> excludeFiles, List<ConfigMalformedValue> malformedValues)
     {
         if (reader.TokenType != JsonTokenType.StartArray)
         {
@@ -326,7 +326,7 @@ public sealed class LinterConfigFile
         {
             if (reader.TokenType == JsonTokenType.String)
             {
-                excludeFiles.Add(new ConfigExcludeFile(reader.GetString() ?? string.Empty, (int)reader.TokenStartIndex));
+                excludeFiles.Add(reader.GetString() ?? string.Empty);
             }
             else
             {
