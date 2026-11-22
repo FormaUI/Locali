@@ -45,7 +45,14 @@ public sealed class LintingService(
     /// <inheritdoc />
     public async ValueTask<LintingResult> RunAsync(CancellationToken cancellationToken = default)
     {
-        var target = _resolver.Resolve(_options.Path);
+        var found = _resolver.Resolve(_options.Path);
+
+        // A project compiles whole because binding needs it, but only the named files are reported on.
+        var wanted = found.SourceFiles.Select(Path.GetFullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var linted = await LoadAndLintSourcesAsync(found, wanted, cancellationToken).ConfigureAwait(false);
+
+        // A solution or a project is read as the projects the run loaded, so a folder beside them that none of them owns goes unread.
+        var target = found.IsBoundToProjects ? found.Within(ProjectPaths(linted), BuiltFiles(linted)) : found;
         var diagnostics = new ConcurrentBag<LintingDiagnostic>();
 
         // Each file is read independently, so they overlap rather than queueing behind one another.
@@ -60,16 +67,17 @@ public sealed class LintingService(
                 }
             }).ConfigureAwait(false);
 
-        var (projectDiagnostics, coverage) = await LintProjectsAsync(target, cancellationToken).ConfigureAwait(false);
+        var (projectDiagnostics, coverage) = LintProjects(target, wanted, linted, cancellationToken);
         foreach (var diagnostic in projectDiagnostics)
         {
             diagnostics.Add(diagnostic);
         }
 
-        // The linting configuration is asked about every file it reads, even one with nothing to report, so
-        // a glob matching only a clean file is not mistaken for one matching nothing at all.
-        var configIgnores = target.LocalizationFiles
-            .Concat(target.SourceFiles)
+        // The linting configuration is asked about every file beneath the path, even one with nothing to report or one the run
+        // leaves unread, such as another solution's in the same folder, so a glob matching only those is not mistaken for one
+        // matching nothing at all.
+        var configIgnores = found.LocalizationFiles
+            .Concat(found.SourceFiles)
             .ToDictionary(Path.GetFullPath, _lintingConfiguration.GetIgnoredCodes, StringComparer.OrdinalIgnoreCase);
 
         foreach (var diagnostic in _lintingConfiguration.GetDiagnostics())
@@ -125,23 +133,46 @@ public sealed class LintingService(
         return new LintingResult(reported, target.FileCount, suppressed, leftOut.Count(IsIgnored)) { Coverage = coverage };
     }
 
-    private async ValueTask<(IReadOnlyList<LintingDiagnostic> Diagnostics, LookupCoverage Coverage)> LintProjectsAsync(LintingTarget target, CancellationToken cancellationToken)
+    // Each project's callsites are linted as soon as it is loaded, while the loader builds the next one.
+    private async ValueTask<List<(LoadedProject Project, SourceLintResult Sources)>> LoadAndLintSourcesAsync(LintingTarget target, HashSet<string> wanted, CancellationToken cancellationToken)
+    {
+        var linted = new List<(LoadedProject Project, SourceLintResult Sources)>();
+        if (target.Projects.Count == 0)
+        {
+            return linted;
+        }
+
+        await foreach (var project in _loader.LoadAsync(target.Projects, cancellationToken).ConfigureAwait(false))
+        {
+            linted.Add((project, _sources.Lint(project, wanted, cancellationToken)));
+        }
+
+        return linted;
+    }
+
+    private static HashSet<string> ProjectPaths(List<(LoadedProject Project, SourceLintResult Sources)> linted)
+        => linted.Select(entry => Path.GetFullPath(entry.Project.Path)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    // A project may compile or embed a file from outside its own folder, which is as much the run's as one beneath it.
+    private static HashSet<string> BuiltFiles(List<(LoadedProject Project, SourceLintResult Sources)> linted)
+        => linted
+            .SelectMany(entry => (entry.Project.Compilation?.SyntaxTrees.Select(tree => tree.FilePath) ?? [])
+                .Concat(entry.Project.EmbeddedResourceNames?.Keys ?? []))
+            .Where(Path.IsPathFullyQualified)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private (IReadOnlyList<LintingDiagnostic> Diagnostics, LookupCoverage Coverage) LintProjects(
+        LintingTarget target,
+        HashSet<string> wanted,
+        List<(LoadedProject Project, SourceLintResult Sources)> linted,
+        CancellationToken cancellationToken)
     {
         if (target.Projects.Count == 0)
         {
             return ([], LookupCoverage.None);
         }
 
-        // A project compiles whole because binding needs it, but only the named files are reported on.
-        var wanted = target.SourceFiles.Select(Path.GetFullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var diagnostics = new List<LintingDiagnostic>();
-        var linted = new List<(LoadedProject Project, SourceLintResult Sources)>();
-
-        // Each project's callsites are linted as soon as it is loaded, while the loader builds the next one.
-        await foreach (var project in _loader.LoadAsync(target.Projects, cancellationToken).ConfigureAwait(false))
-        {
-            linted.Add((project, _sources.Lint(project, wanted, cancellationToken)));
-        }
 
         // The project rules wait for every project, since a locale pack's folders are resolved against the whole run and read for the projects they name.
         var projects = new LoadedProjects([.. linted.Select(entry => entry.Project)], target.IsSolution);

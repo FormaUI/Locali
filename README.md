@@ -113,7 +113,10 @@ Usage: locali --path <file-or-directory> [--report [<path>]] [--exclude <glob>]
 `--path` accepts a `.json` file, a `.cs`, `.vb` or `.razor` file, a `.csproj` or `.vbproj`, a
 `.sln`/`.slnx`, or a directory. A directory is searched for `.json`, `.cs`, `.vb` and `.razor`,
 skipping `bin` and `obj`. Source files are linted through the project that owns them, found by
-walking up to the nearest `.csproj` or `.vbproj`.
+walking up to the nearest `.csproj` or `.vbproj`. A solution or a project is read as the
+projects the run loads, its own and, in a tree never built, the projects they reference: a file
+in its folder is read where the nearest project above it is one of them or one of them compiles
+or embeds it, so a sandbox beside them, or a project the solution does not list, goes unread.
 
 `--exclude` is what makes a test tree lintable: a fixture that is malformed on purpose reports
 what it exists to prove. A `.locali.json` file's `excludeFiles` entry does the same without a
@@ -283,7 +286,7 @@ under 100, a file rule in the 100s, and a callsite rule in the 200s.
 | LOC0023 | Warning | The root namespace the runtime counts a type's name from holds none of the project's types |
 | LOC0024 | Error | A locale pack's file has a name starting with no assembly the solution builds or references |
 | LOC0025 | Warning | A locale file comes from a source its `localeSources` line does not allow, a pack's file held to the line over the project it localizes |
-| LOC0026 | Warning | A `.locali.json` sits beneath the path the run was given, other than the one the run reads |
+| LOC0026 | Warning | A `.locali.json` sits beneath the path the run was given, and for a solution or a project among or above the projects it loads, other than the one the run reads |
 | LOC0027 | Warning | A part of the root namespace a project's locale files are embedded under, the assembly's name unless the project names another, is a culture |
 | LOC0028 | Error | A hint names a type, a member or a package that is not there or not of the kind the hint reads |
 | LOC0029 | Error | A hint disagrees with another written for the same member, or with the type the flow reaches on its own |

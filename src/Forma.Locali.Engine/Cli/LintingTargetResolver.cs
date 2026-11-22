@@ -84,12 +84,20 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
         var projects = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var owned = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         var configurations = new List<string>();
+        var owners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var file in files)
         {
             if (_lintingConfiguration.IsExcluded(file))
             {
                 continue;
+            }
+
+            // The nearest project above a file owns it, so a nested project keeps its own files.
+            var project = ProjectOf(file) is { } nearest ? Path.GetFullPath(nearest) : null;
+            if (project is not null)
+            {
+                owners[Path.GetFullPath(file)] = project;
             }
 
             // A configuration file is listed so the run can say which it does not read; one a fixture folder keeps is excluded like the fixtures around it.
@@ -103,14 +111,13 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
             {
                 localization.Add(file);
 
-                // The nearest project above a file owns it, so a nested project keeps its own locale files.
-                if (ProjectOf(file) is { } project)
+                if (project is not null)
                 {
                     projects.Add(project);
 
-                    if (!owned.TryGetValue(Path.GetFullPath(project), out var mine))
+                    if (!owned.TryGetValue(project, out var mine))
                     {
-                        owned[Path.GetFullPath(project)] = mine = [];
+                        owned[project] = mine = [];
                     }
 
                     mine.Add(file);
@@ -120,7 +127,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
             {
                 sources.Add(file);
 
-                if (ProjectOf(file) is { } project)
+                if (project is not null)
                 {
                     projects.Add(project);
                 }
@@ -132,7 +139,8 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
             [.. sources],
             [.. projects],
             owned.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value, StringComparer.OrdinalIgnoreCase),
-            [.. configurations]);
+            [.. configurations],
+            owners);
     }
 
     private LintingTarget FromProject(string project)
@@ -140,7 +148,7 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
         var folder = Path.GetDirectoryName(Path.GetFullPath(project))!;
         var target = FromFiles(Walk(folder));
 
-        return target with { Projects = [project] };
+        return target with { Projects = [project], IsBoundToProjects = true };
     }
 
     private LintingTarget FromSolution(string solution)
@@ -148,6 +156,6 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
         var folder = Path.GetDirectoryName(Path.GetFullPath(solution))!;
         var target = FromFiles(Walk(folder));
 
-        return target with { Projects = [solution], IsSolution = true };
+        return target with { Projects = [solution], IsSolution = true, IsBoundToProjects = true };
     }
 }

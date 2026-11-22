@@ -178,7 +178,8 @@ public sealed class LintingTargetResolverTests
         Assert.Multiple(
             () => Assert.Equal([project], target.Projects),
             () => Assert.Single(target.SourceFiles),
-            () => Assert.False(target.IsSolution));
+            () => Assert.False(target.IsSolution),
+            () => Assert.True(target.IsBoundToProjects));
     }
 
     [Fact]
@@ -197,7 +198,60 @@ public sealed class LintingTargetResolverTests
         Assert.Multiple(
             () => Assert.Equal([solution], target.Projects),
             () => Assert.Single(target.SourceFiles),
-            () => Assert.True(target.IsSolution));
+            () => Assert.True(target.IsSolution),
+            () => Assert.True(target.IsBoundToProjects));
+    }
+
+    [Fact]
+    public void Should_read_a_directory_as_every_file_beneath_it()
+    {
+        // Arrange — a directory names no project, so a file beneath it is read whether or not a project owns it.
+        using var directory = new TempDirectory();
+        directory.Write(Path.Combine("Scratch", "Scratch.csproj"), "<Project />");
+        directory.Write("Loose.cs", "class Loose;");
+
+        // Act
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Single(target.SourceFiles),
+            () => Assert.False(target.IsBoundToProjects));
+    }
+
+    [Fact]
+    public void Should_record_the_project_owning_each_file_it_found()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var outer = directory.Write("Outer.csproj", "<Project />");
+        var inner = directory.Write(Path.Combine("Nested", "Inner.csproj"), "<Project />");
+        var source = directory.Write("Widget.cs", "class Widget;");
+        var file = directory.Write(Path.Combine("Nested", ".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Valid);
+        var configuration = directory.Write(Path.Combine("Nested", ".locali.json"), "{}");
+
+        // Act
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal(outer, target.ProjectsByFile[source]),
+            () => Assert.Equal(inner, target.ProjectsByFile[file]),
+            () => Assert.Equal(inner, target.ProjectsByFile[configuration]));
+    }
+
+    [Fact]
+    public void Should_record_no_project_for_a_file_no_project_sits_above()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Valid);
+
+        // Act
+        var target = new LintingTargetResolver(new LintingConfiguration(directory.Root), LocaleFormatTestFactory.Json).Resolve(directory.Root);
+
+        // Assert
+        Assert.False(target.ProjectsByFile.ContainsKey(file));
     }
 
     [Fact]

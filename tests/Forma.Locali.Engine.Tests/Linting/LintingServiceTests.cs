@@ -502,6 +502,122 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
+    public async Task Should_leave_the_files_no_project_of_a_solution_owns_unread()
+    {
+        // Arrange — a sandbox beside the solution's projects holds a loose locale file, a throwaway project and a configuration of its own.
+        using var directory = new TempDirectory();
+        var solution = directory.Write("Scratch.slnx", "<Solution />");
+        var project = directory.Write(Path.Combine("Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("Widgets", "Widget.cs"), "class Widget;");
+        directory.Write(Path.Combine(".sandbox", ".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
+        directory.Write(Path.Combine(".sandbox", "Throwaway", "Throwaway.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine(".sandbox", "Throwaway", ".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
+        directory.Write(Path.Combine(".sandbox", "Throwaway", "Probe.cs"), "class Probe;");
+        directory.Write(Path.Combine(".sandbox", "Probe", ".locali.json"), "{}");
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.Building("Scratch"), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(solution, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(result.Diagnostics),
+            () => Assert.Equal(1, result.FileCount));
+    }
+
+    [Fact]
+    public async Task Should_leave_an_exception_for_a_file_another_solution_in_the_folder_builds_unreported()
+    {
+        // Arrange — two solutions share a folder and its configuration, and this one does not list the project the exception is written for.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Website/.locales/*.json": ["LOC0119"] } }""");
+        var solution = directory.Write("Mobile.slnx", "<Solution />");
+        var project = directory.Write(Path.Combine("Mobile", "Mobile.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("Mobile", "App.cs"), "class App;");
+        directory.Write(Path.Combine("Website", "Website.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("Website", ".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Valid);
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.Building("Mobile"), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(solution, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
+    public async Task Should_read_the_files_of_every_project_a_solution_run_loads()
+    {
+        // Arrange — a tree never built loads the projects a solution's projects reference, which the solution need not list.
+        using var directory = new TempDirectory();
+        var solution = directory.Write("Scratch.slnx", "<Solution />");
+        var library = directory.Write(Path.Combine("Libraries", "Widgets", "Widgets.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var file = directory.Write(Path.Combine("Libraries", "Widgets", ".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
+        var loader = new StubProjectLoader(new LoadedProject(library, CompilationTestFactory.Building("Widgets"), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(solution, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == LintingCodes.MissingMarker && diagnostic.Path == file);
+    }
+
+    [Fact]
+    public async Task Should_report_a_configuration_file_above_the_projects_of_a_solution()
+    {
+        // Arrange — no project owns a folder above the projects, but a configuration there was written for them.
+        using var directory = new TempDirectory();
+        var solution = directory.Write("Scratch.slnx", "<Solution />");
+        var project = directory.Write(Path.Combine("src", "Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var configuration = directory.Write(Path.Combine("src", ".locali.json"), "{}");
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.Building("Scratch"), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(solution, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Multiple(
+            () => Assert.Equal(LintingCodes.UnreadConfiguration, diagnostic.Code),
+            () => Assert.Equal(configuration, diagnostic.Path));
+    }
+
+    [Fact]
+    public async Task Should_leave_a_nested_project_a_project_run_does_not_load_unread()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var project = directory.Write(Path.Combine("Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("Widgets", ".sandbox", "Throwaway", "Throwaway.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("Widgets", ".sandbox", "Throwaway", ".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.Building("Scratch"), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(project, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Empty(result.Diagnostics),
+            () => Assert.Equal(0, result.FileCount));
+    }
+
+    [Fact]
+    public async Task Should_read_a_file_no_project_owns_when_the_run_named_a_directory()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var project = directory.Write(Path.Combine("Widgets", "Scratch.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        var file = directory.Write(Path.Combine(".sandbox", ".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Unmarked);
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.Building("Scratch"), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root, projectLoader: loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Equal(file, Assert.Single(result.Diagnostics).Path);
+    }
+
+    [Fact]
     public async Task Should_report_a_key_left_out_for_the_type_a_property_another_project_of_the_run_builds_names()
     {
         // Arrange — the project reads the other's reference assembly, and loads first, as a load of a built tree may hand it over.

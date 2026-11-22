@@ -3,6 +3,16 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.27`
+
+*Unreleased*
+
+- A run given a solution or a project reads the files of the projects it loads, those each is the nearest project above
+  and those each compiles or embeds, rather than every file in the solution's folder. A sandbox beside the projects, a
+  throwaway project in it, or a project the solution does not list goes unread, so a malformed experiment there no
+  longer fails the run on the one machine that keeps it, and LOC0026 no longer reports a `.locali.json` there. A run
+  given a directory still reads every file beneath it.
+
 ## `1.0.0-preview.26`
 
 *November 20, 2026*

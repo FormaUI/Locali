@@ -147,9 +147,11 @@ the broader one that overrides it.
 
 **Silent where.** Nowhere by design: a narrower `--path` leaves the entries for the rest of
 the tree matching nothing, and they are reported all the same, which is why the rule is a
-warning rather than an error and why a gate lints the whole solution. A `localeSources` line
-counts as applied for every locale file it is the last match for, whether or not the file's
-source could be told.
+warning rather than an error and why a gate lints the whole solution. An `ignoreDiagnostics`
+glob is held to every file beneath the path, read or not, so one written for a project that
+another solution in the same folder builds counts as applied in either solution's run. A
+`localeSources` line counts as applied for every locale file it is the last match for, whether
+or not the file's source could be told.
 
 ### LOC0022 — The runtime's config file is wrong or misplaced
 
@@ -245,7 +247,8 @@ it. It is a warning because the file loads.
 ### LOC0026 — A `.locali.json` the run does not read
 
 **Reports.** A `.locali.json` found beneath the path the run was given, other than the one the
-run reads. It is reported at that file.
+run reads, and for a solution or a project, one among the projects the run loads or in a folder
+above one of them. It is reported at that file.
 
 **Why it matters.** A run reads one `.locali.json`, the nearest at or above the path it was
 given, and merges nothing from any other. A second file beneath it was written expecting to
@@ -255,7 +258,9 @@ apply, and every exclusion, exception, and source it names applies to nothing.
 there, and delete it.
 
 **Silent where.** The only `.locali.json` beneath the path is the one read. A run given a
-folder above every configuration reads none, and then reports each it finds.
+folder above every configuration reads none, and then reports each it finds. A run given a
+solution or a project is silent on one in a folder no project it loads owns or sits beneath,
+such as a sandbox's, since it reads nothing there.
 
 ### LOC0027 — An assembly named for a culture
 
