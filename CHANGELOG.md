@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.27`
 
-*Unreleased*
+*November 23, 2026*
 
 - A run given a solution or a project reads the files of the projects it loads, those each is the nearest project above
   and those each compiles or embeds, rather than every file in the solution's folder. A sandbox beside the projects, a
