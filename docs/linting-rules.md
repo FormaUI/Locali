@@ -117,8 +117,8 @@ assembly the run neither builds nor references.
 ### LOC0020 — The linting configuration cannot be read
 
 **Reports.** A `.locali.json` or a `.locali-hints.json` that is not readable JSON or does not
-follow its shape, or a `.locali.json` naming a rule this linter does not define and never
-retired, in either list. A restored package's `.locali-hints.json` is reported as a warning,
+follow its shape, as a glob written empty does not, or a `.locali.json` naming a rule this
+linter does not define and never retired, in either list. A restored package's `.locali-hints.json` is reported as a warning,
 since the run cannot change it.
 
 **Why it matters.** A typo in a rule identifier would silence nothing and say nothing; the file

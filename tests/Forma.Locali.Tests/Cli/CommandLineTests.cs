@@ -31,6 +31,48 @@ public sealed class CommandLineTests
     }
 
     [Fact]
+    public void Should_reject_an_empty_path()
+    {
+        // Act
+        var parsed = CommandLine.TryParse(["--path", ""], out _, out var error);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.False(parsed);
+            Assert.Equal("'--path' needs a file or directory.", error);
+        });
+    }
+
+    [Fact]
+    public void Should_reject_an_empty_report_path()
+    {
+        // Act — an empty argument is no report path, so it stands as an argument of its own, and the linter takes none such.
+        var parsed = CommandLine.TryParse(["--path", "x", "--report", ""], out _, out var error);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.False(parsed);
+            Assert.Equal("'' is not an argument the linter takes.", error);
+        });
+    }
+
+    [Fact]
+    public void Should_reject_an_exclude_switch_with_an_empty_glob()
+    {
+        // Act
+        var parsed = CommandLine.TryParse(["--path", "x", "--exclude", ""], out _, out var error);
+
+        // Assert
+        Assert.Multiple(() =>
+        {
+            Assert.False(parsed);
+            Assert.Equal("'--exclude' needs a glob.", error);
+        });
+    }
+
+    [Fact]
     public void Should_reject_an_exclude_switch_with_no_glob()
     {
         // Act

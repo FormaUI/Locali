@@ -50,7 +50,7 @@ public static class CommandLine
             switch (args[index])
             {
                 case "--path":
-                    if (index + 1 >= args.Length || args[index + 1].StartsWith("--", StringComparison.Ordinal))
+                    if (!HasValue(args, index + 1))
                     {
                         error = "'--path' needs a file or directory.";
 
@@ -64,7 +64,7 @@ public static class CommandLine
                 case "--report":
                     wantsReport = true;
 
-                    if (index + 1 < args.Length && !args[index + 1].StartsWith("--", StringComparison.Ordinal))
+                    if (HasValue(args, index + 1))
                     {
                         report = args[++index];
                     }
@@ -72,7 +72,7 @@ public static class CommandLine
                     break;
 
                 case "--exclude":
-                    if (index + 1 >= args.Length || args[index + 1].StartsWith("--", StringComparison.Ordinal))
+                    if (!HasValue(args, index + 1))
                     {
                         error = "'--exclude' needs a glob.";
 
@@ -84,7 +84,7 @@ public static class CommandLine
                     break;
 
                 case "--severity":
-                    if (index + 1 >= args.Length || args[index + 1].StartsWith("--", StringComparison.Ordinal))
+                    if (!HasValue(args, index + 1))
                     {
                         error = "'--severity' needs a level.";
 
@@ -103,7 +103,7 @@ public static class CommandLine
                     break;
 
                 case "--property":
-                    if (index + 1 >= args.Length || args[index + 1].StartsWith("--", StringComparison.Ordinal))
+                    if (!HasValue(args, index + 1))
                     {
                         error = "'--property' needs a name and a value, written as 'Configuration=Release'.";
 
@@ -148,6 +148,10 @@ public static class CommandLine
 
         return true;
     }
+
+    // A switch's value is the argument after it, unless that argument is empty or another switch.
+    private static bool HasValue(string[] args, int index)
+        => index < args.Length && args[index].Length > 0 && !args[index].StartsWith("--", StringComparison.Ordinal);
 
     private static LintingSeverity? ParseSeverity(string value)
         => value switch

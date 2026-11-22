@@ -12,6 +12,7 @@ public sealed class LinterConfigFile
     private const string ExcludeFilesKey = "excludeFiles";
     private const string LocaleSourcesKey = "localeSources";
     private const string HintsKey = "hints";
+    private const string EmptyGlob = "a glob is empty, so it names no file.";
 
     /// <summary>How a configuration file and a hints file are read: comments and trailing commas allowed.</summary>
     internal static readonly JsonReaderOptions ReaderOptions = new()
@@ -219,6 +220,14 @@ public sealed class LinterConfigFile
                 return;
             }
 
+            if (glob.Length == 0)
+            {
+                malformedValues.Add(new ConfigMalformedValue(globOffset, EmptyGlob));
+                reader.Skip();
+
+                continue;
+            }
+
             if (reader.TokenType != JsonTokenType.StartArray)
             {
                 malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{glob}' is not a list of text; it lists rule identifiers."));
@@ -273,6 +282,13 @@ public sealed class LinterConfigFile
                 return;
             }
 
+            if (glob.Length == 0)
+            {
+                malformedValues.Add(new ConfigMalformedValue(globOffset, EmptyGlob));
+                reader.Skip();
+                continue;
+            }
+
             if (reader.TokenType != JsonTokenType.StartArray)
             {
                 malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, $"'{glob}' is not a list of text; it lists sources."));
@@ -324,14 +340,18 @@ public sealed class LinterConfigFile
 
         while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
         {
-            if (reader.TokenType == JsonTokenType.String)
-            {
-                excludeFiles.Add(reader.GetString() ?? string.Empty);
-            }
-            else
+            if (reader.TokenType != JsonTokenType.String)
             {
                 malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, "a glob is not text."));
                 reader.Skip();
+            }
+            else if (reader.GetString() is { Length: > 0 } glob)
+            {
+                excludeFiles.Add(glob);
+            }
+            else
+            {
+                malformedValues.Add(new ConfigMalformedValue((int)reader.TokenStartIndex, EmptyGlob));
             }
         }
     }

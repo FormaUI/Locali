@@ -202,6 +202,23 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
+    public async Task Should_report_an_empty_glob_and_finish_the_run()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "excludeFiles": [""], "ignoreDiagnostics": { "": ["LOC0113"] }, "localeSources": { "": ["pack"] } }""");
+        directory.Write(LocalizationFileFakeData.HebrewName, LocalizationFileFakeData.Valid);
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(directory.Root).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal([LintingCodes.MalformedConfiguration, LintingCodes.MalformedConfiguration, LintingCodes.MalformedConfiguration], result.Diagnostics.Codes()),
+            () => Assert.Equal(1, result.FileCount));
+    }
+
+    [Fact]
     public async Task Should_report_a_stale_glob_only_at_warning_severity()
     {
         // Arrange

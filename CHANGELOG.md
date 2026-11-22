@@ -14,6 +14,9 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
   given a directory still reads every file beneath it.
 - An `excludeFiles` glob in `.locali.json` that matches no file is no longer LOC0021, as an `--exclude` glob never was,
   so a configuration excluding a folder that exists on some machines alone, such as a sandbox, passes on every clone.
+- An empty glob in `.locali.json`'s `excludeFiles`, `ignoreDiagnostics` or `localeSources` is LOC0020, and an empty
+  value on the command line, as `--path ""` or `--exclude ""`, is refused as a missing one is, where either stopped the
+  run before it reported anything.
 
 ## `1.0.0-preview.26`
 

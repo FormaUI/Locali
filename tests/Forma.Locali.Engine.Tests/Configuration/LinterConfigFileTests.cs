@@ -337,6 +337,39 @@ public sealed class LinterConfigFileTests
     }
 
     [Fact]
+    public void Should_flag_an_empty_exclude_files_glob()
+    {
+        // Arrange
+        var document = LinterConfigFileTestFactory.Read("""{ "excludeFiles": ["", "*/Fixtures/*"] }""");
+
+        // Assert
+        Assert.Equal(["*/Fixtures/*"], document.ExcludeFiles);
+        Assert.Single(document.MalformedValues);
+    }
+
+    [Fact]
+    public void Should_flag_an_empty_ignore_diagnostics_glob()
+    {
+        // Arrange
+        var document = LinterConfigFileTestFactory.Read("""{ "ignoreDiagnostics": { "": ["LOC0113"], "Widget.he.json": ["LOC0113"] } }""");
+
+        // Assert
+        Assert.Equal(["Widget.he.json"], document.IgnoreDiagnostics.Select(entry => entry.Glob));
+        Assert.Single(document.MalformedValues);
+    }
+
+    [Fact]
+    public void Should_flag_an_empty_locale_sources_glob()
+    {
+        // Arrange
+        var document = LinterConfigFileTestFactory.Read("""{ "localeSources": { "": ["pack"], "**": ["host"] } }""");
+
+        // Assert
+        Assert.Equal(["**"], document.LocaleSources.Select(entry => entry.Glob));
+        Assert.Single(document.MalformedValues);
+    }
+
+    [Fact]
     public void Should_recover_after_a_malformed_entry_to_read_what_follows()
     {
         // Arrange — a stray key in the middle should not stop the ignore entry after it from being read.
