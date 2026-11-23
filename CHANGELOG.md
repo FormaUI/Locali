@@ -5,7 +5,7 @@ The releases before `1.0.0-preview.11` are recorded by their [tags](https://gith
 
 ## `1.0.0-preview.28`
 
-*Unreleased*
+*November 23, 2026*
 
 - A glob in `.locali.json` that can match a file outside what the run reads, the folder of the solution or project it
   was given, the directory or the one file, is no longer LOC0021 for matching nothing, and a hint naming an assembly
