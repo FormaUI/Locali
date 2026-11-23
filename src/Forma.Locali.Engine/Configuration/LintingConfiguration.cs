@@ -6,17 +6,20 @@ using Forma.Locali.Cli;
 using Forma.Locali.Diagnostics;
 using Forma.Locali.Documents;
 
-/// <summary>The configuration a run applies: the one <c>.locali.json</c> nearest at or above the path the run was given, merged with the globs the command line excludes, holding each of the file's exceptions and source lines to having applied to something.</summary>
+/// <summary>The configuration a run applies: the one <c>.locali.json</c> nearest at or above the path the run was given, merged with the globs the command line excludes, holding each of the file's exceptions and source lines that can match only what the run reads to having applied to something.</summary>
 public sealed class LintingConfiguration : ILintingConfiguration
 {
     /// <summary>The name a linting configuration file is read under.</summary>
     public const string FileName = ".locali.json";
 
+    private static readonly char[] Wildcards = ['*', '?', '\\'];
+
     private readonly Lazy<TrackedFile?> _file;
     private readonly IReadOnlyCollection<string> _commandLineExcludes;
+    private readonly string _scope;
 
     /// <summary>Finds the configuration for a run and merges the command line into it.</summary>
-    /// <param name="path">The path the run was given, a file or a directory.</param>
+    /// <param name="path">The path the run was given, a file or a directory, whose reach bounds the entries held to having applied to something.</param>
     /// <param name="excludes">The globs the command line excludes, or null when it excludes none.</param>
     public LintingConfiguration(string path, IReadOnlyCollection<string>? excludes = null)
     {
@@ -24,6 +27,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
 
         _file = new Lazy<TrackedFile?>(() => Find(path));
         _commandLineExcludes = excludes ?? [];
+        _scope = LintingTargetResolver.ScopeOf(path);
     }
 
     /// <inheritdoc />
@@ -120,7 +124,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
 
         if (_file.Value is { } tracked)
         {
-            DiagnoseFile(tracked, diagnostics);
+            DiagnoseFile(tracked, ScopeIn(tracked), diagnostics);
         }
 
         return diagnostics;
@@ -146,10 +150,12 @@ public sealed class LintingConfiguration : ILintingConfiguration
             }
         }
 
-        if (_file.Value is { File: { } config })
+        // A hint is held only to a run reading the configuration's whole folder, beneath which the project building its assembly sits.
+        if (_file.Value is { File: { } config } tracked)
         {
-            hints.AddRange(config.LocaleMembers.Select(member => Hint(member, config.Path, config.Map, isPackaged: false)));
-            keys.AddRange(config.LocaleKeys.Select(key => Hint(key, config.Path, config.Map, isPackaged: false)));
+            var isHeldToRun = ScopeIn(tracked) == ".";
+            hints.AddRange(config.LocaleMembers.Select(member => Hint(member, config.Path, config.Map, isPackaged: false) with { IsHeldToRun = isHeldToRun }));
+            keys.AddRange(config.LocaleKeys.Select(key => Hint(key, config.Path, config.Map, isPackaged: false) with { IsHeldToRun = isHeldToRun }));
         }
 
         return new LocaleHints(hints, keys, diagnostics);
@@ -221,7 +227,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
         return new LocaleKeyHint(key.Assembly, key.Type, key.Method, key.Parameter, key.Locale, key.TypeParameter, path, line, column) { IsPackaged = isPackaged };
     }
 
-    private static void DiagnoseFile(TrackedFile tracked, List<LintingDiagnostic> diagnostics)
+    private static void DiagnoseFile(TrackedFile tracked, string scope, List<LintingDiagnostic> diagnostics)
     {
         if (tracked.File is not { } config)
         {
@@ -262,7 +268,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
                 }
             }
 
-            if (!tracked.UsedIgnore.ContainsKey(entry.Offset))
+            if (!tracked.UsedIgnore.ContainsKey(entry.Offset) && IsWithin(entry.Glob, scope))
             {
                 diagnostics.Add(config.Diagnose(
                     entry.Offset,
@@ -274,7 +280,7 @@ public sealed class LintingConfiguration : ILintingConfiguration
         // A line matching no locale file, or one every later line overrides for each file it matches, governs nothing.
         foreach (var entry in config.LocaleSources)
         {
-            if (!tracked.UsedLocaleSources.ContainsKey(entry.Offset))
+            if (!tracked.UsedLocaleSources.ContainsKey(entry.Offset) && IsWithin(entry.Glob, scope))
             {
                 diagnostics.Add(config.Diagnose(
                     entry.Offset,
@@ -287,9 +293,28 @@ public sealed class LintingConfiguration : ILintingConfiguration
     private static LintingCode? Resolve(string identifier)
         => LintingCodes.All.FirstOrDefault(code => code.Id == identifier);
 
+    // A glob matches only paths starting with the text before its first wildcard, so it is judged only where every such path lies in what the run reads.
+    private static bool IsWithin(string glob, string scope)
+    {
+        if (scope == ".")
+        {
+            return true;
+        }
+
+        var wildcard = glob.IndexOfAny(Wildcards);
+        var literal = wildcard < 0 ? glob : glob[..wildcard];
+
+        return literal.StartsWith(scope + "/", StringComparison.OrdinalIgnoreCase)
+            || (wildcard < 0 && literal.Equals(scope, StringComparison.OrdinalIgnoreCase));
+    }
+
     // A file's path relative to the configuration's own directory, so a glob reads as written from where the file sits.
     private static string Relative(TrackedFile tracked, string file)
         => GlobPattern.Normalize(Path.GetRelativePath(Path.GetDirectoryName(tracked.Path)!, Path.GetFullPath(file)));
+
+    // What the run reads as a glob writes it, from the configuration's own directory, which is "." where the run reads all of it.
+    private string ScopeIn(TrackedFile tracked)
+        => GlobPattern.Normalize(Path.GetRelativePath(Path.GetDirectoryName(tracked.Path)!, _scope));
 
     // The nearest file wins, and a run given a folder above every configuration reads none, since a run is one repository's.
     private static TrackedFile? Find(string path)

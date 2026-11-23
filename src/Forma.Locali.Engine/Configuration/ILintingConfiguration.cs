@@ -20,7 +20,7 @@ public interface ILintingConfiguration
     /// <param name="file">The file, as a full path.</param>
     LocaleSources? GetLocaleSources(string file);
 
-    /// <summary>What the configuration got wrong, and which of its entries applied to no file the run reached.</summary>
+    /// <summary>What the configuration got wrong, and which of its entries that can match only what the run reads applied to no file it reached.</summary>
     IReadOnlyList<LintingDiagnostic> GetDiagnostics();
 
     /// <summary>The hints a run reads: the <c>.locali-hints.json</c> of each library it builds or restores, and the configuration's <c>hints</c>, with what is wrong in them.</summary>

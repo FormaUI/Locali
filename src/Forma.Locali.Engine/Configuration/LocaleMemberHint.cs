@@ -15,6 +15,9 @@ public sealed record LocaleMemberHint(string Assembly, string Type, string Membe
     /// <summary>Whether the hint is written in a restored package's file, which the run cannot change, so what is wrong in it is reported as a warning.</summary>
     public bool IsPackaged { get; init; }
 
+    /// <summary>Whether the run reads every project the hint may be written for, so one naming an assembly no project of the run builds or references applies to nothing.</summary>
+    public bool IsHeldToRun { get; init; } = true;
+
     /// <summary>The member the hint is written for, by its type's full name.</summary>
     public string MemberName
         => $"{Type}.{Member}";

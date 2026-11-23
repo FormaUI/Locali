@@ -3,6 +3,16 @@
 Each release of Locali, newest first. An entry is dated when its release is cut, and reads *Unreleased* until then.
 The releases before `1.0.0-preview.11` are recorded by their [tags](https://github.com/FormaUI/Locali/tags) alone.
 
+## `1.0.0-preview.28`
+
+*Unreleased*
+
+- A glob in `.locali.json` that can match a file outside what the run reads, the folder of the solution or project it
+  was given, the directory or the one file, is no longer LOC0021 for matching nothing, and a hint naming an assembly
+  the run neither builds nor references is LOC0021 only in a run reading the configuration's whole folder. A gate
+  linting one project at a time, or a solution in a folder below the configuration's, no longer hears of the entries
+  written for the rest of the tree.
+
 ## `1.0.0-preview.27`
 
 *November 23, 2026*

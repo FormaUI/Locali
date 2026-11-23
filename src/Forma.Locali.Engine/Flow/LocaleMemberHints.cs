@@ -87,9 +87,12 @@ internal sealed class LocaleMemberHints
             .FirstOrDefault(found => found is not null);
         if (assembly is null)
         {
-            _diagnostics.Add(hint.Diagnose(
-                LintingCodes.StaleConfigurationEntry,
-                $"'{hint.Assembly}' is no assembly a project of the run builds or references, so the hint for '{hint.MemberName}' applies to nothing."));
+            if (hint.IsHeldToRun)
+            {
+                _diagnostics.Add(hint.Diagnose(
+                    LintingCodes.StaleConfigurationEntry,
+                    $"'{hint.Assembly}' is no assembly a project of the run builds or references, so the hint for '{hint.MemberName}' applies to nothing."));
+            }
 
             return null;
         }

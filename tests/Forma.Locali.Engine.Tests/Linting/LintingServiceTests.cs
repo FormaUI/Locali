@@ -563,6 +563,25 @@ public sealed class LintingServiceTests
     }
 
     [Fact]
+    public async Task Should_leave_the_entries_for_another_project_unreported_by_a_run_given_one()
+    {
+        // Arrange — a gate lints each project a change reaches, under a configuration written for every project beside it.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Website/.locales/*.json": ["LOC0119"] }, "localeSources": { "Website/**": ["embedded"] } }""");
+        var project = directory.Write(Path.Combine("Mobile", "Mobile.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("Mobile", "App.cs"), "class App;");
+        directory.Write(Path.Combine("Website", "Website.csproj"), """<Project Sdk="Microsoft.NET.Sdk" />""");
+        directory.Write(Path.Combine("Website", ".locales", LocalizationFileFakeData.HebrewName), LocalizationFileFakeData.Valid);
+        var loader = new StubProjectLoader(new LoadedProject(project, CompilationTestFactory.Building("Mobile"), false, false));
+
+        // Act
+        var result = await LintingServiceTestFactory.Create(project, LintingSeverity.Warning, loader).RunAsync(TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Empty(result.Diagnostics);
+    }
+
+    [Fact]
     public async Task Should_read_the_files_of_every_project_a_solution_run_loads()
     {
         // Arrange — a tree never built loads the projects a solution's projects reference, which the solution need not list.

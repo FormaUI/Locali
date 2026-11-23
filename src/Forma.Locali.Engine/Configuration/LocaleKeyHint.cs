@@ -17,6 +17,9 @@ public sealed record LocaleKeyHint(string Assembly, string Type, string Method, 
     /// <summary>Whether the hint is written in a restored package's file, which the run cannot change, so what is wrong in it is reported as a warning.</summary>
     public bool IsPackaged { get; init; }
 
+    /// <summary>Whether the run reads every project the hint may be written for, so one naming an assembly no project of the run builds or references applies to nothing.</summary>
+    public bool IsHeldToRun { get; init; } = true;
+
     /// <summary>The method the hint is written for, by its type's full name.</summary>
     public string MethodName
         => $"{Type}.{Method}";

@@ -1908,6 +1908,36 @@ public sealed class LocaleFlowTests
     }
 
     [Fact]
+    public void Should_leave_a_hint_naming_an_assembly_the_run_lacks_unreported_where_the_run_is_not_held_to_it()
+    {
+        // Act
+        var (_, diagnostics) = LocaleFlowTestFactory.Run([LocaleFlowTestFactory.Hint("Contoso.Missing", "Contoso.Missing.Component") with { IsHeldToRun = false }], ComponentCompilation());
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_a_key_hint_naming_an_assembly_the_run_neither_builds_nor_references_as_applying_to_nothing()
+    {
+        // Act
+        var (_, _, diagnostics) = LocaleFlowTestFactory.Keyed([LocaleFlowTestFactory.KeyHint("Contoso.Missing", "Contoso.Missing.Labels", "Text", locale: "L")], ComponentCompilation());
+
+        // Assert
+        Assert.Equal(LintingCodes.StaleConfigurationEntry, Assert.Single(diagnostics).Code);
+    }
+
+    [Fact]
+    public void Should_leave_a_key_hint_naming_an_assembly_the_run_lacks_unreported_where_the_run_is_not_held_to_it()
+    {
+        // Act
+        var (_, _, diagnostics) = LocaleFlowTestFactory.Keyed([LocaleFlowTestFactory.KeyHint("Contoso.Missing", "Contoso.Missing.Labels", "Text", locale: "L") with { IsHeldToRun = false }], ComponentCompilation());
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_report_two_hints_relating_one_member_to_different_type_members_and_apply_neither()
     {
         // Act

@@ -112,7 +112,7 @@ read, so the method's key is not counted unchecked; and in a run that only refer
 method, every call to it is a lookup of the key it passes, in the locale the hint names. LOC0028
 reports a hint naming what is not there, LOC0029 two hints relating one member to different type
 members, or one method differently, which leaves it to neither, and LOC0021 a hint naming an
-assembly the run neither builds nor references.
+assembly that a run reading the configuration's whole folder neither builds nor references.
 
 ### LOC0020 — The linting configuration cannot be read
 
@@ -146,14 +146,17 @@ error, so a configuration keeps its run passing past that release until the line
 the broader one that overrides it.
 
 **Silent where.** An `excludeFiles` glob is held to nothing, as `--exclude` is: the folder it
-names, such as a sandbox or a build's output, may exist on one machine alone. Every other entry
-is reported wherever it applies to nothing: a narrower `--path` leaves the entries for the rest
-of the tree matching nothing, and they are reported all the same, which is why the rule is a
-warning rather than an error and why a gate lints the whole solution. An `ignoreDiagnostics`
-glob is held to every file beneath the path, read or not, so one written for a project that
-another solution in the same folder builds counts as applied in either solution's run. A
-`localeSources` line counts as applied for every locale file it is the last match for, whether
-or not the file's source could be told.
+names, such as a sandbox or a build's output, may exist on one machine alone. Every other glob
+is held only to what the run reads: the folder `--path` names, the folder the solution or
+project it names sits in, or the one file it names. A glob is reported only where every path it
+can match, each starting with its text up to the first wildcard, lies there, so a run given one
+project, or a solution in a folder below the configuration's, says nothing of an entry written
+for the rest of the tree. A hint is held only to a run reading the configuration's whole folder,
+since the project building the assembly it names may sit anywhere beneath it. An
+`ignoreDiagnostics` glob is held to every file beneath the path, read or not, so one written for
+a project that another solution in the same folder builds counts as applied in either solution's
+run. A `localeSources` line counts as applied for every locale file it is the last match for,
+whether or not the file's source could be told.
 
 ### LOC0022 — The runtime's config file is wrong or misplaced
 
@@ -318,8 +321,8 @@ would do.
 the assembly that declares it, and write a hint for another library's assembly in the
 application's `.locali.json`; a package's file is corrected in the library and shipped again.
 
-**Silent where.** The hint names an assembly the run neither builds nor references, which
-LOC0021 reports, since the hint may be written for a run that does.
+**Silent where.** The hint names an assembly the run neither builds nor references, which is
+LOC0021's to report, since the hint may be written for a run that does.
 
 ### LOC0029 — A hint disagrees
 

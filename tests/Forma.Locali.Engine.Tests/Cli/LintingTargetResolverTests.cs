@@ -466,4 +466,49 @@ public sealed class LintingTargetResolverTests
         // Assert
         Assert.Equal([root], target.ConfigurationFiles);
     }
+
+    [Fact]
+    public void Should_scope_a_run_given_a_directory_to_that_directory()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+
+        // Act
+        var scope = LintingTargetResolver.ScopeOf(directory.Root + Path.DirectorySeparatorChar);
+
+        // Assert
+        Assert.Equal(Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory.Root)), scope);
+    }
+
+    [Theory]
+    [InlineData("Widgets.csproj")]
+    [InlineData("Widgets.vbproj")]
+    [InlineData("Widgets.sln")]
+    [InlineData("Widgets.slnx")]
+    public void Should_scope_a_run_given_a_project_or_a_solution_to_the_folder_it_sits_in(string name)
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Widgets", name), "<Project />");
+
+        // Act
+        var scope = LintingTargetResolver.ScopeOf(file);
+
+        // Assert
+        Assert.Equal(Path.GetFullPath(Path.Combine(directory.Root, "Widgets")), scope);
+    }
+
+    [Fact]
+    public void Should_scope_a_run_given_any_other_file_to_that_file()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        var file = directory.Write(Path.Combine("Widgets", "Widget.cs"), "class Widget;");
+
+        // Act
+        var scope = LintingTargetResolver.ScopeOf(file);
+
+        // Assert
+        Assert.Equal(Path.GetFullPath(file), scope);
+    }
 }

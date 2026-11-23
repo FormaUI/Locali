@@ -272,6 +272,78 @@ public sealed class LintingConfigurationTests
     }
 
     [Fact]
+    public void Should_leave_a_glob_naming_files_beyond_the_path_unreported()
+    {
+        // Arrange — the run is given one project, and the exception is written for another beside it.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Website/.locales/es/*Workspace*.json": ["LOC0119"] } }""");
+        var project = directory.Write(Path.Combine("Mobile", "Mobile.csproj"), "<Project />");
+        var file = directory.Write(Path.Combine("Mobile", "App.cs"), "class App;");
+        var configuration = new LintingConfiguration(project);
+        configuration.GetIgnoredCodes(file);
+
+        // Act
+        var diagnostics = configuration.GetDiagnostics();
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_report_a_glob_beneath_the_path_that_matched_no_file_the_run_reached()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Mobile/.locales/*Workspace*.json": ["LOC0119"] } }""");
+        var project = directory.Write(Path.Combine("Mobile", "Mobile.csproj"), "<Project />");
+        var file = directory.Write(Path.Combine("Mobile", "App.cs"), "class App;");
+        var configuration = new LintingConfiguration(project);
+        configuration.GetIgnoredCodes(file);
+
+        // Act
+        var diagnostics = configuration.GetDiagnostics();
+
+        // Assert
+        Assert.Equal([LintingCodes.StaleConfigurationEntry], diagnostics.Codes());
+    }
+
+    [Fact]
+    public void Should_leave_a_glob_whose_wildcard_reaches_beyond_the_path_unreported()
+    {
+        // Arrange — 'Mobile*' matches the folder of a project beside the one the run is given, as well as that one's.
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "ignoreDiagnostics": { "Mobile*/.locales/*.json": ["LOC0119"] } }""");
+        var project = directory.Write(Path.Combine("Mobile", "Mobile.csproj"), "<Project />");
+        var file = directory.Write(Path.Combine("Mobile", "App.cs"), "class App;");
+        var configuration = new LintingConfiguration(project);
+        configuration.GetIgnoredCodes(file);
+
+        // Act
+        var diagnostics = configuration.GetDiagnostics();
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void Should_leave_a_locale_sources_line_naming_files_beyond_the_path_unreported()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(".locali.json", """{ "localeSources": { "Mobile/**": ["embedded"], "Website/**": ["host"] } }""");
+        var project = directory.Write(Path.Combine("Mobile", "Mobile.csproj"), "<Project />");
+        var file = directory.Write(Path.Combine("Mobile", ".locales", "he.json"), "{}");
+        var configuration = new LintingConfiguration(project);
+        _ = configuration.GetLocaleSources(file);
+
+        // Act
+        var diagnostics = configuration.GetDiagnostics();
+
+        // Assert
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public void Should_report_a_rule_identifier_this_linter_does_not_define()
     {
         // Arrange
@@ -366,6 +438,40 @@ public sealed class LintingConfigurationTests
             () => Assert.Equal("Contoso.Component.L", hint.MemberName),
             () => Assert.Equal((LintingConfiguration.FileName, 4), (Path.GetFileName(hint.Path), hint.Line)),
             () => Assert.Empty(hints.Diagnostics));
+    }
+
+    [Fact]
+    public void Should_hold_the_configurations_hints_to_a_run_reading_its_whole_folder()
+    {
+        // Arrange
+        using var directory = new TempDirectory();
+        directory.Write(LintingConfiguration.FileName, HintedConfiguration);
+        var solution = directory.Write("Scratch.slnx", "<Solution />");
+
+        // Act
+        var hints = new LintingConfiguration(solution).ReadHints([]);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.True(Assert.Single(hints.LocaleMembers).IsHeldToRun),
+            () => Assert.True(Assert.Single(hints.LocaleKeys).IsHeldToRun));
+    }
+
+    [Fact]
+    public void Should_leave_the_configurations_hints_unheld_by_a_run_reading_less_than_its_folder()
+    {
+        // Arrange — the project building the assembly a hint names may lie elsewhere beneath the configuration.
+        using var directory = new TempDirectory();
+        directory.Write(LintingConfiguration.FileName, HintedConfiguration);
+        var project = directory.Write(Path.Combine("Mobile", "Mobile.csproj"), "<Project />");
+
+        // Act
+        var hints = new LintingConfiguration(project).ReadHints([]);
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.False(Assert.Single(hints.LocaleMembers).IsHeldToRun),
+            () => Assert.False(Assert.Single(hints.LocaleKeys).IsHeldToRun));
     }
 
     [Fact]
@@ -514,6 +620,19 @@ public sealed class LintingConfigurationTests
           "localeMembers": [
             { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Component", "member": "L", "typeMember": "LocaleSourceType" }
           ]
+        }
+        """;
+
+    private const string HintedConfiguration = """
+        {
+          "hints": {
+            "localeMembers": [
+              { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Component", "member": "L", "typeMember": "LocaleSourceType" }
+            ],
+            "localeKeys": [
+              { "assembly": "Contoso.Widgets", "type": "Contoso.Widgets.Component", "method": "T", "parameter": "key", "locale": "L" }
+            ]
+          }
         }
         """;
 }

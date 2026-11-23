@@ -38,6 +38,19 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
         };
     }
 
+    /// <summary>What a run given the path reads every file of: the folder it names, the folder a solution or a project sits in, or the one file.</summary>
+    /// <param name="path">The path the run was given.</param>
+    public static string ScopeOf(string path)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+
+        var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+
+        return !Directory.Exists(full) && Path.GetExtension(full).ToUpperInvariant() is ".SLN" or ".SLNX" or ".CSPROJ" or ".VBPROJ"
+            ? Path.GetDirectoryName(full)!
+            : full;
+    }
+
     /// <summary>The project a source file belongs to, or null when no project sits above it.</summary>
     /// <param name="file">The source file to place.</param>
     public static string? ProjectOf(string file)
@@ -145,16 +158,14 @@ public sealed class LintingTargetResolver(ILintingConfiguration lintingConfigura
 
     private LintingTarget FromProject(string project)
     {
-        var folder = Path.GetDirectoryName(Path.GetFullPath(project))!;
-        var target = FromFiles(Walk(folder));
+        var target = FromFiles(Walk(ScopeOf(project)));
 
         return target with { Projects = [project], IsBoundToProjects = true };
     }
 
     private LintingTarget FromSolution(string solution)
     {
-        var folder = Path.GetDirectoryName(Path.GetFullPath(solution))!;
-        var target = FromFiles(Walk(folder));
+        var target = FromFiles(Walk(ScopeOf(solution)));
 
         return target with { Projects = [solution], IsSolution = true, IsBoundToProjects = true };
     }
